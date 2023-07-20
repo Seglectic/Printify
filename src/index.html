@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>P3D Printer Uploader</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+      body {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        font-family: Arial, sans-serif;
+        background-color: white;
+      }
+      .drop-zone {
+        border: 2px dashed #ccc;
+        border-radius: 4px;
+        padding: 50px;
+        text-align: center;
+        margin: 30px;
+        width: fit-content;
+        
+      }
+      .drop-zone.highlight {
+        border-color: #5cb85c;
+        background-color: lightgreen;
+      }
+      /* div for our confirmation gif */
+      .hidden-div {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 9999;
+    }
+
+    #cornerInfo {
+      position: fixed;
+      width: 120px;
+      height: 120px;
+      background-color: rgb(254, 82, 82);
+      /* outline: 2px solid rgb(83, 83, 83); */
+      display: none;
+      border-bottom-left-radius: 20px;
+      box-shadow: -5px 4px 6px rgba(0, 0, 0, 0.5);
+    }
+
+    #cornerInfo img {
+      width: 100px;
+      height: 100px;
+      position: absolute;
+      top: 0;
+      right: 0;
+    }
+
+    #cornerInfo p {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(45deg);
+      text-align: center;
+      color: white;
+      font-weight: bold;
+      font-size:15pt;
+      margin: 0px;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    }
+
+    </style>
+
+  </head>
+  <body>
+
+    <!-- Zebra Labelmaker DropZone -->
+    <div class="drop-zone" id="zebraZone">
+      <img src="zebra.png"></img>
+      <!-- <p>Drag and drop a PDF file<br> to the Zebra label maker</p> -->
+    </div>
+    
+    <div class="drop-zone" id="brotherZone">
+      <img src="brother.png"></img>
+      <!-- <p>Drag and drop a PDF file<br> to the Brother laser printer</p> -->
+    </div>
+
+    <!--Confirmation video container -->
+    <div id="vid-container" class="hidden-div">
+       <video id="video" src="checkMark.mp4" width="800" height="600"></video>
+    </div>
+
+
+    <!-- Displays some info text in the corner -->
+    <div id="cornerInfo">
+      <!-- <img src="image.png" alt="PNG Image"> -->
+      <p>Supports .PNG!</p>
+    </div>
+
+
+    
+  
+    <script>
+      // ┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+      // │                                                   Begin Script                                                    │
+      // └───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+      // console.log("1231");
+
+      //Corner info thing
+      $(document).ready(function() {
+        var cornerInfo = $('#cornerInfo');
+
+        // Set initial position offscreen
+        cornerInfo.css({
+          top: -200,
+          right: -200
+        });
+        // Animate entrance from offscreen
+        cornerInfo.show().animate({
+          top: 0,
+          right: 0
+        }, 1500).delay(3000).animate({ //Scoot back out
+          top:-200,
+          right:-200
+        }); // 
+      });
+
+      // ┌───────────────────────────┐
+      // │  Play confirmation video  │
+      // └───────────────────────────┘
+      function showConfirm(){
+        // ┌───────────────────────────┐
+        // │  Show a confirmation gif  │
+        // └───────────────────────────┘
+        var video = $('#video')[0];
+        var fadeOutDelay = 650;
+        video.currentTime = 0;      // Set the playback position to the beginning
+        video.playbackRate = 2;
+        video.play();               // Start the video playback
+        $('#vid-container').show(); // Fade out the div after the set delay
+        setTimeout(function() {
+          $('#vid-container').fadeOut('fast');
+        }, fadeOutDelay);
+      }
+
+      // ┌─────────────────┐
+      // │  Zebra Printer  │
+      // └─────────────────┘
+      const zebraZone = document.getElementById('zebraZone');
+
+      //Create an image object for the confirm thing
+      var confirmImage = new Image();
+
+      // Highlight drop zone when dragging over
+      zebraZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        zebraZone.classList.add('highlight');
+      });
+
+      // Remove highlight when dragging outside drop zone
+      zebraZone.addEventListener('dragleave', () => {
+        zebraZone.classList.remove('highlight');
+      });
+
+      // ┌──────────────┐
+      // │  Handle PDF  │
+      // └──────────────┘
+      zebraZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        zebraZone.classList.remove('highlight');
+
+        const file = e.dataTransfer.files[0];
+
+        if (file.type === 'application/pdf') {
+          const formData = new FormData();
+          formData.append('pdfFile', file);
+          // Send file to the server for upload
+          fetch('/zebra', { method: 'POST', body: formData })
+            .then((response) => {
+              if (response.ok) {
+                console.log('File uploaded successfully.');
+                showConfirm();
+              } else {
+                console.error('Error uploading file.');
+              }
+            })
+            .catch((error) => {
+              console.error('An error occurred:', error);
+            });
+        } 
+        // ┌──────────────┐
+        // │  Handle PNG  │
+        // └──────────────┘
+        else if (file.type === 'image/png') {
+          const formData = new FormData();
+          formData.append('pngFile', file);
+          // Send file to the server for upload
+          fetch('/zebrapng', { method: 'POST', body: formData })
+            .then((response) => {
+              if (response.ok) {
+                console.log('File uploaded successfully.');
+                showConfirm()
+              } else {
+                console.error('Error uploading file.');
+              }
+            })
+            .catch((error) => {
+              console.error('An error occurred:', error);
+            });
+        }        
+        // ┌───────────────────────┐
+        // │  Neither png nor pdf  │
+        // └───────────────────────┘
+        else {
+          console.error('Invalid file format.');
+        }
+      });
+
+      // ┌───────────────────┐
+      // │  Brother Printer  │
+      // └───────────────────┘
+      const brotherZone = document.getElementById('brotherZone');
+
+      //Create an image object for the confirm thing
+      var confirmImage = new Image();
+      confirmImage.src = "/files/checkMark.gif";
+
+      // Highlight drop zone when dragging over
+      brotherZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        brotherZone.classList.add('highlight');
+      });
+
+      // Remove highlight when dragging outside drop zone
+      brotherZone.addEventListener('dragleave', () => {
+        brotherZone.classList.remove('highlight');
+      });
+
+      // Handle file drop
+      brotherZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        brotherZone.classList.remove('highlight');
+
+        const file = e.dataTransfer.files[0];
+        if (file.type === 'application/pdf' || file.type==='image/png') {
+          const formData = new FormData();
+          formData.append('pdfFile', file);
+
+          // Send file to the server for upload
+          fetch('/brother', { method: 'POST', body: formData })
+            .then((response) => {
+              if (response.ok) {
+                console.log('File uploaded successfully.');
+                showConfirm();
+
+              } else {
+                console.error('Error uploading file.');
+              }
+            })
+            .catch((error) => {
+              console.error('An error occurred:', error);
+            });
+        } else {
+          console.error('Invalid file format. Please upload a PDF file.');
+        }
+      });
+
+    </script>
+  </body>
+</html>

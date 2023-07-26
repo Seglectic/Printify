@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>P3D Printer Uploader</title>
+    <title>P3D Printify</title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
       body {
@@ -39,7 +39,7 @@
       position: fixed;
       width: 120px;
       height: 120px;
-      background-color: rgb(254, 82, 82);
+      background-color: rgb(59, 150, 255);
       /* outline: 2px solid rgb(83, 83, 83); */
       display: none;
       border-bottom-left-radius: 20px;
@@ -67,6 +67,19 @@
       text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
     }
 
+    #footer{
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      height: 15px;
+      background-color: #ccc;
+      color: #626262;
+      font-family: "Lucida Console", Courier, monospace;
+      text-align: right;
+      font-size: 12pt;
+      padding: 5px;
+    }
+
     </style>
 
   </head>
@@ -92,8 +105,11 @@
     <!-- Displays some info text in the corner -->
     <div id="cornerInfo">
       <!-- <img src="image.png" alt="PNG Image"> -->
-      <p>Supports .PNG!</p>
+      <p>Multi-file uploading!</p>
     </div>
+
+    <!-- Draws a footer at the bottom that displays version info -->
+    <div id="footer"></div>
 
 
     
@@ -103,7 +119,33 @@
       // │                                                   Begin Script                                                    │
       // └───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
-      // console.log("1231");
+      const Version = '1.3.1';
+      var serverVersion = 'Unknown';
+      var footer = document.getElementById('footer');
+
+      //Prints some text to the given element typewriter-style
+      function typeWrite(element, text, speed) {
+        var i = 0;
+        for (let i = 0; i < text.length; i++) {
+          setTimeout(function() {
+            element.innerHTML += text.charAt(i);
+          }, speed * i);
+        }
+      }
+      
+      // Get the current version from the server
+      fetch('/version')
+      .then((response) => response.text())
+      .then((SerVer) => {
+        serverVersion = SerVer;
+        // footer.append(` | Server v${SerVer}`)
+        setTimeout(() => {
+          typeWrite(footer, ` | Server v${SerVer} `, 50);
+        }, 1500);
+      });
+      
+      // footer.append(`Client  v${Version}`)
+      typeWrite(footer, `Client  v${Version}`, 50);
 
       //Corner info thing
       $(document).ready(function() {
@@ -141,6 +183,8 @@
           $('#vid-container').fadeOut('fast');
         }, fadeOutDelay);
       }
+
+
 
 // ╭───────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 // │                                                   Zebra Printer                                                   │

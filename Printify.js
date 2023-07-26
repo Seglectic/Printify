@@ -26,6 +26,11 @@ const testing        = false;                                              // Se
 const imPath  = "C:/Program Files/ImageMagick-7.1.1-Q16-HDRI/convert.exe"  // Filepath to imagemagick's convert.exe for PNG -> PDF
 
 
+// Get the current version from package.json
+const package = require('./package.json');
+const version = package.version;
+console.log('Printify.js v'+version);
+
 
 // ┌───────────────────────────────────────────────────────────┐
 // │  Convert PDF                               │              │
@@ -124,6 +129,9 @@ app.post('/brother', upload.array('pdfFile'), (req, res, next) => {
   res.status(200).send('OK');
 });
 
+app.get('/version', (req, res) => {
+  res.status(200).send(version);
+});
 
 // Start the server
 app.listen(port, () => {

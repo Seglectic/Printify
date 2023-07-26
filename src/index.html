@@ -168,55 +168,55 @@
         e.preventDefault();
         zebraZone.classList.remove('highlight');
         var files = e.dataTransfer.files;
-				
-				console.log(files)
-				for (var i = 0; i < files.length; i++) {
-					var file = files[i];
-				
-					if (file.type === 'application/pdf') {
-						const formData = new FormData();
-						formData.append('pdfFile', file);
-						// Send file to the server for upload
-						fetch('/zebra', { method: 'POST', body: formData })
-							.then((response) => {
-								if (response.ok) {
-									console.log('File uploaded successfully.');
-									showConfirm();
-								} else {
-									console.error('Error uploading file.');
-								}
-							})
-							.catch((error) => {
-								console.error('An error occurred:', error);
-							});
-					} 
-					// ┌──────────────┐
-					// │  Handle PNG  │
-					// └──────────────┘
-					else if (file.type === 'image/png') {
-						const formData = new FormData();
-						formData.append('pngFile', file);
-						// Send file to the server for upload
-						fetch('/zebrapng', { method: 'POST', body: formData })
-							.then((response) => {
-								if (response.ok) {
-									console.log('File uploaded successfully.');
-									showConfirm()
-								} else {
-									console.error('Error uploading file.');
-								}
-							})
-							.catch((error) => {
-								console.error('An error occurred:', error);
-							});
-					}       
-					// ┌───────────────────────┐
-					// │  Neither png nor pdf  │
-					// └───────────────────────┘
-					else {
-						console.error('Invalid file format.');
-					}
-				} 
+        
+        console.log(files)
+        for (var i = 0; i < files.length; i++) {
+          var file = files[i];
+        
+          if (file.type === 'application/pdf') {
+            const formData = new FormData();
+            formData.append('pdfFile', file);
+            // Send file to the server for upload
+            fetch('/zebra', { method: 'POST', body: formData })
+              .then((response) => {
+                if (response.ok) {
+                  console.log('File uploaded successfully.');
+                  showConfirm();
+                } else {
+                  console.error('Error uploading file.');
+                }
+              })
+              .catch((error) => {
+                console.error('An error occurred:', error);
+              });
+          } 
+          // ┌──────────────┐
+          // │  Handle PNG  │
+          // └──────────────┘
+          else if (file.type === 'image/png') {
+            const formData = new FormData();
+            formData.append('pngFile', file);
+            // Send file to the server for upload
+            fetch('/zebrapng', { method: 'POST', body: formData })
+              .then((response) => {
+                if (response.ok) {
+                  console.log('File uploaded successfully.');
+                  showConfirm()
+                } else {
+                  console.error('Error uploading file.');
+                }
+              })
+              .catch((error) => {
+                console.error('An error occurred:', error);
+              });
+          }       
+          // ┌───────────────────────┐
+          // │  Neither png nor pdf  │
+          // └───────────────────────┘
+          else {
+            console.error('Invalid file format.');
+          }
+        } 
       });
 
 // ╭───────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
@@ -235,37 +235,37 @@
         brotherZone.classList.remove('highlight');
       });
 
-			// Handle file drop for multiple files
-			brotherZone.addEventListener('drop', (e) => {
-				e.preventDefault();
-				brotherZone.classList.remove('highlight');
+      // Handle file drop for multiple files
+      brotherZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        brotherZone.classList.remove('highlight');
 
-				var files = e.dataTransfer.files; 						// Get the file object from the event
-				for (var i = 0; i < files.length; i++) {
-					var file = files[i];
-					if (file.type === 'application/pdf') { 	// Check if the file is a PDF
-						const formData = new FormData(); // Create a new FormData object for sending to the server
-						formData.append('pdfFile', file); // Add the file to the FormData object
+        var files = e.dataTransfer.files; 						// Get the file object from the event
+        for (var i = 0; i < files.length; i++) {
+          var file = files[i];
+          if (file.type === 'application/pdf') { 	// Check if the file is a PDF
+            const formData = new FormData(); // Create a new FormData object for sending to the server
+            formData.append('pdfFile', file); // Add the file to the FormData object
 
-						// Send file to the server for upload
-						fetch('/brother', { method: 'POST', body: formData })
-							.then((response) => {
-								if (response.ok) {
-									console.log('File uploaded successfully.');
-									showConfirm();
+            // Send file to the server for upload
+            fetch('/brother', { method: 'POST', body: formData })
+              .then((response) => {
+                if (response.ok) {
+                  console.log('File uploaded successfully.');
+                  showConfirm();
 
-								} else {
-									console.error('Error uploading file.');
-								}
-							})
-							.catch((error) => {
-								console.error('An error occurred:', error);
-							});
-					} else {
-						console.error('Invalid file format. Please upload a PDF file.');
-					}
-				}
-			});
+                } else {
+                  console.error('Error uploading file.');
+                }
+              })
+              .catch((error) => {
+                console.error('An error occurred:', error);
+              });
+          } else {
+            console.error('Invalid file format. Please upload a PDF file.');
+          }
+        }
+      });
 
     </script>
   </body>

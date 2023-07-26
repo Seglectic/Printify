@@ -6,6 +6,7 @@ const moment  = require('moment');
 const fs      = require('fs');
 const im      = require('imagemagick');                                    //Doesn't work on Windows well :)
 const { exec } = require('child_process');
+const { fileURLToPath } = require('url');
 
 
 // ┌────────────────┐
@@ -118,7 +119,7 @@ app.post('/zebrapng', upload.single('pngFile'), (req, res, next) => {
 });
 
 app.post('/brother', upload.array('pdfFile'), (req, res, next) => {
-  const filePath = req.file.path;
+	let filePath = req.files[0].path;
   printPDF(filePath,brotherPrinter)
   res.status(200).send('OK');
 });

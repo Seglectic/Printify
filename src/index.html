@@ -142,9 +142,9 @@
         }, fadeOutDelay);
       }
 
-      // ┌─────────────────┐
-      // │  Zebra Printer  │
-      // └─────────────────┘
+// ╭───────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+// │                                                   Zebra Printer                                                   │
+// ╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
       const zebraZone = document.getElementById('zebraZone');
 
       //Create an image object for the confirm thing
@@ -215,14 +215,10 @@
         }
       });
 
-      // ┌───────────────────┐
-      // │  Brother Printer  │
-      // └───────────────────┘
+// ╭───────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+// │                                                  Brother Printer                                                  │
+// ╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
       const brotherZone = document.getElementById('brotherZone');
-
-      //Create an image object for the confirm thing
-      var confirmImage = new Image();
-      confirmImage.src = "/files/checkMark.gif";
 
       // Highlight drop zone when dragging over
       brotherZone.addEventListener('dragover', (e) => {
@@ -235,34 +231,37 @@
         brotherZone.classList.remove('highlight');
       });
 
-      // Handle file drop
-      brotherZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        brotherZone.classList.remove('highlight');
+			// Handle file drop for multiple files
+			brotherZone.addEventListener('drop', (e) => {
+				e.preventDefault();
+				brotherZone.classList.remove('highlight');
 
-        const file = e.dataTransfer.files[0];
-        if (file.type === 'application/pdf' || file.type==='image/png') {
-          const formData = new FormData();
-          formData.append('pdfFile', file);
+				var files = e.dataTransfer.files; 						// Get the file object from the event
+				for (var i = 0; i < files.length; i++) {
+					var file = files[i];
+					if (file.type === 'application/pdf' || file.type==='image/png') { 	// Check if the file is a PDF
+						const formData = new FormData(); // Create a new FormData object for sending to the server
+						formData.append('pdfFile', file); // Add the file to the FormData object
 
-          // Send file to the server for upload
-          fetch('/brother', { method: 'POST', body: formData })
-            .then((response) => {
-              if (response.ok) {
-                console.log('File uploaded successfully.');
-                showConfirm();
+						// Send file to the server for upload
+						fetch('/brother', { method: 'POST', body: formData })
+							.then((response) => {
+								if (response.ok) {
+									console.log('File uploaded successfully.');
+									showConfirm();
 
-              } else {
-                console.error('Error uploading file.');
-              }
-            })
-            .catch((error) => {
-              console.error('An error occurred:', error);
-            });
-        } else {
-          console.error('Invalid file format. Please upload a PDF file.');
-        }
-      });
+								} else {
+									console.error('Error uploading file.');
+								}
+							})
+							.catch((error) => {
+								console.error('An error occurred:', error);
+							});
+					} else {
+						console.error('Invalid file format. Please upload a PDF file.');
+					}
+				}
+			});
 
     </script>
   </body>

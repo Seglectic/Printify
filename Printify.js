@@ -21,6 +21,7 @@ const upload = multer({ dest: 'uploads/' });
 // └──────────┘
 const zebraPrinter   = 'ZP450';                                            // Zebra Printer Name
 const brotherPrinter = 'Brother2360D';                                     // Brother Printer Name
+const dymoPrinter    = 'DYMO LabelWriter 4XL';                             // Dymo Printer Name
 const port           = 80;                                                 // Webserver port
 const testing        = false;                                              // Set true to disable printing
 const imPath  = "C:/Program Files/ImageMagick-7.1.1-Q16-HDRI/convert.exe"  // Filepath to imagemagick's convert.exe for PNG -> PDF
@@ -33,19 +34,17 @@ console.log('Printify.js v'+version);
 
 
 // ┌───────────────────────────────────────────────────────────┐
-// │  Convert PDF                               │              │
+// │  Convert PDF  (Zebra Printer)                             │
 // │  Runs imagemagick's convert.exe on a file                 │
 // │  with to convert it into a PDF then run printer callback  │
 // └───────────────────────────────────────────────────────────┘
-function convertPDF(pngFilePath, pdfFilePath){
+function convertPDFZebra(pngFilePath, pdfFilePath){
   //---  Check if the input path exists  ---//
   if (!fs.existsSync(pngFilePath)) {
     console.error('Input PNG file does not exist.'); return;
   }
-
     //---  Append .pdf to the file output  ---//
   if(!pdfFilePath){pdfFilePath=pngFilePath+'.pdf';}
-
   let command = `"${imPath}" "${pngFilePath}" -density 200 -resize "800x1200" -format "pdf" "${pdfFilePath}"`;
   exec(command, (error, stdout, stderr) => {
     if (error) {
@@ -59,6 +58,32 @@ function convertPDF(pngFilePath, pdfFilePath){
     console.log(`ImageMagick command executed successfully. Output: ${stdout}`);
     printPDF(pdfFilePath,zebraPrinter);
   });
+}
+
+// ┌───────────────────────────────────────────────────────────┐
+// │  Convert PDF  (Dymo Printer)                              │
+// │  Runs imagemagick's convert.exe on a file                 │
+// │  with to convert it into a PDF then run printer callback  │
+// └───────────────────────────────────────────────────────────┘
+function convertPDFDymo(pngFilePath){
+	if(!fs.existsSync(pngFilePath)){
+		console.error('Input PNG file does not exist.'); return;
+	}
+	//Append the pdf extension to the file path
+	let pdfFilePath = pngFilePath+'.pdf';
+	let command = `"${imPath}" "${pngFilePath}" -density 200 -resize "425x200" -format "pdf" "${pdfFilePath}"`;
+	exec(command, (error, stdout, stderr) => {
+		if (error) {
+			console.error(`ImageMagick error: ${error.message}`);
+			return;
+		}
+		if (stderr) {
+			console.error(`ImageMagick stderr: ${stderr}`);
+			return;
+		}
+		console.log(`ImageMagick command executed successfully. Output: ${stdout}`);
+		printPDF(pdfFilePath,dymoPrinter);
+	});
 }
 
 // ┌───────────────────────────────────────────────┐
@@ -119,7 +144,7 @@ app.post('/zebra', upload.single('pdfFile'), (req, res, next) => {
 
 app.post('/zebrapng', upload.single('pngFile'), (req, res, next) => {
   const filePath = req.file.path;
-  convertPDF(filePath);
+  convertPDFZebra(filePath);
   res.status(200).send('OK');
 });
 
@@ -127,6 +152,12 @@ app.post('/brother', upload.array('pdfFile'), (req, res, next) => {
 	let filePath = req.files[0].path;
   printPDF(filePath,brotherPrinter)
   res.status(200).send('OK');
+});
+
+app.post('/dymopng', upload.single('pngFile'), (req, res, next) => {
+	let filePath = req.file.path;
+	convertPDFDymo(filePath);
+	res.status(200).send('OK');
 });
 
 app.get('/version', (req, res) => {

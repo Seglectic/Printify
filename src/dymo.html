@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>P3D Printify</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+      body {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        font-family: Arial, sans-serif;
+        background-color: white;
+      }
+      .drop-zone {
+        border: 2px dashed #ccc;
+        border-radius: 4px;
+        padding: 50px;
+        text-align: center;
+        margin: 30px;
+        width: fit-content;
+        
+      }
+      .drop-zone.highlight {
+        border-color: #5cb85c;
+        background-color: lightgreen;
+      }
+      .drop-zone img {
+        height: 150px;
+        margin: 0 auto 10px auto;
+      }
+      /* div for our confirmation gif */
+      .hidden-div {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 9999;
+    }
+
+    #cornerInfo {
+      position: fixed;
+      width: 120px;
+      height: 120px;
+      background-color: rgb(59, 150, 255);
+      /* outline: 2px solid rgb(83, 83, 83); */
+      display: none;
+      border-bottom-left-radius: 20px;
+      box-shadow: -5px 4px 6px rgba(0, 0, 0, 0.5);
+    }
+
+    #cornerInfo img {
+      width: 100px;
+      height: 100px;
+      position: absolute;
+      top: 0;
+      right: 0;
+    }
+
+    #cornerInfo p {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(45deg);
+      text-align: center;
+      color: white;
+      font-weight: bold;
+      font-size:15pt;
+      margin: 0px;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    }
+
+    #footer{
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      height: 15px;
+      background-color: #ccc;
+      color: #626262;
+      font-family: "Lucida Console", Courier, monospace;
+      text-align: right;
+      font-size: 12pt;
+      padding: 5px;
+    }
+
+    </style>
+
+  </head>
+  <body>
+
+    <!-- Zebra Labelmaker DropZone -->
+    <div class="drop-zone" id="dymoZone">
+      <img src="dymo4xl.png"></img>
+      <!-- <p>Drag and drop a PDF file<br> to the Zebra label maker</p> -->
+    </div>
+    
+    <!--Confirmation video container -->
+    <div id="vid-container" class="hidden-div">
+       <video id="video" src="checkMark.mp4" width="800" height="600"></video>
+    </div>
+
+
+    <!-- Displays some info text in the corner -->
+    <div id="cornerInfo">
+      <!-- <img src="image.png" alt="PNG Image"> -->
+      <p>Multi-file uploading!</p>
+    </div>
+
+    <!-- Draws a footer at the bottom that displays version info -->
+    <div id="footer"></div>
+
+
+    
+  
+    <script>
+      // ┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+      // │                                                   Begin Script                                                    │
+      // └───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+      const Version = '1.3.1';
+      var serverVersion = 'Unknown';
+      var footer = document.getElementById('footer');
+
+      //Prints some text to the given element typewriter-style
+      function typeWrite(element, text, speed) {
+        var i = 0;
+        for (let i = 0; i < text.length; i++) {
+          setTimeout(function() {
+            element.innerHTML += text.charAt(i);
+          }, speed * i);
+        }
+      }
+      
+      // Get the current version from the server
+      fetch('/version')
+      .then((response) => response.text())
+      .then((SerVer) => {
+        serverVersion = SerVer;
+        // footer.append(` | Server v${SerVer}`)
+        setTimeout(() => {
+          typeWrite(footer, ` | Server v${SerVer} `, 50);
+        }, 1500);
+      });
+      
+      // footer.append(`Client  v${Version}`)
+      typeWrite(footer, `Client  v${Version}`, 50);
+
+      //Corner info thing
+      $(document).ready(function() {
+        var cornerInfo = $('#cornerInfo');
+
+        // Set initial position offscreen
+        cornerInfo.css({
+          top: -200,
+          right: -200
+        });
+        // Animate entrance from offscreen
+        cornerInfo.show().animate({
+          top: 0,
+          right: 0
+        }, 1500).delay(3000).animate({ //Scoot back out
+          top:-200,
+          right:-200
+        }); // 
+      });
+
+      // ┌───────────────────────────┐
+      // │  Play confirmation video  │
+      // └───────────────────────────┘
+      function showConfirm(){
+        var video = $('#video')[0];
+        var fadeOutDelay = 650;
+        video.currentTime = 0;      // Set the playback position to the beginning
+        video.playbackRate = 2;
+        video.play();               // Start the video playback
+        $('#vid-container').show(); // Fade out the div after the set delay
+        setTimeout(function() {
+          $('#vid-container').fadeOut('fast');
+        }, fadeOutDelay);
+      }
+
+
+
+// ╭───────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+// │                                                   Dymo Printer                                                   │
+// ╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+      const dymoZone = document.getElementById('dymoZone');
+
+      //Create an image object for the confirm thing
+      var confirmImage = new Image();
+
+      // Highlight drop zone when dragging over
+      dymoZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dymoZone.classList.add('highlight');
+      });
+
+      // Remove highlight when dragging outside drop zone
+      dymoZone.addEventListener('dragleave', () => {
+        dymoZone.classList.remove('highlight');
+      });
+
+      // ┌──────────────┐
+      // │  Handle PDF  │
+      // └──────────────┘
+      dymoZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dymoZone.classList.remove('highlight');
+        var files = e.dataTransfer.files;
+        
+        console.log(files)
+        for (var i = 0; i < files.length; i++) {
+          var file = files[i];
+          
+          // ╭───────────────────╮
+          // │  Handle PDF drop  │ // Disabled due to low likelihood of sending PDFs?
+          // ╰───────────────────╯
+          // if (file.type === 'application/pdf') {
+          //   const formData = new FormData();
+          //   formData.append('pdfFile', file);
+          //   // Send file to the server for upload
+          //   fetch('/dymopng', { method: 'POST', body: formData })
+          //     .then((response) => {
+          //       if (response.ok) {
+          //         console.log('File uploaded successfully.');
+          //         showConfirm();
+          //       } else {
+          //         console.error('Error uploading file.');
+          //       }
+          //     })
+          //     .catch((error) => {
+          //       console.error('An error occurred:', error);
+          //     });
+          // } 
+          // ╭───────────────────╮
+          // │  Handle PNG Drop  │
+          // ╰───────────────────╯
+          if (file.type === 'image/png' || file.type === 'image/jpeg') {
+            const formData = new FormData();
+            formData.append('pngFile', file);                        // Append the file to the form data
+            fetch('/dymopng', { method: 'POST', body: formData })    // Send file to the server for upload
+              .then((response) => {
+                if (response.ok) {
+                  console.log('File uploaded successfully.');
+                  showConfirm()                                      // Play the confirmation video
+                } else {
+                  console.error('Error uploading file.');
+                }
+              })
+              .catch((error) => {
+                console.error('An error occurred:', error);
+              });
+          }       
+          else {
+            console.error('Invalid file format');                     // If the file is not a PDF or PNG
+          }
+        } 
+      });
+
+    </script>
+  </body>
+</html>

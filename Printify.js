@@ -155,8 +155,13 @@ app.post('/brother', upload.array('pdfFile'), (req, res, next) => {
 });
 
 app.post('/dymopng', upload.single('pngFile'), (req, res, next) => {
+	//Print the printCount to console
 	let filePath = req.file.path;
-	convertPDFDymo(filePath);
+	let printCount = req.body.printCount;
+	console.log('Printing '+printCount+' labels');
+	for (let i = 0; i < printCount; i++){
+		convertPDFDymo(filePath);
+	}
 	res.status(200).send('OK');
 });
 

@@ -83,6 +83,29 @@
       font-size: 12pt;
       padding: 5px;
     }
+    /* Canvas centered on visibility hidden by default unless dymoZone clicked, avoiding blurriness*/
+    #canvasContainer {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      visibility: hidden;
+      z-index: 9999;
+      box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.5);
+      border: 2px solid rgb(83, 83, 83);
+      background-color: darkgray;
+    }
+    
+    /* Small print count */
+    #printCount {
+      width: 50px;
+      /* text-align: center; */
+    }
+
+    /* Text input field */
+    #input {
+      width: 200px;
+    }
 
     </style>
 
@@ -109,6 +132,19 @@
 
     <!-- Draws a footer at the bottom that displays version info -->
     <div id="footer"></div>
+
+    <!-- 425 x 200 HTML5 canvas with a text input inside it-->
+    <div id="canvasContainer">
+    <canvas id="canvas" width="425" height="200"></canvas>
+    <br>
+    <!-- Text input field that allows newlines -->
+    <textarea id="input" rows="2"></textarea>
+    <!-- Print count input field that disallows negatives -->
+    <input type="number" id="printCount" value="1" min="1" />
+    <!-- Button to print the canvas -->
+    <button onclick="printCanvas()">Print</button>
+  </div>
+
 
 
     
@@ -213,29 +249,10 @@
         for (var i = 0; i < files.length; i++) {
           var file = files[i];
           
-          // ╭───────────────────╮
-          // │  Handle PDF drop  │ // Disabled due to low likelihood of sending PDFs?
-          // ╰───────────────────╯
-          // if (file.type === 'application/pdf') {
-          //   const formData = new FormData();
-          //   formData.append('pdfFile', file);
-          //   // Send file to the server for upload
-          //   fetch('/dymopng', { method: 'POST', body: formData })
-          //     .then((response) => {
-          //       if (response.ok) {
-          //         console.log('File uploaded successfully.');
-          //         showConfirm();
-          //       } else {
-          //         console.error('Error uploading file.');
-          //       }
-          //     })
-          //     .catch((error) => {
-          //       console.error('An error occurred:', error);
-          //     });
-          // } 
-          // ╭───────────────────╮
-          // │  Handle PNG Drop  │
-          // ╰───────────────────╯
+
+          // ╭─────────────────────╮
+          // │  Handle Image Drop  │
+          // ╰─────────────────────╯
           if (file.type === 'image/png' || file.type === 'image/jpeg') {
             const formData = new FormData();
             formData.append('pngFile', file);                        // Append the file to the form data
@@ -257,6 +274,63 @@
           }
         } 
       });
+      
+
+      // ╭───────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+      // │                                                 Dymo Canvas Stuff                                                 │
+      // ╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+      // Show the canvas when the dymoZone is clicked
+      dymoZone.addEventListener('click', () => {
+        var canvasContainer = document.getElementById('canvasContainer');
+        // Show container and fade in
+        $(canvasContainer).fadeIn('fast');
+        canvasContainer.style.visibility = 'visible';
+      });
+
+      // Get the canvas element and set its background to grey
+      var canvas = document.getElementById('canvas');
+      var ctx = canvas.getContext('2d');
+      ctx.fillStyle = 'rgb(200, 200, 200)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      // Text input field
+      var input = document.getElementById('input');
+      input.type = 'text';
+      input.placeholder = 'Enter text here';
+      // Write text in the canvas when text is entered
+      input.addEventListener('input', () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = 'rgb(255, 255, 255)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // Set the text font to a maximum of 60px and a minimum of 10px based on text length, scaling down if text reached width of canvas
+        ctx.font = `${Math.max(Math.min(60, ((canvas.width*0.50) / ctx.measureText(input.value).width) * 60), 10)}px Arial`;
+        ctx.fillStyle = 'rgb(0, 0, 0)';
+        // Fill text at center of canvas based on text length, add line breaks if there's a newline character, center text horizontally and vertically
+        input.value.split('\n').forEach((line, i) => {
+          ctx.fillText(line, (canvas.width - ctx.measureText(line).width) / 2, (canvas.height - 10) / 2 + (i * 60));
+        });
+
+      });
+
+      // Convert canvas to a pngfile and send to the server to print, as well as the print count
+      function printCanvas() {
+        canvas.toBlob((blob) => {
+          const formData = new FormData();
+          formData.append('pngFile', blob);                                           // Append the file to the form data
+          formData.append('printCount', document.getElementById('printCount').value); // Append the print count to the form data
+          fetch('/dymopng', { method: 'POST', body: formData })
+            .then((response) => {
+              if (response.ok) {
+                console.log('File uploaded successfully.');
+                showConfirm();
+              } else {
+                console.error('Error uploading file.');
+              }
+            })
+            .catch((error) => {
+              console.error('An error occurred:', error);
+            });
+        });
+      }
 
     </script>
   </body>

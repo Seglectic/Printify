@@ -51,8 +51,8 @@ if(fs.existsSync('serverData.json')){
 
 // Function to increment the print count
 function printGet(){
-	printCount++;
-	serverData.printCount = printCount;
+	printCounter++;
+	serverData.printCounter = printCounter;
 	fs.writeFileSync('serverData.json', JSON.stringify(serverData));
 }
 
@@ -182,10 +182,16 @@ app.post('/brother', upload.array('pdfFile'), (req, res, next) => {
 });
 
 app.post('/dymopng', upload.single('pngFile'), (req, res, next) => {
-	//Print the printCount to console
 	let filePath = req.file.path;
-	let printCount = req.body.printCount;
-	console.log('Printing '+printCount+' labels');
+	let printCount = 1;
+	if (req.body.printCount){
+		printCount = req.body.printCount;
+	}
+	if (printCount > 1){
+		console.log('Printing '+printCount+' labels');
+	} else {
+		console.log('Printing label');
+	}
 	for (let i = 0; i < printCount; i++){
 		convertPDFDymo(filePath);
 	}

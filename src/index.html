@@ -3,6 +3,8 @@
   <head>
     <title>P3D Printify</title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+		<!-- Google's "Droid Sans Mono" font -->
+		<link href='https://fonts.googleapis.com/css?family=Droid+Sans+Mono&subset=latin' rel='stylesheet' type='text/css'>
     <style>
       body {
         display: flex;
@@ -39,8 +41,9 @@
       position: fixed;
       width: 120px;
       height: 120px;
-      background-color: rgb(59, 150, 255);
-      /* outline: 2px solid rgb(83, 83, 83); */
+      background-color: rgb(255, 60, 60);
+			font-family: 'Droid Sans Mono', monospace;
+      outline: 2px solid rgb(254, 254, 254);
       display: none;
       border-bottom-left-radius: 20px;
       box-shadow: -5px 4px 6px rgba(0, 0, 0, 0.5);
@@ -105,7 +108,7 @@
     <!-- Displays some info text in the corner -->
     <div id="cornerInfo">
       <!-- <img src="image.png" alt="PNG Image"> -->
-      <p>Multi-file uploading!</p>
+      <!-- <p>Multi-file uploading!</p> -->
     </div>
 
     <!-- Draws a footer at the bottom that displays version info -->
@@ -119,9 +122,12 @@
       // │                                                   Begin Script                                                    │
       // └───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
-      const Version = '1.8.0';
+      const Version = '1.8.5';
       var serverVersion = 'Unknown';
+			var pageHits = 0;
+			var printCount = 0;
       var footer = document.getElementById('footer');
+			var cornerInfo = $('#cornerInfo');
 
       //Prints some text to the given element typewriter-style
       function typeWrite(element, text, speed) {
@@ -135,12 +141,18 @@
       
       // Get the current version from the server
       fetch('/version')
-      .then((response) => response.text())
-      .then((SerVer) => {
-        serverVersion = SerVer;
-        // footer.append(` | Server v${SerVer}`)
+      // .then((response) => response.text()) //
+			.then((response) => response.json()) // Get the response as JSON
+      .then((serverData) => {
+        // serverVersion = SerVer;
+				serverVersion = serverData.version;
+				pageHits = serverData.pageHits;
+				printCount = serverData.printCount;
+				//Set the text for the corner info thing
+				cornerInfo.append(`<p>Over ${printCount} printed!</p>`);
         setTimeout(() => {
-          typeWrite(footer, ` | Server v${SerVer} `, 50);
+					cornerDisplay();
+          typeWrite(footer, ` | Server v${serverVersion} | ${pageHits} `, 50);
         }, 1500);
       });
       
@@ -148,9 +160,7 @@
       typeWrite(footer, `Client  v${Version}`, 50);
 
       //Corner info thing
-      $(document).ready(function() {
-        var cornerInfo = $('#cornerInfo');
-
+      function cornerDisplay() {
         // Set initial position offscreen
         cornerInfo.css({
           top: -200,
@@ -164,7 +174,7 @@
           top:-200,
           right:-200
         }); // 
-      });
+      };
 
       // ┌───────────────────────────┐
       // │  Play confirmation video  │

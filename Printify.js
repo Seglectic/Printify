@@ -32,6 +32,30 @@ const package = require('./package.json');
 const version = package.version;
 console.log('Printify.js v'+version);
 
+// Create a file that stores data for how many page hits and how many prints have been made
+let pageHits = 0;
+let printCount = 0;
+let serverData = {
+	pageHits: pageHits,
+	printCount: printCount
+}
+
+// load the serverData file, create it if it doesn't exist
+if(fs.existsSync('serverData.json')){
+	serverData = JSON.parse(fs.readFileSync('serverData.json'));
+	pageHits = serverData.pageHits;
+	printCount = serverData.printCount;
+} else {
+	fs.writeFileSync('serverData.json', JSON.stringify(serverData));
+}
+
+// Function to increment the print count
+function printGet(){
+	printCount++;
+	serverData.printCount = printCount;
+	fs.writeFileSync('serverData.json', JSON.stringify(serverData));
+}
+
 
 // ┌───────────────────────────────────────────────────────────┐
 // │  Convert PDF  (Zebra Printer)                             │
@@ -111,6 +135,9 @@ function printPDF(filePath, printerName) {
   //Log the event
   let currentTime = moment().format('MMMM, D, HH:mm:ss');
   console.log(currentTime,':','Printing file:', filePath, 'to printer: '+printerName);
+
+	//Increment the print count
+	printGet();
 }
 
 // ┌────────────────────┐
@@ -165,8 +192,21 @@ app.post('/dymopng', upload.single('pngFile'), (req, res, next) => {
 	res.status(200).send('OK');
 });
 
+
+// Return the current server version with the number of page hits and prints
 app.get('/version', (req, res) => {
-  res.status(200).send(version);
+	pageHits++;
+	serverData.pageHits = pageHits;
+	fs.writeFileSync('serverData.json', JSON.stringify(serverData));
+	// Send the version, page hits, and print count as json
+	res.status(200).json({
+		
+		version: version,
+		// Round printcount down to nearest 50
+		printCount: Math.floor(printCount/50)*50,
+		pageHits: pageHits
+	});
+	// res.status(200).send(version+'|'+pageHits+'|'+printCount);
 });
 
 // Start the server

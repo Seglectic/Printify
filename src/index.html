@@ -125,7 +125,7 @@
       const Version = '1.8.5';
       var serverVersion = 'Unknown';
 			var pageHits = 0;
-			var printCount = 0;
+			var printCounter = 0;
       var footer = document.getElementById('footer');
 			var cornerInfo = $('#cornerInfo');
 
@@ -147,9 +147,9 @@
         // serverVersion = SerVer;
 				serverVersion = serverData.version;
 				pageHits = serverData.pageHits;
-				printCount = serverData.printCount;
+				printCounter = serverData.printCounter;
 				//Set the text for the corner info thing
-				cornerInfo.append(`<p>Over ${printCount} printed!</p>`);
+				cornerInfo.append(`<p>Over ${printCounter} printed!</p>`);
         setTimeout(() => {
 					cornerDisplay();
           typeWrite(footer, ` | Server v${serverVersion} | ${pageHits} `, 50);

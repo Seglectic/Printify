@@ -20,7 +20,7 @@ const upload = multer({ dest: 'uploads/' });
 // │  Global  │
 // └──────────┘
 const zebraPrinter   = 'ZP450';                                            // Zebra Printer Name
-const brotherPrinter = 'Brother2360D';                                     // Brother Printer Name
+const brotherPrinter = 'Brother2360DUSB';                                  // Brother Printer Name
 const dymoPrinter    = 'DYMO LabelWriter 4XL';                             // Dymo Printer Name
 const port           = 80;                                                 // Webserver port
 const testing        = false;                                              // Set true to disable printing

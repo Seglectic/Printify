@@ -1,12 +1,13 @@
-const express = require('express');
-const multer  = require('multer');
-const path    = require('path');
-const printer = require('pdf-to-printer');
-const moment  = require('moment'); 
-const fs      = require('fs');
-const im      = require('imagemagick');                                    //Doesn't work on Windows well :)
-const { exec } = require('child_process');
-const { fileURLToPath } = require('url');
+const express           = require('express'       );
+const multer            = require('multer'        );
+const path              = require('path'          );
+const printer           = require('pdf-to-printer');
+const moment            = require('moment'        ); 
+const fs                = require('fs'            );
+const im                = require('imagemagick'   ); // Doesn't work on Windows well :)
+const { exec }          = require('child_process' );
+const yauzl  						= require('yauzl'					);
+const { fileURLToPath } = require('url'           );
 
 
 // ┌────────────────┐
@@ -19,12 +20,12 @@ const upload = multer({ dest: 'uploads/' });
 // ┌──────────┐
 // │  Global  │
 // └──────────┘
-const zebraPrinter   = 'ZP450';                                            // Zebra Printer Name
-const brotherPrinter = 'Brother2360DUSB';                                  // Brother Printer Name
-const dymoPrinter    = 'DYMO LabelWriter 4XL';                             // Dymo Printer Name
-const port           = 80;                                                 // Webserver port
-const testing        = false;                                              // Set true to disable printing
-const imPath  = "C:/Program Files/ImageMagick-7.1.1-Q16-HDRI/convert.exe"  // Filepath to imagemagick's convert.exe for PNG -> PDF
+const zebraPrinter   = 'ZP450';                                                   // Zebra Printer Name
+const brotherPrinter = 'Brother2360DUSB';                                         // Brother Printer Name
+const dymoPrinter    = 'DYMO LabelWriter 4XL';                                    // Dymo Printer Name
+const port           = 80;                                                        // Webserver port
+const testing        = false;                                                     // Set true to disable printing
+const imPath         = "C:/Program Files/ImageMagick-7.1.1-Q16-HDRI/convert.exe"; // Filepath to imagemagick's convert.exe for PNG -> PDF
 
 
 // Get the current version from package.json
@@ -36,24 +37,86 @@ console.log('Printify.js v'+version);
 let pageHits = 0;
 let printCounter = 0;
 let serverData = {
-	pageHits: pageHits,
-	printCounter: printCounter
+  pageHits: pageHits,
+  printCounter: printCounter
 }
 
 // load the serverData file, create it if it doesn't exist
 if(fs.existsSync('serverData.json')){
-	serverData = JSON.parse(fs.readFileSync('serverData.json'));
-	pageHits = serverData.pageHits;
-	printCounter = serverData.printCounter;
+  serverData = JSON.parse(fs.readFileSync('serverData.json'));
+  pageHits = serverData.pageHits;
+  printCounter = serverData.printCounter;
 } else {
-	fs.writeFileSync('serverData.json', JSON.stringify(serverData));
+  fs.writeFileSync('serverData.json', JSON.stringify(serverData));
 }
 
 // Function to increment the print count
 function printGet(){
-	printCounter++;
-	serverData.printCounter = printCounter;
-	fs.writeFileSync('serverData.json', JSON.stringify(serverData));
+  printCounter++;
+  serverData.printCounter = printCounter;
+  fs.writeFileSync('serverData.json', JSON.stringify(serverData));
+}
+
+// ╭──────────────────────────╮
+// │  Extract Zip             │
+// │  Extracts and prints     │
+// │  all PDFs in a zip file  │
+// ╰──────────────────────────╯
+function extractZip(zipFilePath, printerName) {
+  const extractionPath = 'extracted'; 																	 // Directory name for extraction
+  const pdfPaths = [];                                                   // List of extracted PDF file paths to return
+  const extractionPromise = new Promise((resolve, reject) => {           // Create a promise to return the list of extracted files
+    yauzl.open(zipFilePath, { lazyEntries: true }, (err, zipfile) => {   
+      if (err) { reject(err); return; }                                  // Return if there's an error opening the zip
+      zipfile.readEntry(); 																							 // Begin reading entries (files or directories)
+
+      zipfile.on('entry', entry => {                                     // Handle each entry
+        const filePath = path.join(extractionPath, entry.fileName);      // Build the file path
+        if (/\/$/.test(entry.fileName)) {																 // Directory entry - ensure directory exists, then continue reading entries
+          fs.mkdirSync(filePath, { recursive: true });
+          zipfile.readEntry();
+        } else {                                                         // File entry - extract the file and continue reading entries
+          if (path.extname(filePath).toLowerCase() === '.pdf') {         // If the file is a PDF
+            zipfile.openReadStream(entry, (err, readStream) => {
+              if (err) throw err;
+              fs.mkdirSync(path.dirname(filePath), { recursive: true }); // Ensure parent directory exists
+              const writeStream = fs.createWriteStream(filePath);        // Create write stream to save file
+              readStream.pipe(writeStream);                              // Pipe read stream into write stream
+              writeStream.on('close', () => {
+                pdfPaths.push(filePath);                                 // Add file path to the list of extracted files
+                zipfile.readEntry();                                     // Continue reading entries
+              });
+            });
+          } else {                                                       // Skip if it's not a PDF
+            zipfile.readEntry();
+          }
+        }
+      });
+      
+      zipfile.on('end', () => {                                          // When the entries are done being read
+        resolve(pdfPaths);                                               // Resolve the promise with the list of extracted files
+      });
+
+      zipfile.on('error', err => {                                      
+        reject(err);
+      });
+    });
+  });
+
+  return extractionPromise                                               // Return the promise so they can wait for it to resolve
+    .then(pdfPaths => {                                                  // Once the promise resolves print the PDFs and return them
+      const printPromises = pdfPaths.map(pdfPath => printPDF(pdfPath, printerName));
+      return Promise.all(printPromises).then(() => pdfPaths);          
+    })
+    .catch(error => {
+      console.error('Error extracting and printing PDFs:', error.message);
+      throw error;
+    })
+    .finally(() => {
+      // Clean up extracted files after printing
+      console.log('Extraction path cleaned up.');
+      fs.rmSync(extractionPath, { recursive: true });
+    });
 }
 
 
@@ -90,24 +153,24 @@ function convertPDFZebra(pngFilePath, pdfFilePath){
 // │  with to convert it into a PDF then run printer callback  │
 // └───────────────────────────────────────────────────────────┘
 function convertPDFDymo(pngFilePath){
-	if(!fs.existsSync(pngFilePath)){
-		console.error('Input PNG file does not exist.'); return;
-	}
-	//Append the pdf extension to the file path
-	let pdfFilePath = pngFilePath+'.pdf';
-	let command = `"${imPath}" "${pngFilePath}" -density 200 -resize "425x200" -format "pdf" "${pdfFilePath}"`;
-	exec(command, (error, stdout, stderr) => {
-		if (error) {
-			console.error(`ImageMagick error: ${error.message}`);
-			return;
-		}
-		if (stderr) {
-			console.error(`ImageMagick stderr: ${stderr}`);
-			return;
-		}
-		console.log(`ImageMagick command executed successfully. Output: ${stdout}`);
-		printPDF(pdfFilePath,dymoPrinter);
-	});
+  if(!fs.existsSync(pngFilePath)){
+    console.error('Input PNG file does not exist.'); return;
+  }
+  //Append the pdf extension to the file path
+  let pdfFilePath = pngFilePath+'.pdf';
+  let command = `"${imPath}" "${pngFilePath}" -density 200 -resize "425x200" -format "pdf" "${pdfFilePath}"`;
+  exec(command, (error, stdout, stderr) => {
+    if (error) {
+      console.error(`ImageMagick error: ${error.message}`);
+      return;
+    }
+    if (stderr) {
+      console.error(`ImageMagick stderr: ${stderr}`);
+      return;
+    }
+    console.log(`ImageMagick command executed successfully. Output: ${stdout}`);
+    printPDF(pdfFilePath,dymoPrinter);
+  });
 }
 
 // ┌───────────────────────────────────────────────┐
@@ -136,8 +199,8 @@ function printPDF(filePath, printerName) {
   let currentTime = moment().format('MMMM, D, HH:mm:ss');
   console.log(currentTime,':','Printing file:', filePath, 'to printer: '+printerName);
 
-	//Increment the print count
-	printGet();
+  //Increment the print count
+  printGet();
 }
 
 // ┌────────────────────┐
@@ -160,9 +223,9 @@ app.get('/files/:fileName', (req, res) => {
 });
 
 
-// ┌───────────────────────┐
-// │  Handle file uploads  │
-// └───────────────────────┘
+// ╭───────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+// │                                      //SECTION Process file uploads                                               │
+// ╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 app.post('/zebra', upload.single('pdfFile'), (req, res, next) => {
   const filePath = req.file.path;
   printPDF(filePath,zebraPrinter)
@@ -175,27 +238,36 @@ app.post('/zebrapng', upload.single('pngFile'), (req, res, next) => {
   res.status(200).send('OK');
 });
 
+//Zebra Zip file handling
+app.post('/zebrazip', upload.single('zipFile'), (req, res, next) => {
+  const filePath = req.file.path;
+  console.log('Zip File');
+  let pdfFiles = extractZip(filePath,zebraPrinter);
+  console.log(pdfFiles);
+  res.status(200).send('OK');
+});
+
 app.post('/brother', upload.array('pdfFile'), (req, res, next) => {
-	let filePath = req.files[0].path;
+  let filePath = req.files[0].path;
   printPDF(filePath,brotherPrinter)
   res.status(200).send('OK');
 });
 
 app.post('/dymopng', upload.single('pngFile'), (req, res, next) => {
-	let filePath = req.file.path;
-	let printCount = 1;
-	if (req.body.printCount){
-		printCount = req.body.printCount;
-	}
-	if (printCount > 1){
-		console.log('Printing '+printCount+' labels');
-	} else {
-		console.log('Printing label');
-	}
-	for (let i = 0; i < printCount; i++){
-		convertPDFDymo(filePath);
-	}
-	res.status(200).send('OK');
+  let filePath = req.file.path;
+  let printCount = 1;
+  if (req.body.printCount){
+    printCount = req.body.printCount;
+  }
+  if (printCount > 1){
+    console.log('Printing '+printCount+' labels');
+  } else {
+    console.log('Printing label');
+  }
+  for (let i = 0; i < printCount; i++){
+    convertPDFDymo(filePath);
+  }
+  res.status(200).send('OK');
 });
 
 
@@ -203,15 +275,15 @@ app.post('/dymopng', upload.single('pngFile'), (req, res, next) => {
 // │  Send server info  │
 // ╰────────────────────╯
 app.get('/version', (req, res) => { // Returns the current server version with the number of page hits and prints
-	pageHits++;
-	serverData.pageHits = pageHits;
-	fs.writeFileSync('serverData.json', JSON.stringify(serverData));
-	// Send the version, page hits, and print count as json
-	res.status(200).json({
-		version: version,
-		printCounter: Math.floor(printCounter/50)*50, // Round printcount down to nearest 50
-		pageHits: pageHits
-	});
+  pageHits++;
+  serverData.pageHits = pageHits;
+  fs.writeFileSync('serverData.json', JSON.stringify(serverData));
+  // Send the version, page hits, and print count as json
+  res.status(200).json({
+    version: version,
+    printCounter: Math.floor(printCounter/50)*50, // Round printcount down to nearest 50
+    pageHits: pageHits
+  });
 });
 
 // Start the server

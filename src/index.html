@@ -122,7 +122,7 @@
       // │                                                   Begin Script                                                    │
       // └───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
-      const Version = '1.8.5';
+      const Version = '1.9.0';
       var serverVersion = 'Unknown';
 			var pageHits = 0;
 			var printCounter = 0;
@@ -148,9 +148,18 @@
 				serverVersion = serverData.version;
 				pageHits = serverData.pageHits;
 				printCounter = serverData.printCounter;
-				//Set the text for the corner info thing
-				cornerInfo.append(`<p>Over ${printCounter} printed!</p>`);
-        setTimeout(() => {
+
+				//SECTION Corner Info
+				var currentDate = new Date();
+				var messageExpiration = new Date(2023, 12, 25); //Set an expiration date for the message
+				if (currentDate > messageExpiration) {
+					cornerInfo.append(`<p>Over ${printCounter} printed!</p>`);
+				}
+				else {
+					cornerInfo.append(`<p>.ZIP printed here!</p>`);
+				}
+        
+				setTimeout(() => {
 					cornerDisplay();
           typeWrite(footer, ` | Server v${serverVersion} | ${pageHits} `, 50);
         }, 1500);
@@ -263,10 +272,30 @@
               .catch((error) => {
                 console.error('An error occurred:', error);
               });
-          }       
-          // ┌───────────────────────┐
-          // │  Neither png nor pdf  │
-          // └───────────────────────┘
+          }
+          // ┌──────────────┐
+          // │  Handle ZIP  │
+          // └──────────────┘
+          else if (file.type === 'application/zip') {
+            const formData = new FormData();
+            formData.append('zipFile', file);
+            // Send file to the server for upload
+            fetch('/zebrazip', { method: 'POST', body: formData })
+              .then((response) => {
+                if (response.ok) {
+                  console.log('File uploaded successfully.');
+                  showConfirm()
+                } else {
+                  console.error('Error uploading file.');
+                }
+              })
+              .catch((error) => {
+                console.error('An error occurred:', error);
+              });
+          }   
+          // ┌────────────────────────────────┐
+          // │  Neither png nor pdf, nor zip  │
+          // └────────────────────────────────┘
           else {
             console.error('Invalid file format.');
           }

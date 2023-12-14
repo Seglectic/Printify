@@ -2,9 +2,13 @@
 <html>
   <head>
     <title>P3D Printify</title>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- JQuery -->
+		<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 		<!-- Google's "Droid Sans Mono" font -->
 		<link href='https://fonts.googleapis.com/css?family=Droid+Sans+Mono&subset=latin' rel='stylesheet' type='text/css'>
+		<!-- Clippy CSS -->
+		<link rel="stylesheet" type="text/css" href="clippy.css" media="all">
+
     <style>
       body {
         display: flex;
@@ -88,6 +92,9 @@
   </head>
   <body>
 
+		<!-- Clippy.js Script -->
+		<script src="clippy.js"></script>
+
     <!-- Zebra Labelmaker DropZone -->
     <div class="drop-zone" id="zebraZone">
       <img src="zebra.png"></img>
@@ -110,6 +117,7 @@
       <!-- <img src="image.png" alt="PNG Image"> -->
       <!-- <p>Multi-file uploading!</p> -->
     </div>
+		
 
     <!-- Draws a footer at the bottom that displays version info -->
     <div id="footer"></div>
@@ -122,12 +130,14 @@
       // │                                                   Begin Script                                                    │
       // └───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
-      const Version = '1.9.4';
+      const Version = '1.9.6';
       var serverVersion = 'Unknown';
 			var pageHits = 0;
 			var printCounter = 0;
       var footer = document.getElementById('footer');
 			var cornerInfo = $('#cornerInfo');
+			let showCornerInfo = false													// Set to true to show the corner info
+			let showClippy = true
 
       //Prints some text to the given element typewriter-style
       function typeWrite(element, text, speed) {
@@ -139,6 +149,34 @@
         }
       }
       
+
+      // ╭──────────────────╮
+      // │  Helper "Agent"  │
+      // ╰──────────────────╯
+			// Create global variable for the agent
+			var agent;
+			clippy.load('Clippy', function(agent){
+				agent.show(); 
+				
+				window.agent = agent; // Make the agent global
+				// Wait for the delay seconds and then speak
+				setTimeout(function(){
+					// For now a simple list:
+					let clippySayings = [
+						`We've printed over ${printCounter} files!`,
+						"Did you know: the brother printer can print .TIF files?",
+						"Did you know: the Zebra printer can print .ZIP files?",
+						`This page has had over ${Math.floor(pageHits/100)*100} hits!`,
+
+					]
+					// Choose a random saying
+					let saying = clippySayings[Math.floor(Math.random() * clippySayings.length)]
+					agent.speak(saying);
+					// agent.animate();
+				}, 4000);
+			});
+
+
       // Get the current version from the server
       fetch('/version')
       // .then((response) => response.text()) //
@@ -151,7 +189,7 @@
 
 				//SECTION Corner Info
 				var currentDate = new Date();
-				var messageExpiration = new Date(2023, 12, 25); //Set an expiration date for the message
+				var messageExpiration = new Date(2023, 12, 25); // Set an expiration date for the alternate message
 				if (currentDate > messageExpiration) {
 					cornerInfo.append(`<p>Over ${printCounter} printed!</p>`);
 				}
@@ -160,8 +198,8 @@
 				}
         
 				setTimeout(() => {
-					cornerDisplay();
-          typeWrite(footer, ` | Server v${serverVersion} | ${pageHits} `, 50);
+					if(showCornerInfo){cornerDisplay();}
+          typeWrite(footer, ` | Server v${serverVersion} `, 50);
         }, 1500);
       });
       
@@ -201,6 +239,8 @@
         setTimeout(function() {
           $('#vid-container').fadeOut('fast');
         }, fadeOutDelay);
+
+				agent.speak("File sent!")
       }
 
 

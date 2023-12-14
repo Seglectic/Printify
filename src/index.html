@@ -122,7 +122,7 @@
       // │                                                   Begin Script                                                    │
       // └───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
-      const Version = '1.9.0';
+      const Version = '1.9.3';
       var serverVersion = 'Unknown';
 			var pageHits = 0;
 			var printCounter = 0;
@@ -276,7 +276,9 @@
           // ┌──────────────┐
           // │  Handle ZIP  │
           // └──────────────┘
-          else if (file.type === 'application/zip') {
+          else if (file.type === 'application/zip' || 
+								   file.type === 'application/x-zip-compressed' || 
+									 file.type === 'application/octet-stream') { 
             const formData = new FormData();
             formData.append('zipFile', file);
             // Send file to the server for upload
@@ -300,6 +302,7 @@
             console.error('Invalid file format.');
           }
         } 
+				console.log(`Reported file type: ${file.type}`);
       });
 
 // ╭───────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮

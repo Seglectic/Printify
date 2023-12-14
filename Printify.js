@@ -63,7 +63,7 @@ function printGet(){
 // │  all PDFs in a zip file  │
 // ╰──────────────────────────╯
 function extractZip(zipFilePath, printerName) {
-  const extractionPath = 'extracted'; 																	 // Directory name for extraction
+  const extractionPath = 'uploads/extracted'; 												   // Directory name for extraction
   const pdfPaths = [];                                                   // List of extracted PDF file paths to return
   const extractionPromise = new Promise((resolve, reject) => {           // Create a promise to return the list of extracted files
     yauzl.open(zipFilePath, { lazyEntries: true }, (err, zipfile) => {   
@@ -188,11 +188,13 @@ function convertPDFBrother(imageFilePath, pdfFilePath){
   if (!fs.existsSync(imageFilePath)) {
     console.error('Input PNG file does not exist.'); return;
   }
-    //---  Append .pdf to the file output  ---//
-  // if(!pdfFilePath){pdfFilePath=pngFilePath+'.pdf';}
-  // let command = `"${imPath}" "${pngFilePath}" -density 200 -resize "800x1200" -format "pdf" "${pdfFilePath}"`;
-	
-  let command = `"${imPath}" "${imageFilePath}" -density 200 -format "pdf" "${pdfFilePath}"`;
+
+	// Appends .pdf to the file once it's converted, just as a treat
+  if(!pdfFilePath){pdfFilePath=imageFilePath+'.pdf';}
+
+	// This variant doesn't resize the pdf and -extent 0x0 seems to remove the white border
+	let command = `"${imPath}" "${imageFilePath}" -format "pdf" -extent 0x0 "${pdfFilePath}"`;
+
   exec(command, (error, stdout, stderr) => {
     if (error) {
       console.error(`ImageMagick error: ${error.message}`);
@@ -203,7 +205,7 @@ function convertPDFBrother(imageFilePath, pdfFilePath){
       return;
     }
     console.log(`ImageMagick command executed successfully. Output: ${stdout}`);
-    printPDF(pdfFilePath,zebraPrinter);
+    printPDF(pdfFilePath,brotherPrinter);
   });
 }
 

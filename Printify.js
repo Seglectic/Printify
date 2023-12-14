@@ -189,9 +189,10 @@ function convertPDFBrother(imageFilePath, pdfFilePath){
     console.error('Input PNG file does not exist.'); return;
   }
     //---  Append .pdf to the file output  ---//
-  if(!pdfFilePath){pdfFilePath=pngFilePath+'.pdf';}
+  // if(!pdfFilePath){pdfFilePath=pngFilePath+'.pdf';}
   // let command = `"${imPath}" "${pngFilePath}" -density 200 -resize "800x1200" -format "pdf" "${pdfFilePath}"`;
-  let command = `"${imPath}" "${pngFilePath}" -density 200 -format "pdf" "${pdfFilePath}"`;
+	
+  let command = `"${imPath}" "${imageFilePath}" -density 200 -format "pdf" "${pdfFilePath}"`;
   exec(command, (error, stdout, stderr) => {
     if (error) {
       console.error(`ImageMagick error: ${error.message}`);

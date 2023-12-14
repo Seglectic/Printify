@@ -119,6 +119,11 @@ function extractZip(zipFilePath, printerName) {
     });
 }
 
+//NOTE The duplicated code below sucks 
+//     and should be replaced with a more 
+//     generic conversion routine that 
+//     accepts the file, printer and output
+//     resolution as parameters.
 
 // ┌───────────────────────────────────────────────────────────┐
 // │  Convert PDF  (Zebra Printer)                             │
@@ -173,6 +178,34 @@ function convertPDFDymo(pngFilePath){
   });
 }
 
+// ┌───────────────────────────────────────────────────────────┐
+// │  Convert PDF  (Brother Printer)                           │
+// │  Runs imagemagick's convert.exe on a file                 │
+// │  with to convert it into a PDF then run printer callback  │
+// └───────────────────────────────────────────────────────────┘
+function convertPDFBrother(imageFilePath, pdfFilePath){
+  //---  Check if the input path exists  ---//
+  if (!fs.existsSync(imageFilePath)) {
+    console.error('Input PNG file does not exist.'); return;
+  }
+    //---  Append .pdf to the file output  ---//
+  if(!pdfFilePath){pdfFilePath=pngFilePath+'.pdf';}
+  // let command = `"${imPath}" "${pngFilePath}" -density 200 -resize "800x1200" -format "pdf" "${pdfFilePath}"`;
+  let command = `"${imPath}" "${pngFilePath}" -density 200 -format "pdf" "${pdfFilePath}"`;
+  exec(command, (error, stdout, stderr) => {
+    if (error) {
+      console.error(`ImageMagick error: ${error.message}`);
+      return;
+    }
+    if (stderr) {
+      console.error(`ImageMagick stderr: ${stderr}`);
+      return;
+    }
+    console.log(`ImageMagick command executed successfully. Output: ${stdout}`);
+    printPDF(pdfFilePath,zebraPrinter);
+  });
+}
+
 // ┌───────────────────────────────────────────────┐
 // │  Print PDF Callback                           │
 // │  Prints file filePath on printer printerName  │
@@ -224,7 +257,7 @@ app.get('/files/:fileName', (req, res) => {
 
 
 // ╭───────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-// │                                      //SECTION Process file uploads                                               │
+// │                                      //SECTION Process file upload endpoints                                      │
 // ╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 app.post('/zebra', upload.single('pdfFile'), (req, res, next) => {
   const filePath = req.file.path;
@@ -250,6 +283,13 @@ app.post('/zebrazip', upload.single('zipFile'), (req, res, next) => {
 app.post('/brother', upload.array('pdfFile'), (req, res, next) => {
   let filePath = req.files[0].path;
   printPDF(filePath,brotherPrinter)
+  res.status(200).send('OK');
+});
+
+//Brother image file handling (PNG TIF or JPEG)
+app.post('/brotherImg', upload.array('imgFile'), (req, res, next) => {
+  let filePath = req.files[0].path;
+  convertPDFBrother(filePath)
   res.status(200).send('OK');
 });
 

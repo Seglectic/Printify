@@ -122,7 +122,7 @@
       // │                                                   Begin Script                                                    │
       // └───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
-      const Version = '1.9.3';
+      const Version = '1.9.4';
       var serverVersion = 'Unknown';
 			var pageHits = 0;
 			var printCounter = 0;
@@ -278,7 +278,9 @@
           // └──────────────┘
           else if (file.type === 'application/zip' || 
 								   file.type === 'application/x-zip-compressed' || 
-									 file.type === 'application/octet-stream') { 
+									 file.type === 'application/octet-stream' || 
+									 file.type === 'application/x-zip' 
+									){ 
             const formData = new FormData();
             formData.append('zipFile', file);
             // Send file to the server for upload
@@ -329,17 +331,18 @@
         var files = e.dataTransfer.files; 						// Get the file object from the event
         for (var i = 0; i < files.length; i++) {
           var file = files[i];
-          if (file.type === 'application/pdf') { 	// Check if the file is a PDF
-            const formData = new FormData(); // Create a new FormData object for sending to the server
-            formData.append('pdfFile', file); // Add the file to the FormData object
-
-            // Send file to the server for upload
-            fetch('/brother', { method: 'POST', body: formData })
+          
+          // ╭──────────────╮
+          // │  Handle PDF  │
+          // ╰──────────────╯
+					if (file.type === 'application/pdf') { 	                            // Check if the file is a PDF
+            const formData = new FormData();                                  // Create a new FormData object for sending to the server
+            formData.append('pdfFile', file);                                 // Add the file to the FormData object
+            fetch('/brother', { method: 'POST', body: formData })             // Send file to the server for upload
               .then((response) => {
                 if (response.ok) {
                   console.log('File uploaded successfully.');
                   showConfirm();
-
                 } else {
                   console.error('Error uploading file.');
                 }
@@ -347,8 +350,31 @@
               .catch((error) => {
                 console.error('An error occurred:', error);
               });
-          } else {
-            console.error('Invalid file format. Please upload a PDF file.');
+          // ╭────────────────────────────╮
+          // │  Handle png/jpg/jpeg/tiff  │
+          // ╰────────────────────────────╯
+          } else if (file.type === 'image/png' ||
+										file.type === 'image/jpeg' ||
+										file.type === 'image/jpg' ||
+										file.type === 'image/tiff'
+										){ 
+            const formData = new FormData();                                  // Create a new FormData object for sending to the server
+            formData.append('imgFile', file);                                 // Add the file to the FormData object
+            fetch('/brotherImg', { method: 'POST', body: formData })             // Send file to the server for upload
+              .then((response) => {
+                if (response.ok) {
+                  console.log('File uploaded successfully.');
+                  showConfirm();
+                } else {
+                  console.error('Error uploading file.');
+                }
+              })
+              .catch((error) => {
+                console.error('An error occurred:', error);
+              });			
+					}
+					else {
+            console.error('Invalid file format. Please upload PDF,JPG or TIFF file.');
           }
         }
       });

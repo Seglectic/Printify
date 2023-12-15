@@ -10,6 +10,9 @@
 		<link rel="stylesheet" type="text/css" href="clippy.css" media="all">
 
     <style>
+      * {
+        user-select: none;
+      }
       body {
         display: flex;
         justify-content: center;
@@ -17,6 +20,11 @@
         height: 100vh;
         font-family: Arial, sans-serif;
         background-color: white;
+        margin: 0;
+      }
+      img {
+        user-select: none;
+        pointer-events: none;
       }
       .drop-zone {
         border: 2px dashed #ccc;
@@ -25,7 +33,7 @@
         text-align: center;
         margin: 30px;
         width: fit-content;
-        
+
       }
       .drop-zone.highlight {
         border-color: #5cb85c;
@@ -100,7 +108,7 @@
       <img src="zebra.png"></img>
       <!-- <p>Drag and drop a PDF file<br> to the Zebra label maker</p> -->
     </div>
-    
+
     <div class="drop-zone" id="brotherZone">
       <img src="brother.png"></img>
       <!-- <p>Drag and drop a PDF file<br> to the Brother laser printer</p> -->
@@ -117,14 +125,14 @@
       <!-- <img src="image.png" alt="PNG Image"> -->
       <!-- <p>Multi-file uploading!</p> -->
     </div>
-		
+
 
     <!-- Draws a footer at the bottom that displays version info -->
     <div id="footer"></div>
 
 
-    
-  
+
+
     <script>
       // ┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
       // │                                                   Begin Script                                                    │
@@ -148,7 +156,7 @@
           }, speed * i);
         }
       }
-      
+
 
       // ╭──────────────────╮
       // │  Helper "Agent"  │
@@ -156,8 +164,8 @@
 			// Create global variable for the agent
 			var agent;
 			clippy.load('Clippy', function(agent){
-				agent.show(); 
-				
+				agent.show();
+
 				window.agent = agent; // Make the agent global
 				// Wait for the delay seconds and then speak
 				setTimeout(function(){
@@ -196,13 +204,13 @@
 				else {
 					cornerInfo.append(`<p>.ZIP printed here!</p>`);
 				}
-        
+
 				setTimeout(() => {
 					if(showCornerInfo){cornerDisplay();}
           typeWrite(footer, ` | Server v${serverVersion} `, 50);
         }, 1500);
       });
-      
+
       // footer.append(`Client  v${Version}`)
       typeWrite(footer, `Client  v${Version}`, 50);
 
@@ -220,7 +228,7 @@
         }, 1500).delay(3000).animate({ //Scoot back out
           top:-200,
           right:-200
-        }); // 
+        }); //
       };
 
       // ┌───────────────────────────┐
@@ -271,11 +279,11 @@
         e.preventDefault();
         zebraZone.classList.remove('highlight');
         var files = e.dataTransfer.files;
-        
+
         console.log(files)
         for (var i = 0; i < files.length; i++) {
           var file = files[i];
-        
+
           if (file.type === 'application/pdf') {
             const formData = new FormData();
             formData.append('pdfFile', file);
@@ -292,7 +300,7 @@
               .catch((error) => {
                 console.error('An error occurred:', error);
               });
-          } 
+          }
           // ┌──────────────┐
           // │  Handle PNG  │
           // └──────────────┘
@@ -316,11 +324,11 @@
           // ┌──────────────┐
           // │  Handle ZIP  │
           // └──────────────┘
-          else if (file.type === 'application/zip' || 
-								   file.type === 'application/x-zip-compressed' || 
-									 file.type === 'application/octet-stream' || 
-									 file.type === 'application/x-zip' 
-									){ 
+          else if (file.type === 'application/zip' ||
+								   file.type === 'application/x-zip-compressed' ||
+									 file.type === 'application/octet-stream' ||
+									 file.type === 'application/x-zip'
+									){
             const formData = new FormData();
             formData.append('zipFile', file);
             // Send file to the server for upload
@@ -336,14 +344,14 @@
               .catch((error) => {
                 console.error('An error occurred:', error);
               });
-          }   
+          }
           // ┌────────────────────────────────┐
           // │  Neither png nor pdf, nor zip  │
           // └────────────────────────────────┘
           else {
             console.error('Invalid file format.');
           }
-        } 
+        }
 				console.log(`Reported file type: ${file.type}`);
       });
 
@@ -371,7 +379,7 @@
         var files = e.dataTransfer.files; 						// Get the file object from the event
         for (var i = 0; i < files.length; i++) {
           var file = files[i];
-          
+
           // ╭──────────────╮
           // │  Handle PDF  │
           // ╰──────────────╯
@@ -397,7 +405,7 @@
 										file.type === 'image/jpeg' ||
 										file.type === 'image/jpg' ||
 										file.type === 'image/tiff'
-										){ 
+										){
             const formData = new FormData();                                  // Create a new FormData object for sending to the server
             formData.append('imgFile', file);                                 // Add the file to the FormData object
             fetch('/brotherImg', { method: 'POST', body: formData })             // Send file to the server for upload
@@ -411,7 +419,7 @@
               })
               .catch((error) => {
                 console.error('An error occurred:', error);
-              });			
+              });
 					}
 					else {
             console.error('Invalid file format. Please upload PDF,JPG or TIFF file.');

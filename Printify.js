@@ -114,8 +114,8 @@ function extractZip(zipFilePath, printerName) {
     })
     .finally(() => {
       // Clean up extracted files after printing
-      console.log('Extraction path cleaned up.');
-      fs.rmSync(extractionPath, { recursive: true });
+      console.log('Zip print complete.');
+      // fs.rmSync(extractionPath, { recursive: true });
     });
 }
 

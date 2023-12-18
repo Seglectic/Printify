@@ -3,13 +3,16 @@
   <head>
     <title>P3D Printify</title>
     <!-- JQuery -->
-		<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-		<!-- Google's "Droid Sans Mono" font -->
-		<link href='https://fonts.googleapis.com/css?family=Droid+Sans+Mono&subset=latin' rel='stylesheet' type='text/css'>
-		<!-- Clippy CSS -->
-		<link rel="stylesheet" type="text/css" href="clippy.css" media="all">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Google's "Droid Sans Mono" font -->
+    <link href='https://fonts.googleapis.com/css?family=Droid+Sans+Mono&subset=latin' rel='stylesheet' type='text/css'>
+    <!-- Clippy CSS -->
+    <link rel="stylesheet" type="text/css" href="clippy.css" media="all">
 
     <style>
+      * {
+        user-select: none;
+      }
       body {
         display: flex;
         justify-content: center;
@@ -17,6 +20,11 @@
         height: 100vh;
         font-family: Arial, sans-serif;
         background-color: white;
+        margin: 0;
+      }
+      img {
+        user-select: none;
+        pointer-events: none;
       }
       .drop-zone {
         border: 2px dashed #ccc;
@@ -25,7 +33,7 @@
         text-align: center;
         margin: 30px;
         width: fit-content;
-        
+
       }
       .drop-zone.highlight {
         border-color: #5cb85c;
@@ -46,7 +54,7 @@
       width: 120px;
       height: 120px;
       background-color: rgb(255, 60, 60);
-			font-family: 'Droid Sans Mono', monospace;
+      font-family: 'Droid Sans Mono', monospace;
       outline: 2px solid rgb(254, 254, 254);
       display: none;
       border-bottom-left-radius: 20px;
@@ -92,15 +100,15 @@
   </head>
   <body>
 
-		<!-- Clippy.js Script -->
-		<script src="clippy.js"></script>
+    <!-- Clippy.js Script -->
+    <script src="clippy.js"></script>
 
     <!-- Zebra Labelmaker DropZone -->
     <div class="drop-zone" id="zebraZone">
       <img src="zebra.png"></img>
       <!-- <p>Drag and drop a PDF file<br> to the Zebra label maker</p> -->
     </div>
-    
+
     <div class="drop-zone" id="brotherZone">
       <img src="brother.png"></img>
       <!-- <p>Drag and drop a PDF file<br> to the Brother laser printer</p> -->
@@ -117,14 +125,14 @@
       <!-- <img src="image.png" alt="PNG Image"> -->
       <!-- <p>Multi-file uploading!</p> -->
     </div>
-		
+
 
     <!-- Draws a footer at the bottom that displays version info -->
     <div id="footer"></div>
 
 
-    
-  
+
+
     <script>
       // ┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
       // │                                                   Begin Script                                                    │
@@ -132,12 +140,12 @@
 
       const Version = '1.9.6';
       var serverVersion = 'Unknown';
-			var pageHits = 0;
-			var printCounter = 0;
+      var pageHits = 0;
+      var printCounter = 0;
       var footer = document.getElementById('footer');
-			var cornerInfo = $('#cornerInfo');
-			let showCornerInfo = false													// Set to true to show the corner info
-			let showClippy = true
+      var cornerInfo = $('#cornerInfo');
+      let showCornerInfo = false													// Set to true to show the corner info
+      let showClippy = true
 
       //Prints some text to the given element typewriter-style
       function typeWrite(element, text, speed) {
@@ -148,61 +156,61 @@
           }, speed * i);
         }
       }
-      
+
 
       // ╭──────────────────╮
       // │  Helper "Agent"  │
       // ╰──────────────────╯
-			// Create global variable for the agent
-			var agent;
-			clippy.load('Clippy', function(agent){
-				agent.show(); 
-				
-				window.agent = agent; // Make the agent global
-				// Wait for the delay seconds and then speak
-				setTimeout(function(){
-					// For now a simple list:
-					let clippySayings = [
-						`We've printed over ${printCounter} files!`,
-						"Did you know: the brother printer can print .TIF files?",
-						"Did you know: the Zebra printer can print .ZIP files?",
-						`This page has had over ${Math.floor(pageHits/100)*100} hits!`,
+      // Create global variable for the agent
+      var agent;
+      clippy.load('Clippy', function(agent){
+        agent.show();
 
-					]
-					// Choose a random saying
-					let saying = clippySayings[Math.floor(Math.random() * clippySayings.length)]
-					agent.speak(saying);
-					// agent.animate();
-				}, 4000);
-			});
+        window.agent = agent; // Make the agent global
+        // Wait for the delay seconds and then speak
+        setTimeout(function(){
+          // For now a simple list:
+          let clippySayings = [
+            `We've printed over ${printCounter} files!`,
+            "Did you know: the brother printer can print .TIF files?",
+            "Did you know: the Zebra printer can print .ZIP files?",
+            `This page has had over ${Math.floor(pageHits/100)*100} hits!`,
+
+          ]
+          // Choose a random saying
+          let saying = clippySayings[Math.floor(Math.random() * clippySayings.length)]
+          agent.speak(saying);
+          // agent.animate();
+        }, 4000);
+      });
 
 
       // Get the current version from the server
       fetch('/version')
       // .then((response) => response.text()) //
-			.then((response) => response.json()) // Get the response as JSON
+      .then((response) => response.json()) // Get the response as JSON
       .then((serverData) => {
         // serverVersion = SerVer;
-				serverVersion = serverData.version;
-				pageHits = serverData.pageHits;
-				printCounter = serverData.printCounter;
+        serverVersion = serverData.version;
+        pageHits = serverData.pageHits;
+        printCounter = serverData.printCounter;
 
-				//SECTION Corner Info
-				var currentDate = new Date();
-				var messageExpiration = new Date(2023, 12, 25); // Set an expiration date for the alternate message
-				if (currentDate > messageExpiration) {
-					cornerInfo.append(`<p>Over ${printCounter} printed!</p>`);
-				}
-				else {
-					cornerInfo.append(`<p>.ZIP printed here!</p>`);
-				}
-        
-				setTimeout(() => {
-					if(showCornerInfo){cornerDisplay();}
+        //SECTION Corner Info
+        var currentDate = new Date();
+        var messageExpiration = new Date(2023, 12, 25); // Set an expiration date for the alternate message
+        if (currentDate > messageExpiration) {
+          cornerInfo.append(`<p>Over ${printCounter} printed!</p>`);
+        }
+        else {
+          cornerInfo.append(`<p>.ZIP printed here!</p>`);
+        }
+
+        setTimeout(() => {
+          if(showCornerInfo){cornerDisplay();}
           typeWrite(footer, ` | Server v${serverVersion} `, 50);
         }, 1500);
       });
-      
+
       // footer.append(`Client  v${Version}`)
       typeWrite(footer, `Client  v${Version}`, 50);
 
@@ -220,7 +228,7 @@
         }, 1500).delay(3000).animate({ //Scoot back out
           top:-200,
           right:-200
-        }); // 
+        }); //
       };
 
       // ┌───────────────────────────┐
@@ -240,7 +248,7 @@
           $('#vid-container').fadeOut('fast');
         }, fadeOutDelay);
 
-				agent.speak("File sent!")
+        agent.speak("File sent!")
       }
 
 
@@ -271,11 +279,11 @@
         e.preventDefault();
         zebraZone.classList.remove('highlight');
         var files = e.dataTransfer.files;
-        
+
         console.log(files)
         for (var i = 0; i < files.length; i++) {
           var file = files[i];
-        
+
           if (file.type === 'application/pdf') {
             const formData = new FormData();
             formData.append('pdfFile', file);
@@ -292,7 +300,7 @@
               .catch((error) => {
                 console.error('An error occurred:', error);
               });
-          } 
+          }
           // ┌──────────────┐
           // │  Handle PNG  │
           // └──────────────┘
@@ -316,11 +324,11 @@
           // ┌──────────────┐
           // │  Handle ZIP  │
           // └──────────────┘
-          else if (file.type === 'application/zip' || 
-								   file.type === 'application/x-zip-compressed' || 
-									 file.type === 'application/octet-stream' || 
-									 file.type === 'application/x-zip' 
-									){ 
+          else if (file.type === 'application/zip' ||
+                   file.type === 'application/x-zip-compressed' ||
+                   file.type === 'application/octet-stream' ||
+                   file.type === 'application/x-zip'
+                  ){
             const formData = new FormData();
             formData.append('zipFile', file);
             // Send file to the server for upload
@@ -336,15 +344,15 @@
               .catch((error) => {
                 console.error('An error occurred:', error);
               });
-          }   
+          }
           // ┌────────────────────────────────┐
           // │  Neither png nor pdf, nor zip  │
           // └────────────────────────────────┘
           else {
             console.error('Invalid file format.');
           }
-        } 
-				console.log(`Reported file type: ${file.type}`);
+        }
+        console.log(`Reported file type: ${file.type}`);
       });
 
 // ╭───────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
@@ -371,11 +379,11 @@
         var files = e.dataTransfer.files; 						// Get the file object from the event
         for (var i = 0; i < files.length; i++) {
           var file = files[i];
-          
+
           // ╭──────────────╮
           // │  Handle PDF  │
           // ╰──────────────╯
-					if (file.type === 'application/pdf') { 	                            // Check if the file is a PDF
+          if (file.type === 'application/pdf') { 	                            // Check if the file is a PDF
             const formData = new FormData();                                  // Create a new FormData object for sending to the server
             formData.append('pdfFile', file);                                 // Add the file to the FormData object
             fetch('/brother', { method: 'POST', body: formData })             // Send file to the server for upload
@@ -394,10 +402,10 @@
           // │  Handle png/jpg/jpeg/tiff  │
           // ╰────────────────────────────╯
           } else if (file.type === 'image/png' ||
-										file.type === 'image/jpeg' ||
-										file.type === 'image/jpg' ||
-										file.type === 'image/tiff'
-										){ 
+                    file.type === 'image/jpeg' ||
+                    file.type === 'image/jpg' ||
+                    file.type === 'image/tiff'
+                    ){
             const formData = new FormData();                                  // Create a new FormData object for sending to the server
             formData.append('imgFile', file);                                 // Add the file to the FormData object
             fetch('/brotherImg', { method: 'POST', body: formData })             // Send file to the server for upload
@@ -411,9 +419,9 @@
               })
               .catch((error) => {
                 console.error('An error occurred:', error);
-              });			
-					}
-					else {
+              });
+          }
+          else {
             console.error('Invalid file format. Please upload PDF,JPG or TIFF file.');
           }
         }

@@ -4,9 +4,9 @@ const path              = require('path'          );
 const printer           = require('pdf-to-printer');
 const moment            = require('moment'        ); 
 const fs                = require('fs'            );
-const im                = require('imagemagick'   ); // Doesn't work on Windows well :)
+const im                = require('imagemagick'   );  // Doesn't work on Windows
 const { exec }          = require('child_process' );
-const yauzl  						= require('yauzl'					);
+const yauzl              = require('yauzl'        );
 const { fileURLToPath } = require('url'           );
 
 
@@ -20,9 +20,9 @@ const upload = multer({ dest: 'uploads/' });
 // ┌──────────┐
 // │  Global  │
 // └──────────┘
-const zebraPrinter   = 'ZP450';                                                   // Zebra Printer Name
-const brotherPrinter = 'Brother2360DUSB';                                         // Brother Printer Name
-const dymoPrinter    = 'DYMO LabelWriter 4XL';                                    // Dymo Printer Name
+const zebraPrinter   = 'ZP450';                                                   // Zebra Printer 
+const brotherPrinter = 'Brother2360DUSB';                                         // Brother Printer
+const dymoPrinter    = 'DYMO LabelWriter 4XL';                                    // Dymo Printer
 const port           = 80;                                                        // Webserver port
 const testing        = false;                                                     // Set true to disable printing
 const imPath         = "C:/Program Files/ImageMagick-7.1.1-Q16-HDRI/convert.exe"; // Filepath to imagemagick's convert.exe for PNG -> PDF
@@ -33,7 +33,7 @@ const package = require('./package.json');
 const version = package.version;
 console.log('Printify.js v'+version);
 
-// Create a file that stores data for how many page hits and how many prints have been made
+// Page hit and print count tracker
 let pageHits = 0;
 let printCounter = 0;
 let serverData = {
@@ -50,7 +50,7 @@ if(fs.existsSync('serverData.json')){
   fs.writeFileSync('serverData.json', JSON.stringify(serverData));
 }
 
-// Function to increment the print count
+// Increments the print count in the log file
 function printGet(){
   printCounter++;
   serverData.printCounter = printCounter;
@@ -58,21 +58,21 @@ function printGet(){
 }
 
 // ╭──────────────────────────╮
-// │  Extract Zip             │
+// │  Zip Extractor           │
 // │  Extracts and prints     │
 // │  all PDFs in a zip file  │
 // ╰──────────────────────────╯
 function extractZip(zipFilePath, printerName) {
-  const extractionPath = 'uploads/extracted'; 												   // Directory name for extraction
+  const extractionPath = 'uploads/extracted';                            // Directory name for extraction
   const pdfPaths = [];                                                   // List of extracted PDF file paths to return
   const extractionPromise = new Promise((resolve, reject) => {           // Create a promise to return the list of extracted files
     yauzl.open(zipFilePath, { lazyEntries: true }, (err, zipfile) => {   
       if (err) { reject(err); return; }                                  // Return if there's an error opening the zip
-      zipfile.readEntry(); 																							 // Begin reading entries (files or directories)
+      zipfile.readEntry();                                                // Begin reading entries (files or directories)
 
       zipfile.on('entry', entry => {                                     // Handle each entry
         const filePath = path.join(extractionPath, entry.fileName);      // Build the file path
-        if (/\/$/.test(entry.fileName)) {																 // Directory entry - ensure directory exists, then continue reading entries
+        if (/\/$/.test(entry.fileName)) {                                 // Directory entry - ensure directory exists, then continue reading entries
           fs.mkdirSync(filePath, { recursive: true });
           zipfile.readEntry();
         } else {                                                         // File entry - extract the file and continue reading entries
@@ -97,7 +97,7 @@ function extractZip(zipFilePath, printerName) {
         resolve(pdfPaths);                                               // Resolve the promise with the list of extracted files
       });
 
-      zipfile.on('error', err => {                                      
+      zipfile.on('error', err => {
         reject(err);
       });
     });
@@ -113,8 +113,8 @@ function extractZip(zipFilePath, printerName) {
       throw error;
     })
     .finally(() => {
-      // Clean up extracted files after printing
       console.log('Zip print complete.');
+      // Clean up extracted files after printing (Causes instability)
       // fs.rmSync(extractionPath, { recursive: true });
     });
 }
@@ -189,11 +189,11 @@ function convertPDFBrother(imageFilePath, pdfFilePath){
     console.error('Input PNG file does not exist.'); return;
   }
 
-	// Appends .pdf to the file once it's converted, just as a treat
+  // Appends .pdf to the file once it's converted, just as a treat
   if(!pdfFilePath){pdfFilePath=imageFilePath+'.pdf';}
 
-	// This variant doesn't resize the pdf and -extent 0x0 seems to remove the white border
-	let command = `"${imPath}" "${imageFilePath}" -format "pdf" -extent 0x0 "${pdfFilePath}"`;
+  // This variant doesn't resize the pdf and -extent 0x0 seems to remove the white border
+  let command = `"${imPath}" "${imageFilePath}" -format "pdf" -extent 0x0 "${pdfFilePath}"`;
 
   exec(command, (error, stdout, stderr) => {
     if (error) {
@@ -208,6 +208,13 @@ function convertPDFBrother(imageFilePath, pdfFilePath){
     printPDF(pdfFilePath,brotherPrinter);
   });
 }
+
+// Generic PDF Converter
+// Input, Output, Image Magick Command
+//TODO Actually flesh this out
+// function convertPDF(imageFilePath, pdfFilePath, imCommand){
+
+// }
 
 // ┌───────────────────────────────────────────────┐
 // │  Print PDF Callback                           │

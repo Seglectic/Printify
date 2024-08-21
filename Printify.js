@@ -4,9 +4,8 @@ const path              = require('path'          );
 const printer           = require('pdf-to-printer');
 const moment            = require('moment'        ); 
 const fs                = require('fs'            );
-const im                = require('imagemagick'   );  // Doesn't work on Windows
 const { exec }          = require('child_process' );
-const yauzl              = require('yauzl'        );
+const yauzl             = require('yauzl'        );
 const { fileURLToPath } = require('url'           );
 
 
@@ -17,16 +16,35 @@ const app    = express();
 const upload = multer({ dest: 'uploads/' });
 
 
-// ┌──────────┐
-// │  Global  │
-// └──────────┘
+// ┌───────────┐
+// │  Globals  │
+// └───────────┘
 const zebraPrinter   = 'ZP450';                                                   // Zebra Printer 
 const brotherPrinter = 'Brother2360DUSB';                                         // Brother Printer
 const dymoPrinter    = 'DYMO LabelWriter 4XL';                                    // Dymo Printer
 const port           = 80;                                                        // Webserver port
-const testing        = false;                                                     // Set true to disable printing
+const testing        = true;                                                     // Set true to disable printing
 const imPath         = "C:/Program Files/ImageMagick-7.1.1-Q16-HDRI/convert.exe"; // Filepath to imagemagick's convert.exe for PNG -> PDF
 
+//ANCHOR Test object for printer types
+//TODO The bro printer doesn't accept size, need to account for that
+const printers = {
+  zebra:{
+    "name":"ZP450",
+    "size":"800x1200",
+    "density":"200"
+  },
+  brotherLaser:{
+    "name":"Brother2360DUSB",
+    "size":null,
+    "density":null
+  },
+  dymoLabel:{
+    "name":"DYMO LabelWriter 4XLZP450",
+    "size":"425x200",
+    "density":"200"
+  }
+}
 
 // Get the current version from package.json
 const package = require('./package.json');
@@ -92,7 +110,7 @@ function extractZip(zipFilePath, printerName) {
           }
         }
       });
-      
+
       zipfile.on('end', () => {                                          // When the entries are done being read
         resolve(pdfPaths);                                               // Resolve the promise with the list of extracted files
       });
@@ -119,102 +137,29 @@ function extractZip(zipFilePath, printerName) {
     });
 }
 
-//NOTE The duplicated code below sucks 
-//     and should be replaced with a more 
-//     generic conversion routine that 
-//     accepts the file, printer and output
-//     resolution as parameters.
-
-// ┌───────────────────────────────────────────────────────────┐
-// │  Convert PDF  (Zebra Printer)                             │
-// │  Runs imagemagick's convert.exe on a file                 │
-// │  with to convert it into a PDF then run printer callback  │
-// └───────────────────────────────────────────────────────────┘
-function convertPDFZebra(pngFilePath, pdfFilePath){
-  //---  Check if the input path exists  ---//
-  if (!fs.existsSync(pngFilePath)) {
-    console.error('Input PNG file does not exist.'); return;
+//ANCHOR This is my test generic routine to convert a .pdf file to a .png
+function convertPDF(pngFilePath,printer,pdfFilePath){
+  if (!fs.existsSync(pngFilePath)) {console.error('Input PNG file does not exist.'); return; }
+  if(!pdfFilePath){pdfFilePath=pngFilePath+'.pdf';} // Append ".pdf" to the converted output filename
+  let command = ""                                  // Init command to send to the imagemagick converter
+  if (printer.size){                                // If the output res specified, use this cmd
+    command = `"${imPath}" "${pngFilePath}" -density ${printer.density} -resize "${printer.size}" -format "pdf" "${pdfFilePath}"`;
+  }else{
+    command = `"${imPath}" "${pngFilePath}" -format "pdf" -extent 0x0 "${pdfFilePath}"`; // This variant doesn't resize and uses -extent 0x0 to remove the white borders for the brother printer
   }
-    //---  Append .pdf to the file output  ---//
-  if(!pdfFilePath){pdfFilePath=pngFilePath+'.pdf';}
-  let command = `"${imPath}" "${pngFilePath}" -density 200 -resize "800x1200" -format "pdf" "${pdfFilePath}"`;
+
   exec(command, (error, stdout, stderr) => {
     if (error) {
-      console.error(`ImageMagick error: ${error.message}`);
-      return;
+      console.error(`ImageMagick error: ${error.message}`); return;
     }
     if (stderr) {
-      console.error(`ImageMagick stderr: ${stderr}`);
-      return;
+      console.error(`ImageMagick stderr: ${stderr}`); return;
     }
     console.log(`ImageMagick command executed successfully. Output: ${stdout}`);
     printPDF(pdfFilePath,zebraPrinter);
   });
 }
 
-// ┌───────────────────────────────────────────────────────────┐
-// │  Convert PDF  (Dymo Printer)                              │
-// │  Runs imagemagick's convert.exe on a file                 │
-// │  with to convert it into a PDF then run printer callback  │
-// └───────────────────────────────────────────────────────────┘
-function convertPDFDymo(pngFilePath){
-  if(!fs.existsSync(pngFilePath)){
-    console.error('Input PNG file does not exist.'); return;
-  }
-  //Append the pdf extension to the file path
-  let pdfFilePath = pngFilePath+'.pdf';
-  let command = `"${imPath}" "${pngFilePath}" -density 200 -resize "425x200" -format "pdf" "${pdfFilePath}"`;
-  exec(command, (error, stdout, stderr) => {
-    if (error) {
-      console.error(`ImageMagick error: ${error.message}`);
-      return;
-    }
-    if (stderr) {
-      console.error(`ImageMagick stderr: ${stderr}`);
-      return;
-    }
-    console.log(`ImageMagick command executed successfully. Output: ${stdout}`);
-    printPDF(pdfFilePath,dymoPrinter);
-  });
-}
-
-// ┌───────────────────────────────────────────────────────────┐
-// │  Convert PDF  (Brother Printer)                           │
-// │  Runs imagemagick's convert.exe on a file                 │
-// │  with to convert it into a PDF then run printer callback  │
-// └───────────────────────────────────────────────────────────┘
-function convertPDFBrother(imageFilePath, pdfFilePath){
-  //---  Check if the input path exists  ---//
-  if (!fs.existsSync(imageFilePath)) {
-    console.error('Input PNG file does not exist.'); return;
-  }
-
-  // Appends .pdf to the file once it's converted, just as a treat
-  if(!pdfFilePath){pdfFilePath=imageFilePath+'.pdf';}
-
-  // This variant doesn't resize the pdf and -extent 0x0 seems to remove the white border
-  let command = `"${imPath}" "${imageFilePath}" -format "pdf" -extent 0x0 "${pdfFilePath}"`;
-
-  exec(command, (error, stdout, stderr) => {
-    if (error) {
-      console.error(`ImageMagick error: ${error.message}`);
-      return;
-    }
-    if (stderr) {
-      console.error(`ImageMagick stderr: ${stderr}`);
-      return;
-    }
-    console.log(`ImageMagick command executed successfully. Output: ${stdout}`);
-    printPDF(pdfFilePath,brotherPrinter);
-  });
-}
-
-// Generic PDF Converter
-// Input, Output, Image Magick Command
-//TODO Actually flesh this out
-// function convertPDF(imageFilePath, pdfFilePath, imCommand){
-
-// }
 
 // ┌───────────────────────────────────────────────┐
 // │  Print PDF Callback                           │
@@ -277,7 +222,8 @@ app.post('/zebra', upload.single('pdfFile'), (req, res, next) => {
 
 app.post('/zebrapng', upload.single('pngFile'), (req, res, next) => {
   const filePath = req.file.path;
-  convertPDFZebra(filePath);
+  // convertPDFZebra(filePath);
+  convertPDF(filePath,printers.zebra);
   res.status(200).send('OK');
 });
 
@@ -299,7 +245,8 @@ app.post('/brother', upload.array('pdfFile'), (req, res, next) => {
 //Brother image file handling (PNG TIF or JPEG)
 app.post('/brotherImg', upload.array('imgFile'), (req, res, next) => {
   let filePath = req.files[0].path;
-  convertPDFBrother(filePath)
+  // convertPDFBrother(filePath)
+  convertPDF(filePath,printers.brotherLaser);
   res.status(200).send('OK');
 });
 
@@ -315,7 +262,8 @@ app.post('/dymopng', upload.single('pngFile'), (req, res, next) => {
     console.log('Printing label');
   }
   for (let i = 0; i < printCount; i++){
-    convertPDFDymo(filePath);
+    // convertPDFDymo(filePath);
+    convertPDF(filePath,printers.dymoLabel);
   }
   res.status(200).send('OK');
 });

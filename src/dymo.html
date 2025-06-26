@@ -3,6 +3,9 @@
   <head>
     <title>P3D Printify</title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fabric@6.4.3/dist/index.js"></script>
+
+
     <style>
       body {
         display: flex;
@@ -19,7 +22,7 @@
         text-align: center;
         margin: 30px;
         width: fit-content;
-        
+        cursor: pointer;
       }
       .drop-zone.highlight {
         border-color: #5cb85c;
@@ -98,7 +101,8 @@
     
     /* Small print count */
     #printCount {
-      width: 50px;
+      width: 3em;
+      margin: 5px;
       /* text-align: center; */
     }
 
@@ -106,10 +110,13 @@
     #input {
       width: 200px;
     }
+    #canvas{
+      background-color: white;
+    }
 
-    </style>
+  </style>
+</head>
 
-  </head>
   <body>
 
     <!-- Zebra Labelmaker DropZone -->
@@ -120,14 +127,14 @@
     
     <!--Confirmation video container -->
     <div id="vid-container" class="hidden-div">
-       <video id="video" src="checkMark.mp4" width="800" height="600"></video>
+        <video id="video" src="checkMark.mp4" width="800" height="600"></video>
     </div>
 
 
     <!-- Displays some info text in the corner -->
     <div id="cornerInfo">
       <!-- <img src="image.png" alt="PNG Image"> -->
-      <p>Multi-file uploading!</p>
+      <p>Better editing!</p>
     </div>
 
     <!-- Draws a footer at the bottom that displays version info -->
@@ -138,7 +145,7 @@
     <canvas id="canvas" width="425" height="200"></canvas>
     <br>
     <!-- Text input field that allows newlines -->
-    <textarea id="input" rows="2"></textarea>
+    <!-- <textarea id="input" rows="2"></textarea> -->
     <!-- Print count input field that disallows negatives -->
     <input type="number" id="printCount" value="1" min="1" />
     <!-- Button to print the canvas -->
@@ -148,7 +155,7 @@
 
 
     
-  
+
     <script>
       // ┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
       // │                                                   Begin Script                                                    │
@@ -218,9 +225,11 @@
 
 
 
-// ╭───────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-// │                                                   Dymo Printer                                                   │
-// ╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+  // ╭───────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+  // │                                                   Dymo Printer                                                   │
+  // ╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
       const dymoZone = document.getElementById('dymoZone');
 
       //Create an image object for the confirm thing
@@ -287,49 +296,48 @@
         canvasContainer.style.visibility = 'visible';
       });
 
-      // Get the canvas element and set its background to grey
-      var canvas = document.getElementById('canvas');
-      var ctx = canvas.getContext('2d');
-      ctx.fillStyle = 'rgb(200, 200, 200)';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      // Text input field
-      var input = document.getElementById('input');
-      input.type = 'text';
-      input.placeholder = 'Enter text here';
-      // Write text in the canvas when text is entered
-      input.addEventListener('input', () => {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = 'rgb(255, 255, 255)';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        // Set the text font to a maximum of 60px and a minimum of 10px based on text length, scaling down if text reached width of canvas
-        ctx.font = `${Math.max(Math.min(60, ((canvas.width*0.50) / ctx.measureText(input.value).width) * 60), 10)}px Arial`;
-        ctx.fillStyle = 'rgb(0, 0, 0)';
-        // Fill text at center of canvas based on text length, add line breaks if there's a newline character, center text horizontally and vertically
-        input.value.split('\n').forEach((line, i) => {
-          ctx.fillText(line, (canvas.width - ctx.measureText(line).width) / 2, (canvas.height - 10) / 2 + (i * 60));
-        });
-
+       const fabCan = new fabric.Canvas('canvas');       // Create fabric canvas
+       const textBox = new fabric.Textbox('Click to Edit Text', {
+        top: 80,
+        left: 50,
+        width: 300,
+        fontSize: 40,
+        fontFamily: 'Arial',
+        editable: true,
+        fill: 'black',
+        backgroundColor: 'white',
+        borderColor: 'gray',
+        cornerColor: 'blue',
+        cornerSize: 6,
+        transparentCorners: false,
       });
+      fabCan.add(textBox);
+
+      // });
 
       // Convert canvas to a pngfile and send to the server to print, as well as the print count
       function printCanvas() {
-        canvas.toBlob((blob) => {
-          const formData = new FormData();
-          formData.append('pngFile', blob);                                           // Append the file to the form data
-          formData.append('printCount', document.getElementById('printCount').value); // Append the print count to the form data
-          fetch('/dymopng', { method: 'POST', body: formData })
-            .then((response) => {
-              if (response.ok) {
-                console.log('File uploaded successfully.');
-                showConfirm();
-              } else {
-                console.error('Error uploading file.');
-              }
-            })
-            .catch((error) => {
-              console.error('An error occurred:', error);
-            });
-        });
+        fabCan.discardActiveObject();         // Deselect any active object
+        fabCan.requestRenderAll();            // Update canvas 
+        setTimeout(()=>{
+          fabCan.getElement().toBlob((blob) => {
+            const formData = new FormData();
+            formData.append('pngFile', blob);                                           // Append the file to the form data
+            formData.append('printCount', document.getElementById('printCount').value); // Append the print count to the form data
+            fetch('/dymopng', { method: 'POST', body: formData })
+              .then((response) => {
+                if (response.ok) {
+                  console.log('File uploaded successfully.');
+                  showConfirm();
+                } else {
+                  console.error('Error uploading file.');
+                }
+              })
+              .catch((error) => {
+                console.error('An error occurred:', error);
+              });
+          });
+        },100)
       }
 
     </script>

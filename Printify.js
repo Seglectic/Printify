@@ -24,7 +24,27 @@ const errorLogStamp = (...args) => {
 // │  Library Init  │
 // └────────────────┘
 const app    = express();
-const upload = multer({ dest: 'uploads/' });
+
+//Generates a crockford base32 timestamp for file namery
+const crockStamp = () => {
+  const crockfordAlphabet = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'; 
+  let epoch = Math.floor(Date.now());
+  let out = '';
+  do {
+    out = crockfordAlphabet[epoch % 32] + out;
+    epoch = Math.floor(epoch / 32);
+  } while (num > 0);
+  return out;
+};
+const storage = multer.diskStorage({ // Storage config object for better remote file naming
+  destination: 'uploads/',
+  filename: (req, file, cb) => {
+    const originalName = path.basename(file.originalname);
+    cb(null, `${crockStamp()}-${originalName}`);
+  }
+});
+const upload = multer({ storage }); // upload object for multer on the clientside
+
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 

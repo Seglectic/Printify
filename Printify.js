@@ -142,7 +142,7 @@ function extractZip(zipFilePath, printer) {
 
   return extractionPromise                                               // Return the promise so they can wait for it to resolve
     .then(pdfPaths => {                                                  // Once the promise resolves print the PDFs and return them
-      const printPromises = pdfPaths.map(pdfPath => printPDF(pdfPath, printer.name));
+      const printPromises = pdfPaths.map(pdfPath => printPDF(pdfPath, printer));
       return Promise.all(printPromises).then(() => pdfPaths);          
     })
     .catch(error => {
@@ -160,7 +160,7 @@ function extractZip(zipFilePath, printer) {
 function convertPDF(pngFilePath,printer,pdfFilePath){
   if (!fs.existsSync(pngFilePath)) {errorLogStamp('Input PNG file does not exist.'); return; }
   if(!pdfFilePath){pdfFilePath=pngFilePath+'.pdf';} // Append ".pdf" to the converted output filename
-  let command = ""                                  // Init command to send to the imagemagick converter
+  let command = ""                                  
   if (printer.size){                                // If the output res specified, use this cmd
     command = `"${imPath}" "${pngFilePath}" -density ${printer.density} -resize "${printer.size}" -format "pdf" "${pdfFilePath}"`;
   }else{
@@ -175,7 +175,7 @@ function convertPDF(pngFilePath,printer,pdfFilePath){
       errorLogStamp(`ImageMagick stderr: ${stderr}`); return;
     }
     logStamp(`ImageMagick command executed successfully. Output: ${stdout}`);
-    printPDF(pdfFilePath,printer.name);
+    printPDF(pdfFilePath,printer);
   });
 }
 

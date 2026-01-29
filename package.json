@@ -1,4 +1,4 @@
-{
+`{
 	"name": "printify",
 	"version": "1.6.2",
 	"description": "Printify allows you to print PDF files from a remote web browser to a printer on the local machine.",

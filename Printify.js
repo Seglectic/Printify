@@ -4,7 +4,7 @@ const path              = require('path'          );
 const printer           = require('pdf-to-printer');
 const moment            = require('moment'        ); 
 const fs                = require('fs'            );
-const { exec }          = require('child_process' );
+const { exec, execFile, spawn } = require('child_process' );
 const yauzl             = require('yauzl'        );
 const { fileURLToPath } = require('url'           );
 
@@ -14,25 +14,26 @@ const { fileURLToPath } = require('url'           );
 // └────────────────┘
 const app    = express();
 const upload = multer({ dest: 'uploads/' });
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
 
 // ┌───────────┐
 // │  Globals  │
 // └───────────┘
-const zebraPrinter   = 'ZP450';                                                   // Zebra Printer 
-const brotherPrinter = 'Brother2360DUSB';                                         // Brother Printer
-const dymoPrinter    = 'DYMO LabelWriter 4XL';                                    // Dymo Printer
-const port           = 80;                                                        // Webserver port
-const testing        = true;                                                     // Set true to disable printing
-const imPath         = "C:/Program Files/ImageMagick-7.1.1-Q16-HDRI/convert.exe"; // Filepath to imagemagick's convert.exe for PNG -> PDF
+const port           = 8020;                                                        // Webserver port
+const testing        = false;                                                     // Set true to disable printing
+const imPath         = process.platform === 'win32'             // Check for winders
+  ? "C:/Program Files/ImageMagick-7.1.1-Q16-HDRI/convert.exe"   // Set to its fucky path
+  : "convert";                                                  // or simply use convert (might change in imagemagick 7)
 
 //ANCHOR Test object for printer types
 //TODO The bro printer doesn't accept size, need to account for that
 const printers = {
   zebra:{
-    "name":"ZP450",
+    "name":"Zebra450",
     "size":"800x1200",
-    "density":"200"
+    "density":"300"
   },
   brotherLaser:{
     "name":"Brother2360DUSB",
@@ -40,11 +41,16 @@ const printers = {
     "density":null
   },
   dymoLabel:{
-    "name":"DYMO LabelWriter 4XLZP450",
+    "name":"DYMO4XLUSB",
     "size":"425x200",
     "density":"200"
   }
 }
+const brotherLabelPrinter = 'PTE-550W';
+const labelMediaOptions = {
+  12: '12mm',
+  24: '24mm'
+};
 
 // Get the current version from package.json
 const package = require('./package.json');
@@ -156,7 +162,38 @@ function convertPDF(pngFilePath,printer,pdfFilePath){
       console.error(`ImageMagick stderr: ${stderr}`); return;
     }
     console.log(`ImageMagick command executed successfully. Output: ${stdout}`);
-    printPDF(pdfFilePath,zebraPrinter);
+    printPDF(pdfFilePath,printer.name);
+  });
+}
+
+function printLabelText(tapeSizeMm, labelText){
+  const args = [];
+  if (brotherLabelPrinter) {
+    args.push('-d', brotherLabelPrinter);
+  }
+  const media = labelMediaOptions[tapeSizeMm];
+  if (media) {
+    args.push('-o', `media=${media}`);
+  }
+
+  return new Promise((resolve, reject) => {
+    const child = spawn('lp', args, { stdio: ['pipe', 'pipe', 'pipe'] });
+    let stderr = '';
+    let stdout = '';
+
+    child.stdout.on('data', (data) => { stdout += data.toString(); });
+    child.stderr.on('data', (data) => { stderr += data.toString(); });
+    child.on('error', (error) => { reject(error); });
+    child.on('close', (code) => {
+      if (code !== 0) {
+        reject(new Error(stderr || `lp exited with code ${code}`));
+        return;
+      }
+      resolve(stdout);
+    });
+
+    child.stdin.write(`${labelText}\n`);
+    child.stdin.end();
   });
 }
 
@@ -165,30 +202,66 @@ function convertPDF(pngFilePath,printer,pdfFilePath){
 // │  Print PDF Callback                           │
 // │  Prints file filePath on printer printerName  │
 // └───────────────────────────────────────────────┘
-function printPDF(filePath, printerName) {
-  // Print the PDF file
-  if (!testing){
-    printer.print(filePath, 
-        //Printer settings/config object
-        { 
-          printer: printerName,
-          // pageSize: '4x6in', //Doesn't work?
-          scale: 'fit',
-          landscape: false,
-        })
-      .then(jobId => {
-        // console.log(`Job ID: ${jobId}`);
-      })
-      .catch(error => {
-        console.error('Printing failed:', error);
-      });
-  }
-  //Log the event
-  let currentTime = moment().format('MMMM, D, HH:mm:ss');
-  console.log(currentTime,':','Printing file:', filePath, 'to printer: '+printerName);
+function printPDF(filePath, printerName, callback) {
+  const done = typeof callback === 'function' ? callback : () => {};
 
-  //Increment the print count
-  printGet();
+  if (testing) {
+    let currentTime = moment().format('MMMM, D, HH:mm:ss');
+    console.log(currentTime,':','Testing mode: skipped printing', filePath, 'to printer: '+printerName);
+    printGet();
+    return Promise.resolve().then(() => done(null));
+  }
+
+  // Print the PDF file
+  if (process.platform === 'linux') {
+    const args = [];
+    if (printerName) {
+      args.push('-d', printerName);
+    }
+    args.push(filePath);
+
+    return new Promise((resolve, reject) => {
+      execFile('lp', args, (error, stdout, stderr) => {
+        if (error) {
+          console.error('Printing failed:', stderr || error.message);
+          done(error);
+          reject(error);
+          return;
+        }
+        done(null, stdout);
+        resolve(stdout);
+      });
+    }).finally(() => {
+      let currentTime = moment().format('MMMM, D, HH:mm:ss');
+      console.log(currentTime,':','Printing file:', filePath, 'to printer: '+printerName);
+      printGet();
+    });
+  }
+
+  return printer.print(
+      filePath,
+      // Printer settings/config object
+      {
+        printer: printerName,
+        // pageSize: '4x6in', //Doesn't work?
+        scale: 'fit',
+        landscape: false,
+      }
+    )
+    .then(jobId => {
+      done(null, jobId);
+      return jobId;
+    })
+    .catch(error => {
+      console.error('Printing failed:', error);
+      done(error);
+      throw error;
+    })
+    .finally(() => {
+      let currentTime = moment().format('MMMM, D, HH:mm:ss');
+      console.log(currentTime,':','Printing file:', filePath, 'to printer: '+printerName);
+      printGet();
+    });
 }
 
 // ┌────────────────────┐
@@ -216,7 +289,7 @@ app.get('/files/:fileName', (req, res) => {
 // ╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 app.post('/zebra', upload.single('pdfFile'), (req, res, next) => {
   const filePath = req.file.path;
-  printPDF(filePath,zebraPrinter)
+  printPDF(filePath,printers.zebra.name)
   res.status(200).send('OK');
 });
 
@@ -231,14 +304,14 @@ app.post('/zebrapng', upload.single('pngFile'), (req, res, next) => {
 app.post('/zebrazip', upload.single('zipFile'), (req, res, next) => {
   const filePath = req.file.path;
   console.log('Zip File');
-  let pdfFiles = extractZip(filePath,zebraPrinter);
+  let pdfFiles = extractZip(filePath,printers.zebra.name);
   console.log(pdfFiles);
   res.status(200).send('OK');
 });
 
 app.post('/brother', upload.array('pdfFile'), (req, res, next) => {
   let filePath = req.files[0].path;
-  printPDF(filePath,brotherPrinter)
+  printPDF(filePath,printers.brotherLaser.name)
   res.status(200).send('OK');
 });
 
@@ -248,6 +321,29 @@ app.post('/brotherImg', upload.array('imgFile'), (req, res, next) => {
   // convertPDFBrother(filePath)
   convertPDF(filePath,printers.brotherLaser);
   res.status(200).send('OK');
+});
+
+app.post('/labelmake', async (req, res) => {
+  const tapeSize = parseInt(req.body.tapeSize || req.body.tapesize, 10);
+  const labelText = (req.body.text || '').toString().replace(/\s+/g, ' ').trim();
+
+  if (!labelText) {
+    res.status(400).send('Missing label text');
+    return;
+  }
+  if (![12, 24].includes(tapeSize)) {
+    res.status(400).send('Invalid tape size');
+    return;
+  }
+
+  try {
+    await printLabelText(tapeSize, labelText);
+
+    res.status(200).send('OK');
+  } catch (error) {
+    console.error('Label printing failed:', error.message);
+    res.status(500).send('Print failed');
+  }
 });
 
 app.post('/dymopng', upload.single('pngFile'), (req, res, next) => {

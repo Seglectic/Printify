@@ -282,7 +282,7 @@ app.get('/files/:fileName', (req, res) => {
 // ╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 app.post('/zebra', upload.single('pdfFile'), (req, res, next) => {
   const filePath = req.file.path;
-  printPDF(filePath,printers.zebra.name)
+  printPDF(filePath,printers.zebra)
   res.status(200).send('OK');
 });
 
@@ -297,14 +297,14 @@ app.post('/zebrapng', upload.single('pngFile'), (req, res, next) => {
 app.post('/zebrazip', upload.single('zipFile'), (req, res, next) => {
   const filePath = req.file.path;
   logStamp('Zip File');
-  let pdfFiles = extractZip(filePath,printers.zebra.name);
+  let pdfFiles = extractZip(filePath,printers.zebra);
   logStamp(pdfFiles);
   res.status(200).send('OK');
 });
 
 app.post('/brother', upload.array('pdfFile'), (req, res, next) => {
   let filePath = req.files[0].path;
-  printPDF(filePath,printers.brotherLaser.name)
+  printPDF(filePath,printers.brotherLaser)
   res.status(200).send('OK');
 });
 

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Printify Logs</title>
+    <link rel="stylesheet" type="text/css" href="logDrawer.css">
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+        color: #f4f8fc;
+        background:
+          radial-gradient(circle at top left, rgba(106, 142, 172, 0.18), transparent 28%),
+          radial-gradient(circle at bottom right, rgba(24, 33, 43, 0.22), transparent 34%),
+          #4c545d;
+      }
+
+      .logs-shell {
+        max-width: 920px;
+        margin: 0 auto;
+        padding: 96px 24px 48px;
+      }
+
+      .logs-shell__eyebrow {
+        margin: 0 0 12px;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.24em;
+        text-transform: uppercase;
+      }
+
+      .logs-shell__title {
+        margin: 0;
+        font-size: clamp(48px, 9vw, 96px);
+        line-height: 0.94;
+        letter-spacing: -0.05em;
+      }
+
+      .logs-shell__copy {
+        max-width: 520px;
+        margin: 20px 0 0;
+        color: rgba(244, 248, 252, 0.78);
+        line-height: 1.7;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="printify-log-drawer" id="printifyLogDrawer"></div>
+
+    <main class="logs-shell">
+      <p class="logs-shell__eyebrow">Reusable Widget</p>
+      <h1 class="logs-shell__title">Recent Print Jobs</h1>
+      <p class="logs-shell__copy">This page now exists mainly as a host for the extracted drawer asset. Use the top-left button or the left arrow key to open the same log UI mounted on the main Printify page.</p>
+    </main>
+
+    <script src="logDrawer.js"></script>
+    <script>
+      window.createPrintifyLogDrawer('#printifyLogDrawer');
+    </script>
+  </body>
+</html>

@@ -1,430 +1,107 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>P3D Printify</title>
-    <!-- JQuery -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <!-- Google's "Droid Sans Mono" font -->
-    <link href='https://fonts.googleapis.com/css?family=Droid+Sans+Mono&subset=latin' rel='stylesheet' type='text/css'>
-    <!-- Clippy CSS -->
+    <script src="https://cdn.jsdelivr.net/npm/fabric@6.4.3/dist/index.js"></script>
+    <link href="https://fonts.googleapis.com/css?family=Droid+Sans+Mono&subset=latin" rel="stylesheet" type="text/css">
     <link rel="stylesheet" type="text/css" href="clippy.css" media="all">
-
-    <style>
-      * {
-        user-select: none;
-      }
-      body {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 100vh;
-        font-family: Arial, sans-serif;
-        background-color: white;
-        margin: 0;
-      }
-      img {
-        user-select: none;
-        pointer-events: none;
-      }
-      .drop-zone {
-        border: 2px dashed #ccc;
-        border-radius: 4px;
-        padding: 50px;
-        text-align: center;
-        margin: 30px;
-        width: fit-content;
-
-      }
-      .drop-zone.highlight {
-        border-color: #5cb85c;
-        background-color: lightgreen;
-      }
-      /* div for our confirmation gif */
-      .hidden-div {
-      display: none;
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 9999;
-    }
-
-    #cornerInfo {
-      position: fixed;
-      width: 120px;
-      height: 120px;
-      background-color: rgb(255, 60, 60);
-      font-family: 'Droid Sans Mono', monospace;
-      outline: 2px solid rgb(254, 254, 254);
-      display: none;
-      border-bottom-left-radius: 20px;
-      box-shadow: -5px 4px 6px rgba(0, 0, 0, 0.5);
-    }
-
-    #cornerInfo img {
-      width: 100px;
-      height: 100px;
-      position: absolute;
-      top: 0;
-      right: 0;
-    }
-
-    #cornerInfo p {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%) rotate(45deg);
-      text-align: center;
-      color: white;
-      font-weight: bold;
-      font-size:15pt;
-      margin: 0px;
-      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-    }
-
-    #footer{
-      position: fixed;
-      bottom: 0;
-      width: 100%;
-      height: 15px;
-      background-color: #ccc;
-      color: #626262;
-      font-family: "Lucida Console", Courier, monospace;
-      text-align: right;
-      font-size: 12pt;
-      padding: 5px;
-    }
-
-    </style>
-
+    <link rel="stylesheet" type="text/css" href="index.css">
+    <link rel="stylesheet" type="text/css" href="logDrawer.css">
   </head>
   <body>
+    <div class="printify-log-drawer" id="printifyLogDrawer"></div>
 
-    <!-- Clippy.js Script -->
+    <div class="printify-app">
+      <div class="printify-shell">
+        <header class="printify-hero">
+          <section class="printify-hero__panel">
+            <p class="printify-hero__eyebrow">Config Driven Queue</p>
+            <h1 class="printify-hero__title">Printify Control Deck</h1>
+            <p class="printify-hero__copy">Every printer card on this page is rendered from the server configuration. Drag files onto a card, browse for uploads, or open the Dymo label builder without leaving the main queue screen.</p>
+          </section>
+
+          <aside class="printify-status">
+            <h2 class="printify-status__title">Live Snapshot</h2>
+            <div class="printify-status__grid">
+              <div class="printify-status__item">
+                <span class="printify-status__label">Configured Printers</span>
+                <span class="printify-status__value" id="printerCountValue">0</span>
+              </div>
+              <div class="printify-status__item">
+                <span class="printify-status__label">Page Hits</span>
+                <span class="printify-status__value" id="pageHitsValue">0</span>
+              </div>
+              <div class="printify-status__item">
+                <span class="printify-status__label">Printed Jobs</span>
+                <span class="printify-status__value" id="printCounterValue">0</span>
+              </div>
+              <div class="printify-status__item">
+                <span class="printify-status__label">Route Style</span>
+                <span class="printify-status__value">Dynamic</span>
+              </div>
+            </div>
+          </aside>
+        </header>
+
+        <main class="printify-main">
+          <section class="printify-section">
+            <h2 class="printify-section__title">Active Printers</h2>
+            <p class="printify-section__copy">Printer uploads are grouped by file kind and automatically sent to their inferred single or multi route names. Bundled Dymo image copies are converted into one multi-page PDF before printing.</p>
+            <div class="printify-printers" id="printerGrid">
+              <article class="printer-card">
+                <p class="printer-card__copy">Loading printer configuration from the server...</p>
+              </article>
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <div class="printify-builder" id="labelBuilder">
+      <div class="printify-builder__panel">
+        <div class="printify-builder__header">
+          <div>
+            <p class="printify-builder__eyebrow">Integrated Builder</p>
+            <h2 class="printify-builder__title" id="labelBuilderTitle">Label Builder</h2>
+            <p class="printify-builder__copy">Edit the label directly on canvas, then send the image through the printer’s normal upload route so the server can bundle repeated copies into a multi-page PDF when configured.</p>
+          </div>
+          <button class="printify-builder__close" id="labelBuilderClose" type="button">Close</button>
+        </div>
+
+        <div class="printify-builder__canvas-wrap">
+          <div class="printify-builder__canvas-shell">
+            <canvas class="printify-builder__canvas" id="labelCanvas" width="425" height="200"></canvas>
+          </div>
+        </div>
+
+        <div class="printify-builder__footer">
+          <div class="printify-builder__controls">
+            <label class="printify-builder__field" for="labelBuilderCopies">
+              Copies
+              <input id="labelBuilderCopies" type="number" min="1" value="1">
+            </label>
+          </div>
+          <div class="printify-builder__actions">
+            <button class="printer-card__button printer-card__button--secondary" id="labelBuilderCancel" type="button">Cancel</button>
+            <button class="printer-card__button printer-card__button--primary" id="labelBuilderPrint" type="button">Print Label</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="printify-feedback" id="feedback" aria-live="polite"></div>
+
+    <div class="printify-confirm" id="confirmLayer">
+      <video class="printify-confirm__video" id="confirmVideo" src="checkMark.mp4" muted></video>
+    </div>
+
+    <div class="printify-footer" id="footer"></div>
+
     <script src="clippy.js"></script>
-
-    <!-- Zebra Labelmaker DropZone -->
-    <div class="drop-zone" id="zebraZone">
-      <img src="zebra.png"></img>
-      <!-- <p>Drag and drop a PDF file<br> to the Zebra label maker</p> -->
-    </div>
-
-    <div class="drop-zone" id="brotherZone">
-      <img src="brother.png"></img>
-      <!-- <p>Drag and drop a PDF file<br> to the Brother laser printer</p> -->
-    </div>
-
-    <!--Confirmation video container -->
-    <div id="vid-container" class="hidden-div">
-       <video id="video" src="checkMark.mp4" width="800" height="600"></video>
-    </div>
-
-
-    <!-- Displays some info text in the corner -->
-    <div id="cornerInfo">
-      <!-- <img src="image.png" alt="PNG Image"> -->
-      <!-- <p>Multi-file uploading!</p> -->
-    </div>
-
-
-    <!-- Draws a footer at the bottom that displays version info -->
-    <div id="footer"></div>
-
-
-
-
-    <script>
-      // ┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-      // │                                                   Begin Script                                                    │
-      // └───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-
-      const Version = '1.9.6';
-      var serverVersion = 'Unknown';
-      var pageHits = 0;
-      var printCounter = 0;
-      var footer = document.getElementById('footer');
-      var cornerInfo = $('#cornerInfo');
-      let showCornerInfo = false													// Set to true to show the corner info
-      let showClippy = true
-
-      //Prints some text to the given element typewriter-style
-      function typeWrite(element, text, speed) {
-        var i = 0;
-        for (let i = 0; i < text.length; i++) {
-          setTimeout(function() {
-            element.innerHTML += text.charAt(i);
-          }, speed * i);
-        }
-      }
-
-
-      // ╭──────────────────╮
-      // │  Helper "Agent"  │
-      // ╰──────────────────╯
-      // Create global variable for the agent
-      var agent;
-      clippy.load('Clippy', function(agent){
-        agent.show();
-
-        window.agent = agent; // Make the agent global
-        // Wait for the delay seconds and then speak
-        setTimeout(function(){
-          // For now a simple list:
-          let clippySayings = [
-            `We've printed over ${printCounter} files!`,
-            "Did you know: the Zebra printer can print .ZIP files?",
-            `This page has had over ${Math.floor(pageHits/100)*100} hits!`,
-          ]
-          // Choose a random saying
-          let saying = clippySayings[Math.floor(Math.random() * clippySayings.length)]
-          agent.speak(saying);
-          // agent.animate();
-        }, 4000);
-      });
-
-
-      // Get the current version from the server
-      fetch('/version')
-      // .then((response) => response.text()) //
-      .then((response) => response.json()) // Get the response as JSON
-      .then((serverData) => {
-        // serverVersion = SerVer;
-        serverVersion = serverData.version;
-        pageHits = serverData.pageHits;
-        printCounter = serverData.printCounter;
-
-        //SECTION Corner Info
-        var currentDate = new Date();
-        var messageExpiration = new Date(2023, 12, 25); // Set an expiration date for the alternate message
-        if (currentDate > messageExpiration) {
-          cornerInfo.append(`<p>Over ${printCounter} printed!</p>`);
-        }
-        else {
-          cornerInfo.append(`<p>.ZIP printed here!</p>`);
-        }
-
-        setTimeout(() => {
-          if(showCornerInfo){cornerDisplay();}
-          typeWrite(footer, ` | Server v${serverVersion} `, 50);
-        }, 1500);
-      });
-
-      // footer.append(`Client  v${Version}`)
-      typeWrite(footer, `Client  v${Version}`, 50);
-
-      //Corner info thing
-      function cornerDisplay() {
-        // Set initial position offscreen
-        cornerInfo.css({
-          top: -200,
-          right: -200
-        });
-        // Animate entrance from offscreen
-        cornerInfo.show().animate({
-          top: 0,
-          right: 0
-        }, 1500).delay(3000).animate({ //Scoot back out
-          top:-200,
-          right:-200
-        }); //
-      };
-
-      // ┌───────────────────────────┐
-      // │  Play confirmation video  │
-      // └───────────────────────────┘
-      function showConfirm(){
-        // ┌───────────────────────────┐
-        // │  Show a confirmation gif  │
-        // └───────────────────────────┘
-        var video = $('#video')[0];
-        var fadeOutDelay = 650;
-        video.currentTime = 0;      // Set the playback position to the beginning
-        video.playbackRate = 2;
-        video.play();               // Start the video playback
-        $('#vid-container').show(); // Fade out the div after the set delay
-        setTimeout(function() {
-          $('#vid-container').fadeOut('fast');
-        }, fadeOutDelay);
-
-        agent.speak("File sent!")
-      }
-
-
-
-// ╭───────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-// │                                                   Zebra Printer                                                   │
-// ╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-      const zebraZone = document.getElementById('zebraZone');
-
-      //Create an image object for the confirm thing
-      var confirmImage = new Image();
-
-      // Highlight drop zone when dragging over
-      zebraZone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        zebraZone.classList.add('highlight');
-      });
-
-      // Remove highlight when dragging outside drop zone
-      zebraZone.addEventListener('dragleave', () => {
-        zebraZone.classList.remove('highlight');
-      });
-
-      // ┌──────────────┐
-      // │  Handle PDF  │
-      // └──────────────┘
-      zebraZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        zebraZone.classList.remove('highlight');
-        var files = e.dataTransfer.files;
-
-        console.log(files)
-        for (var i = 0; i < files.length; i++) {
-          var file = files[i];
-
-          if (file.type === 'application/pdf') {
-            const formData = new FormData();
-            formData.append('pdfFile', file);
-            // Send file to the server for upload
-            fetch('/zebra', { method: 'POST', body: formData })
-              .then((response) => {
-                if (response.ok) {
-                  console.log('File uploaded successfully.');
-                  showConfirm();
-                } else {
-                  console.error('Error uploading file.');
-                }
-              })
-              .catch((error) => {
-                console.error('An error occurred:', error);
-              });
-          }
-          // ┌──────────────┐
-          // │  Handle PNG  │
-          // └──────────────┘
-          else if (file.type === 'image/png') {
-            const formData = new FormData();
-            formData.append('pngFile', file);
-            // Send file to the server for upload
-            fetch('/zebrapng', { method: 'POST', body: formData })
-              .then((response) => {
-                if (response.ok) {
-                  console.log('File uploaded successfully.');
-                  showConfirm()
-                } else {
-                  console.error('Error uploading file.');
-                }
-              })
-              .catch((error) => {
-                console.error('An error occurred:', error);
-              });
-          }
-          // ┌──────────────┐
-          // │  Handle ZIP  │
-          // └──────────────┘
-          else if (file.type === 'application/zip' ||
-                   file.type === 'application/x-zip-compressed' ||
-                   file.type === 'application/octet-stream' ||
-                   file.type === 'application/x-zip'
-                  ){
-            const formData = new FormData();
-            formData.append('zipFile', file);
-            // Send file to the server for upload
-            fetch('/zebrazip', { method: 'POST', body: formData })
-              .then((response) => {
-                if (response.ok) {
-                  console.log('File uploaded successfully.');
-                  showConfirm()
-                } else {
-                  console.error('Error uploading file.');
-                }
-              })
-              .catch((error) => {
-                console.error('An error occurred:', error);
-              });
-          }
-          // ┌────────────────────────────────┐
-          // │  Neither png nor pdf, nor zip  │
-          // └────────────────────────────────┘
-          else {
-            console.error('Invalid file format.');
-          }
-        }
-        console.log(`Reported file type: ${file.type}`);
-      });
-
-// ╭───────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-// │                                                  Brother Printer                                                  │
-// ╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-      const brotherZone = document.getElementById('brotherZone');
-
-      // Highlight drop zone when dragging over
-      brotherZone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        brotherZone.classList.add('highlight');
-      });
-
-      // Remove highlight when dragging outside drop zone
-      brotherZone.addEventListener('dragleave', () => {
-        brotherZone.classList.remove('highlight');
-      });
-
-      // Handle file drop for multiple files
-      brotherZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        brotherZone.classList.remove('highlight');
-
-        var files = e.dataTransfer.files; 						// Get the file object from the event
-        for (var i = 0; i < files.length; i++) {
-          var file = files[i];
-
-          // ╭──────────────╮
-          // │  Handle PDF  │
-          // ╰──────────────╯
-          if (file.type === 'application/pdf') { 	                            // Check if the file is a PDF
-            const formData = new FormData();                                  // Create a new FormData object for sending to the server
-            formData.append('pdfFile', file);                                 // Add the file to the FormData object
-            fetch('/brother', { method: 'POST', body: formData })             // Send file to the server for upload
-              .then((response) => {
-                if (response.ok) {
-                  console.log('File uploaded successfully.');
-                  showConfirm();
-                } else {
-                  console.error('Error uploading file.');
-                }
-              })
-              .catch((error) => {
-                console.error('An error occurred:', error);
-              });
-          // ╭────────────────────────────╮
-          // │  Handle png/jpg/jpeg/tiff  │
-          // ╰────────────────────────────╯
-          } else if (file.type === 'image/png' ||
-                    file.type === 'image/jpeg' ||
-                    file.type === 'image/jpg' ||
-                    file.type === 'image/tiff'
-                    ){
-            const formData = new FormData();                                  // Create a new FormData object for sending to the server
-            formData.append('imgFile', file);                                 // Add the file to the FormData object
-            fetch('/brotherImg', { method: 'POST', body: formData })             // Send file to the server for upload
-              .then((response) => {
-                if (response.ok) {
-                  console.log('File uploaded successfully.');
-                  showConfirm();
-                } else {
-                  console.error('Error uploading file.');
-                }
-              })
-              .catch((error) => {
-                console.error('An error occurred:', error);
-              });
-          }
-          else {
-            console.error('Invalid file format. Please upload PDF,JPG or TIFF file.');
-          }
-        }
-      });
-
-    </script>
+    <script src="logDrawer.js"></script>
+    <script src="index.js"></script>
   </body>
 </html>

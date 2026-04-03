@@ -1,13 +1,13 @@
-const express           = require('express'       );
-const multer            = require('multer'        );
-const path              = require('path'          );
-const printer           = require('pdf-to-printer');
-const moment            = require('moment'        ); 
-const fs                = require('fs'            );
+const express                   = require('express'       );
+const multer                    = require('multer'        );
+const path                      = require('path'          );
+const printer                   = require('pdf-to-printer');
+const moment                    = require('moment'        ); 
+const fs                        = require('fs'            );
 const { exec, execFile, spawn } = require('child_process' );
-const yauzl             = require('yauzl'        );
-const { fileURLToPath } = require('url'           );
-const momentLogFormat   = 'MMMDD HH:mm:ss';
+const yauzl                     = require('yauzl'        );
+const { fileURLToPath }         = require('url'           );
+const momentLogFormat           = 'MMMDD HH:mm:ss';
 
 const logStamp = (...args) => {
   const currentTime = moment().format(momentLogFormat);
@@ -77,11 +77,7 @@ const printers = {
     "density":"200"
   }
 }
-// const brotherLabelPrinter = 'PTE-550W'; // TODO either create a labelMakers group or squeeze into printers
-// const labelMediaOptions = {
-//   12: '12mm',
-//   24: '24mm'
-// };
+
 
 // ╭────────────────────────╮
 // │  Web Vars and helpers  │

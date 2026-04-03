@@ -22,7 +22,7 @@ def main():
   filePath = filePath.strip()
   endPointType = args.endType
   with open(filePath, 'rb') as file:           # Open the file in bin mode
-    files = {endPointType: file}                  # Key must be the same as the endpoint expects
+    files = {endPointType: file}               # Key must be the same as the endpoint expects
     res = requests.post(url, files=files)      # Send the file
     if res.status_code == 200:
       print('File successfully uploaded.')

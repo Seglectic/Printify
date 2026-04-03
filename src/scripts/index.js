@@ -240,7 +240,7 @@
     if (!window.pdfjsLib) return null;
 
     if (!window.pdfjsLib.GlobalWorkerOptions.workerSrc) {
-      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = '/scripts/vendor/pdf-2.16.105.worker.min.js';
     }
 
     const pdfBytes = await file.arrayBuffer();

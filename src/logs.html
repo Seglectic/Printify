@@ -74,6 +74,7 @@
         --pld-close: #dbe5ee;
         --pld-close-hover: #cfdae5;
         --pld-card: rgba(252, 254, 255, 0.72);
+        --pld-card-new: rgba(198, 242, 202, 0.92);
         --pld-icon-bg: #e7eef4;
       }
 
@@ -214,6 +215,10 @@
         margin-top: 12px;
       }
 
+      .printify-log-drawer__card.is-new {
+        animation: printify-log-drawer-flash 1800ms ease forwards;
+      }
+
       .printify-log-drawer__row {
         display: flex;
         align-items: center;
@@ -266,6 +271,18 @@
       .printify-log-drawer__empty {
         color: var(--pld-muted);
         line-height: 1.6;
+      }
+
+      @keyframes printify-log-drawer-flash {
+        0% {
+          background: var(--pld-card-new);
+          border-color: rgba(73, 156, 80, 0.38);
+        }
+
+        100% {
+          background: var(--pld-card);
+          border-color: var(--pld-line);
+        }
       }
 
       @media (max-width: 720px) {
@@ -339,6 +356,18 @@
 
           let logSocket = null;
           let reconnectTimer = null;
+          let previousJobKeys = new Set();
+          const highlightedJobKeys = new Map();
+          const highlightDurationMs = 1800;
+
+          function getJobKey(job) {
+            return [
+              job.timestamp || '',
+              job.printerId || '',
+              job.originalFilename || '',
+              job.chksum || '',
+            ].join('|');
+          }
 
           function escapeHtml(value) {
             return String(value || '')
@@ -362,13 +391,35 @@
             });
           }
 
+          function pruneHighlightedJobKeys() {
+            const now = Date.now();
+
+            highlightedJobKeys.forEach((expiresAt, jobKey) => {
+              if (expiresAt <= now) {
+                highlightedJobKeys.delete(jobKey);
+              }
+            });
+          }
+
           function renderLogs(jobs) {
             if (!jobs.length) {
+              previousJobKeys = new Set();
+              highlightedJobKeys.clear();
               list.html('<div class="printify-log-drawer__empty">No print jobs were logged in the last 60 minutes.</div>');
               return;
             }
 
+            pruneHighlightedJobKeys();
+            const nextJobKeys = new Set(jobs.map(getJobKey));
             const html = jobs.map(job => {
+              const jobKey = getJobKey(job);
+              const justArrived = previousJobKeys.size > 0 && !previousJobKeys.has(jobKey);
+
+              if (justArrived) {
+                highlightedJobKeys.set(jobKey, Date.now() + highlightDurationMs);
+              }
+
+              const isNew = highlightedJobKeys.has(jobKey);
               const iconPath = settings.printerIcons[job.printerId] || 'favicon.ico';
               const printerLabel = escapeHtml(job.printerName || job.printerId || 'Unknown printer');
               const filename = escapeHtml(job.originalFilename || 'Unnamed file');
@@ -376,7 +427,7 @@
               const time = escapeHtml(formatTimestamp(job.timestamp));
 
               return `
-                <article class="printify-log-drawer__card">
+                <article class="printify-log-drawer__card${isNew ? ' is-new' : ''}">
                   <div class="printify-log-drawer__row">
                     <img class="printify-log-drawer__icon" src="${iconPath}" alt="${printerLabel}">
                     <div class="printify-log-drawer__main">
@@ -390,6 +441,7 @@
             }).join('');
 
             list.html(html);
+            previousJobKeys = nextJobKeys;
           }
 
           function loadRecentLogs() {

@@ -1,0 +1,39 @@
+
+
+# ╭───────────────────────────────────────────╮
+# │  Example printer config                   │
+# │  printers:                                │
+# │    examplePrinter:                        │
+# │      driverName: "My Printer Driver"      │
+# │      printMode: "cli"                     │
+# │      inputType: "png"                     │
+# │      pxSize: "800x1200"                   │
+# │      density: "300"                       │
+# │      cliCommand: "python"                 │
+# │      cliArgs: ["printChan.py", "{file}"]  │
+# ╰───────────────────────────────────────────╯
+
+port: 8020
+testing: true
+
+printers:
+  zebra:
+    driverName: "Zebra450"
+    printMode: "pdfToPrinter"
+    inputType: "pdf"
+    pxSize: "800x1200"
+    density: "300"
+
+  brotherLaser:
+    driverName: "Brother2360DUSB"
+    printMode: "unixPrint"
+    inputType: "pdf"
+    pxSize: null
+    density: null
+
+  dymoLabel:
+    driverName: "DYMO4XLUSB"
+    printMode: "pdfToPrinter"
+    inputType: "pdf"
+    pxSize: "425x200"
+    density: "200"

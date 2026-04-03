@@ -12,7 +12,7 @@ const {
 } = require('./lib/config');
 const { logStamp, errorLogStamp } = require('./lib/logger');
 const { createUpload } = require('./lib/upload');
-const { createServerDataStore } = require('./lib/serverDataStore');
+const { createServerSave } = require('./lib/serverSave');
 const { createPrintingService } = require('./lib/printing');
 const { registerRoutes } = require('./lib/routes');
 
@@ -22,11 +22,11 @@ const { registerRoutes } = require('./lib/routes');
 // └────────────────┘
 const app = express();
 const upload = createUpload();
-const serverDataStore = createServerDataStore({ serverDataPath });
+const serverSave = createServerSave({ serverDataPath });
 const printingService = createPrintingService({
   testing,
   imPath,
-  serverDataStore,
+  serverSave,
   logStamp,
   errorLogStamp,
 });
@@ -47,7 +47,7 @@ registerRoutes({
   upload,
   printers,
   printingService,
-  serverDataStore,
+  serverSave,
   version,
   errorLogStamp,
   logStamp,

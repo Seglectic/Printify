@@ -1,4 +1,27 @@
 :root {
+  color-scheme: dark;
+  --printify-ink: #ecf2ee;
+  --printify-muted: rgba(236, 242, 238, 0.58);
+  --printify-line: rgba(236, 242, 238, 0.14);
+  --printify-card: #161a18;
+  --printify-card-hover: #1b231d;
+  --printify-overlay: rgba(100, 212, 123, 0.16);
+  --printify-shadow: 0 22px 54px rgba(0, 0, 0, 0.28);
+  --printify-page: #0d100f;
+  --printify-builder-surface: rgba(20, 24, 22, 0.97);
+  --printify-builder-shell: #1c2320;
+  --printify-button-secondary: rgba(236, 242, 238, 0.08);
+  --printify-feedback-bg: rgba(12, 16, 19, 0.96);
+  --printify-footer-bg: rgba(236, 242, 238, 0.06);
+  --printify-toggle-bg: rgba(236, 242, 238, 0.08);
+  --printify-toggle-hover: rgba(236, 242, 238, 0.14);
+  --printify-pdf: #8f2f1b;
+  --printify-image: #1f6f43;
+  --printify-zip: #805308;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
   --printify-ink: #171717;
   --printify-muted: rgba(23, 23, 23, 0.54);
   --printify-line: rgba(23, 23, 23, 0.1);
@@ -6,9 +29,14 @@
   --printify-card-hover: #f8fff6;
   --printify-overlay: rgba(159, 232, 173, 0.28);
   --printify-shadow: 0 22px 54px rgba(23, 23, 23, 0.08);
-  --printify-pdf: #8f2f1b;
-  --printify-image: #1f6f43;
-  --printify-zip: #805308;
+  --printify-page: #ffffff;
+  --printify-builder-surface: rgba(255, 255, 255, 0.97);
+  --printify-builder-shell: #ebf0ef;
+  --printify-button-secondary: rgba(23, 23, 23, 0.08);
+  --printify-feedback-bg: rgba(24, 33, 43, 0.94);
+  --printify-footer-bg: rgba(23, 23, 23, 0.06);
+  --printify-toggle-bg: rgba(23, 23, 23, 0.06);
+  --printify-toggle-hover: rgba(23, 23, 23, 0.12);
 }
 
 * {
@@ -16,7 +44,7 @@
 }
 
 html {
-  background: #ffffff;
+  background: var(--printify-page);
 }
 
 body {
@@ -24,7 +52,10 @@ body {
   min-height: 100vh;
   font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
   color: var(--printify-ink);
-  background: #ffffff;
+  background:
+    radial-gradient(circle at top, rgba(100, 212, 123, 0.08), transparent 24%),
+    radial-gradient(circle at bottom, rgba(69, 118, 102, 0.1), transparent 28%),
+    var(--printify-page);
 }
 
 button,
@@ -36,6 +67,32 @@ textarea {
 img {
   display: block;
   max-width: 100%;
+}
+
+.printify-theme-toggle {
+  position: fixed;
+  top: 22px;
+  right: 24px;
+  z-index: 55;
+  border: 1px solid var(--printify-line);
+  border-radius: 999px;
+  padding: 11px 16px;
+  background: var(--printify-toggle-bg);
+  color: var(--printify-ink);
+  cursor: pointer;
+  font-family: "Droid Sans Mono", "Lucida Console", Courier, monospace;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  backdrop-filter: blur(10px);
+  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.printify-theme-toggle:hover,
+.printify-theme-toggle:focus-visible {
+  background: var(--printify-toggle-hover);
+  border-color: rgba(100, 212, 123, 0.35);
+  transform: translateY(-1px);
 }
 
 .printify-app {
@@ -185,9 +242,9 @@ img {
 
 .printer-card__kind-bubble {
   padding: 7px 11px;
-  border: 1px solid rgba(23, 23, 23, 0.08);
+  border: 1px solid var(--printify-line);
   border-radius: 999px;
-  background: rgba(23, 23, 23, 0.04);
+  background: color-mix(in srgb, var(--printify-card) 82%, transparent);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -227,7 +284,7 @@ img {
 }
 
 .printer-card__button--secondary {
-  background: rgba(23, 23, 23, 0.08);
+  background: var(--printify-button-secondary);
   color: var(--printify-ink);
 }
 
@@ -243,7 +300,7 @@ img {
   max-width: min(360px, calc(100vw - 40px));
   padding: 14px 18px;
   border-radius: 18px;
-  background: rgba(24, 33, 43, 0.94);
+  background: var(--printify-feedback-bg);
   color: #f3f7fb;
   box-shadow: 0 20px 40px rgba(24, 33, 43, 0.2);
   opacity: 0;
@@ -294,8 +351,8 @@ img {
   width: min(860px, 96vw);
   padding: 28px;
   border-radius: 28px;
-  background: rgba(255, 255, 255, 0.97);
-  border: 1px solid rgba(23, 23, 23, 0.08);
+  background: var(--printify-builder-surface);
+  border: 1px solid var(--printify-line);
   box-shadow: 0 34px 70px rgba(24, 33, 43, 0.24);
   color: var(--printify-ink);
 }
@@ -333,7 +390,7 @@ img {
   border: 0;
   border-radius: 999px;
   padding: 11px 14px;
-  background: rgba(24, 33, 43, 0.08);
+  background: var(--printify-button-secondary);
   color: var(--printify-ink);
   cursor: pointer;
   font-weight: 700;
@@ -343,7 +400,7 @@ img {
   margin-top: 20px;
   padding: 18px;
   border-radius: 24px;
-  background: #ebf0ef;
+  background: var(--printify-builder-shell);
 }
 
 .printify-builder__canvas-shell {
@@ -356,7 +413,7 @@ img {
   display: block;
   margin: 0 auto;
   background: #ffffff;
-  border: 2px solid rgba(24, 33, 43, 0.12);
+  border: 2px solid var(--printify-line);
   box-shadow: inset 0 0 0 1px rgba(24, 33, 43, 0.04);
 }
 
@@ -391,8 +448,8 @@ img {
   width: 72px;
   padding: 10px 12px;
   border-radius: 14px;
-  border: 1px solid rgba(24, 33, 43, 0.12);
-  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--printify-line);
+  background: color-mix(in srgb, var(--printify-card) 86%, transparent);
   color: var(--printify-ink);
 }
 
@@ -406,10 +463,10 @@ img {
 .label-builder-lab__panel {
   width: min(860px, 100%);
   padding: 28px;
-  border: 1px solid rgba(23, 23, 23, 0.08);
+  border: 1px solid var(--printify-line);
   border-radius: 28px;
-  background: #ffffff;
-  box-shadow: 0 22px 54px rgba(23, 23, 23, 0.08);
+  background: var(--printify-card);
+  box-shadow: var(--printify-shadow);
 }
 
 .label-builder-lab__eyebrow {
@@ -457,9 +514,9 @@ img {
 .label-builder-lab__field select {
   min-height: 46px;
   padding: 0 14px;
-  border: 1px solid rgba(23, 23, 23, 0.12);
+  border: 1px solid var(--printify-line);
   border-radius: 14px;
-  background: #ffffff;
+  background: color-mix(in srgb, var(--printify-card) 88%, transparent);
   color: var(--printify-ink);
 }
 
@@ -483,7 +540,7 @@ img {
   bottom: 0;
   left: 0;
   padding: 8px 14px;
-  background: rgba(23, 23, 23, 0.06);
+  background: var(--printify-footer-bg);
   color: rgba(23, 23, 23, 0.58);
   font-family: "Lucida Console", Courier, monospace;
   font-size: 12px;
@@ -505,6 +562,11 @@ img {
 @media (max-width: 720px) {
   .printify-app {
     padding: 82px 18px 84px;
+  }
+
+  .printify-theme-toggle {
+    top: 18px;
+    right: 18px;
   }
 
   .printify-printers {

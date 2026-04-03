@@ -27,6 +27,7 @@
   const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'tif', 'tiff', 'webp']);
   const ZIP_EXTENSIONS = new Set(['zip']);
   const OVERSIZE_WARNING_RATIO = 1.5;
+  const THEME_STORAGE_KEY = 'printify-theme';
 
   const appState = {
     printers: [],
@@ -45,6 +46,7 @@
   const feedback = document.getElementById('feedback');
   const confirmLayer = document.getElementById('confirmLayer');
   const confirmVideo = document.getElementById('confirmVideo');
+  const themeToggle = document.getElementById('themeToggle');
 
   // ╭──────────────────────────╮
   // │  Formatting helpers      │
@@ -122,6 +124,34 @@
     if (appState.clippyAgent && typeof appState.clippyAgent.speak === 'function') {
       appState.clippyAgent.speak(message);
     }
+  };
+
+  const applyTheme = theme => {
+    const nextTheme = theme === 'light' ? 'light' : 'dark';
+
+    if (nextTheme === 'dark') {
+      document.documentElement.removeAttribute('data-theme');
+    } else {
+      document.documentElement.setAttribute('data-theme', 'light');
+    }
+
+    if (themeToggle) {
+      const isDark = nextTheme === 'dark';
+      themeToggle.textContent = isDark ? 'Light Mode' : 'Dark Mode';
+      themeToggle.setAttribute('aria-pressed', String(isDark));
+    }
+  };
+
+  const bootTheme = () => {
+    const savedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+    applyTheme(savedTheme || 'dark');
+
+    themeToggle?.addEventListener('click', () => {
+      const currentTheme = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+      const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+      applyTheme(nextTheme);
+    });
   };
 
   // ╭──────────────────────────╮
@@ -553,6 +583,7 @@
   // │  Boot sequence           │
   // ╰──────────────────────────╯
   const boot = async () => {
+    bootTheme();
     bindPrinterEvents();
     bootLogDrawer();
     bootLabelBuilder();

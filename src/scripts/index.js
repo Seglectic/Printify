@@ -34,6 +34,8 @@
     serverVersion: 'Unknown',
     feedbackTimer: null,
     clippyAgent: null,
+    labelBuilder: null,
+    openPrinterId: null,
   };
 
   const dragDepth = new Map();
@@ -69,6 +71,13 @@
   const prettyPrinterKinds = acceptedKinds => (
     acceptedKinds.map(kind => PRINTIFY_FILE_KINDS[kind]?.label || kind.toUpperCase())
   );
+
+  const getFileKindToneClass = fileKind => {
+    if (fileKind === 'pdf') return 'printer-card__kind-bubble--pdf';
+    if (fileKind === 'image') return 'printer-card__kind-bubble--image';
+    if (fileKind === 'zip') return 'printer-card__kind-bubble--zip';
+    return '';
+  };
 
   const getPrinterById = printerId => appState.printers.find(printer => printer.id === printerId);
 
@@ -140,6 +149,16 @@
     return 'Default transport';
   };
 
+  const buildAcceptValue = acceptedKinds => {
+    const accepts = [];
+
+    if (acceptedKinds.includes('pdf')) accepts.push('.pdf,application/pdf');
+    if (acceptedKinds.includes('image')) accepts.push('image/png,image/jpeg,image/jpg,image/tiff,image/webp,.png,.jpg,.jpeg,.tif,.tiff,.webp');
+    if (acceptedKinds.includes('zip')) accepts.push('.zip,application/zip,application/x-zip,application/x-zip-compressed,application/octet-stream');
+
+    return accepts.join(',');
+  };
+
   const renderPrinters = printers => {
     if (!printers.length) {
       printerGrid.innerHTML = `
@@ -152,13 +171,13 @@
 
     printerGrid.innerHTML = printers.map((printer, index) => `
       <article
-        class="printer-card"
+        class="printer-card${appState.openPrinterId === printer.id ? ' is-open' : ''}"
         data-role="printer-card"
         data-printer-id="${printer.id}"
         style="--card-index:${index};"
         role="button"
         tabindex="0"
-        aria-expanded="false"
+        aria-expanded="${appState.openPrinterId === printer.id ? 'true' : 'false'}"
       >
         <div class="printer-card__overlay" aria-hidden="true"></div>
         <p class="printer-card__name">${escapeHtml(printer.displayName)}</p>
@@ -168,6 +187,11 @@
         </div>
         <div class="printer-card__details">
           <p class="printer-card__summary">${escapeHtml(buildPrinterSummary(printer))}</p>
+          <div class="printer-card__kind-bubbles">
+            ${(printer.acceptedKinds || []).map(fileKind => `
+              <span class="printer-card__kind-bubble ${getFileKindToneClass(fileKind)}">${escapeHtml(PRINTIFY_FILE_KINDS[fileKind]?.label || fileKind.toUpperCase())}</span>
+            `).join('')}
+          </div>
           <dl class="printer-card__meta">
             <div class="printer-card__meta-row">
               <dt>Name</dt>
@@ -186,7 +210,12 @@
               <dd>${escapeHtml(prettyPrinterKinds(printer.acceptedKinds || []).join(', ') || 'None')}</dd>
             </div>
           </dl>
+          <div class="printer-card__actions">
+            <button class="printer-card__button printer-card__button--primary" type="button" data-role="choose-files" data-printer-id="${printer.id}">Choose Files</button>
+            ${printer.labelBuilder ? `<button class="printer-card__button printer-card__button--secondary" type="button" data-role="label-builder" data-printer-id="${printer.id}">Label Builder</button>` : ''}
+          </div>
         </div>
+        <input class="printer-card__file-input" data-role="file-input" data-printer-id="${printer.id}" type="file" multiple accept="${buildAcceptValue(printer.acceptedKinds || [])}">
       </article>
     `).join('');
   };
@@ -233,7 +262,7 @@
     );
   };
 
-  const uploadGroupedFiles = async (printer, groupedFiles) => {
+  const uploadGroupedFiles = async (printer, groupedFiles, extraFields = {}) => {
     const groupEntries = Object.entries(groupedFiles);
 
     if (!groupEntries.length) {
@@ -250,6 +279,12 @@
         formData.append(PRINTIFY_FILE_KINDS[fileKind].fieldName, file, file.name);
       });
 
+      Object.entries(extraFields).forEach(([fieldName, fieldValue]) => {
+        if (fieldValue !== null && fieldValue !== undefined && fieldValue !== '') {
+          formData.append(fieldName, fieldValue);
+        }
+      });
+
       const response = await fetch(routePath, {
         method: 'POST',
         body: formData,
@@ -261,13 +296,13 @@
     }
   };
 
-  const handlePrinterFiles = async (printerId, files) => {
+  const handlePrinterFiles = async (printerId, files, extraFields = {}) => {
     const printer = getPrinterById(printerId);
 
     if (!printer) throw new Error(`Unknown printer: ${printerId}`);
 
     const groupedFiles = groupFilesByKind(printer, files);
-    await uploadGroupedFiles(printer, groupedFiles);
+    await uploadGroupedFiles(printer, groupedFiles, extraFields);
     showConfirm(`${printer.displayName} job sent`);
   };
 
@@ -285,17 +320,37 @@
     setCardHighlight(card, false);
   };
 
-  const toggleCardDetails = card => {
-    const nextOpenState = !card.classList.contains('is-open');
-    card.classList.toggle('is-open', nextOpenState);
-    card.setAttribute('aria-expanded', String(nextOpenState));
+  const setOpenPrinter = printerId => {
+    appState.openPrinterId = printerId;
+    printerGrid.querySelectorAll('[data-role="printer-card"]').forEach(card => {
+      const isOpen = card.getAttribute('data-printer-id') === printerId;
+      card.classList.toggle('is-open', isOpen);
+      card.setAttribute('aria-expanded', String(isOpen));
+    });
   };
 
   const bindPrinterEvents = () => {
     printerGrid.addEventListener('click', event => {
+      const chooseFilesButton = event.target.closest('[data-role="choose-files"]');
+      if (chooseFilesButton) {
+        event.stopPropagation();
+        const input = printerGrid.querySelector(`[data-role="file-input"][data-printer-id="${chooseFilesButton.getAttribute('data-printer-id')}"]`);
+        input?.click();
+        return;
+      }
+
+      const labelBuilderButton = event.target.closest('[data-role="label-builder"]');
+      if (labelBuilderButton) {
+        event.stopPropagation();
+        const printer = getPrinterById(labelBuilderButton.getAttribute('data-printer-id'));
+        appState.labelBuilder?.open(printer);
+        return;
+      }
+
       const card = event.target.closest('[data-role="printer-card"]');
       if (!card) return;
-      toggleCardDetails(card);
+      const printerId = card.getAttribute('data-printer-id');
+      setOpenPrinter(appState.openPrinterId === printerId ? null : printerId);
     });
 
     printerGrid.addEventListener('keydown', event => {
@@ -304,7 +359,21 @@
 
       if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault();
-        toggleCardDetails(card);
+        const printerId = card.getAttribute('data-printer-id');
+        setOpenPrinter(appState.openPrinterId === printerId ? null : printerId);
+      }
+    });
+
+    printerGrid.addEventListener('change', async event => {
+      const input = event.target.closest('[data-role="file-input"]');
+      if (!input || !input.files?.length) return;
+
+      try {
+        await handlePrinterFiles(input.getAttribute('data-printer-id'), Array.from(input.files));
+      } catch (error) {
+        showFeedback(error.message);
+      } finally {
+        input.value = '';
       }
     });
 
@@ -368,6 +437,15 @@
     }
   };
 
+  const bootLabelBuilder = () => {
+    if (typeof window.createPrintifyLabelBuilder !== 'function') return;
+
+    appState.labelBuilder = window.createPrintifyLabelBuilder({
+      onPrint: (printer, files, extraFields) => handlePrinterFiles(printer.id, files, extraFields),
+      onError: error => showFeedback(error.message),
+    });
+  };
+
   const bootClippy = () => {
     if (!window.clippy) return;
 
@@ -393,6 +471,7 @@
   const boot = async () => {
     bindPrinterEvents();
     bootLogDrawer();
+    bootLabelBuilder();
 
     try {
       await Promise.all([loadVersion(), loadPrinters()]);

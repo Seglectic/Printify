@@ -6,8 +6,7 @@
 # │      driverName: "My Printer Driver"      │
 # │      printMode: "cli"                     │
 # │      acceptedKinds: ["pdf", "image"]      │
-# │      uiMode: "dropzone"                   │
-# │      enableLabelBuilder: false            │
+# │      labelBuilder: false                  │
 # │      bundleImageCopies: false             │
 # │      pxSize: "800x1200"                   │
 # │      density: "300"                       │
@@ -24,8 +23,7 @@ printers:
     driverName: "Zebra450"
     printMode: "pdfToPrinter"
     acceptedKinds: ["pdf", "image", "zip"]
-    uiMode: "dropzone"
-    enableLabelBuilder: false
+    labelBuilder: true
     bundleImageCopies: false
     pxSize: "800x1200"
     density: "300"
@@ -35,19 +33,17 @@ printers:
     driverName: "Brother2360DUSB"
     printMode: "unixPrint"
     acceptedKinds: ["pdf", "image"]
-    uiMode: "dropzone"
-    enableLabelBuilder: false
+    labelBuilder: false
     bundleImageCopies: false
     pxSize: null
     density: null
 
   dymoLabel:
-    displayName: "Dymo Label Builder"
+    displayName: "Dymo Label Maker"
     driverName: "DYMO4XLUSB"
     printMode: "pdfToPrinter"
     acceptedKinds: ["image"]
-    uiMode: "label-builder"
-    enableLabelBuilder: true
+    labelBuilder: true
     bundleImageCopies: true
     pxSize: "425x200"
     density: "200"

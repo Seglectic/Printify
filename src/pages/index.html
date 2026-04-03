@@ -6,6 +6,7 @@
     <title>P3D Printify</title>
     <link rel="icon" href="/favicon.ico" type="image/x-icon">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fabric@6.4.3/dist/index.min.js"></script>
     <link href="https://fonts.googleapis.com/css?family=Droid+Sans+Mono&subset=latin" rel="stylesheet" type="text/css">
     <link rel="stylesheet" type="text/css" href="/styles/clippy.css" media="all">
     <link rel="stylesheet" type="text/css" href="/styles/index.css">
@@ -24,6 +25,40 @@
       </main>
     </div>
 
+    <div class="printify-builder" id="labelBuilder">
+      <div class="printify-builder__panel">
+        <div class="printify-builder__header">
+          <div>
+            <p class="printify-builder__eyebrow">Printer Label Builder</p>
+            <h2 class="printify-builder__title" id="labelBuilderTitle">Label Builder</h2>
+            <p class="printify-builder__copy" id="labelBuilderCopy">Build a label to match this printer's target size, then send it through the standard image route.</p>
+          </div>
+          <button class="printify-builder__close" id="labelBuilderClose" type="button">Close</button>
+        </div>
+
+        <div class="printify-builder__canvas-wrap">
+          <div class="printify-builder__canvas-shell">
+            <canvas class="printify-builder__canvas" id="labelCanvas" width="425" height="200"></canvas>
+          </div>
+        </div>
+
+        <div class="printify-builder__footer">
+          <div class="printify-builder__controls">
+            <label class="printify-builder__field" for="labelBuilderCopies">
+              Copies
+              <input id="labelBuilderCopies" type="number" min="1" value="1">
+            </label>
+            <span class="printify-builder__size" id="labelBuilderSize">425 x 200 px</span>
+          </div>
+          <div class="printify-builder__actions">
+            <button class="printer-card__button printer-card__button--secondary" id="labelBuilderReset" type="button">Reset</button>
+            <button class="printer-card__button printer-card__button--secondary" id="labelBuilderCancel" type="button">Cancel</button>
+            <button class="printer-card__button printer-card__button--primary" id="labelBuilderPrint" type="button">Print Label</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="printify-feedback" id="feedback" aria-live="polite"></div>
 
     <div class="printify-confirm" id="confirmLayer">
@@ -34,6 +69,7 @@
 
     <script src="/scripts/clippy.js"></script>
     <script src="/scripts/logDrawer.js"></script>
+    <script src="/scripts/labelBuilder.js"></script>
     <script src="/scripts/index.js"></script>
   </body>
 </html>

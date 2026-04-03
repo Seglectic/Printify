@@ -25,8 +25,13 @@ Primary responsibilities:
 
 - `Printify.js`: main Express server, upload handlers, print logic, server metadata endpoint
 - `package.json`: dependencies and npm scripts
-- `src/index.html`: main browser UI for Zebra and Brother flows
-- `src/dymo.html`: Dymo-specific browser UI
+- `src/pages/index.html`: main printer-selection UI
+- `src/pages/logs.html`: logs view
+- `src/scripts/index.js`: index-page behavior and printer card wiring
+- `src/styles/index.css`: index-page styling
+- `src/scripts/logDrawer.js`: Recent Logs drawer behavior
+- `src/scripts/clippy.js`: clippy mascot UI
+- `src/dymo.html`: legacy Dymo-specific browser UI, if still present
 - `serverData.json`: persisted counters for page hits and print count
 - `uploads/`: temporary uploaded and extracted files
 
@@ -37,6 +42,7 @@ Primary responsibilities:
 - Avoid obvious line-by-line comments that restate the code.
 - Keep comments short and useful. Add them where behavior is non-obvious, cross-platform, or easy to break.
 - When introducing new abstractions, name them clearly enough that they reduce the need for excessive comments.
+- For the index page, keep printer-card labels subtle and monospaced, preserve the drag-to-print affordance, and keep load animations intentional but light.
 
 ## Printing Model
 
@@ -83,6 +89,9 @@ Current server endpoints in `Printify.js` include:
 - Prefer minimal edits over broad refactors.
 - Do not remove `testing` mode unless explicitly requested.
 - Be careful with filesystem writes in `uploads/` and `serverData.json`.
+- Keep the index page config-driven from `/printers`; do not hardcode printer availability.
+- Do not reintroduce the removed hero/status/builder UI on the index page.
+- Preserve the footer, Recent Logs button, and clippy on the index page.
 
 ## Known Constraints
 
@@ -94,7 +103,7 @@ Current server endpoints in `Printify.js` include:
 ## Suggested Workflow For Future Agents
 
 1. Read `package.json` and `Printify.js` first.
-2. Confirm whether the task affects server routes, frontend pages, or print pipeline behavior.
+2. Confirm whether the task affects server routes, frontend pages, printer availability rendering, or print pipeline behavior.
 3. If editing print behavior, verify which printer object and endpoint are involved.
 4. Prefer verifying with `npm start` when sandbox rules allow port binding.
 5. Report clearly when runtime verification is blocked by the environment.

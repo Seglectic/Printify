@@ -303,7 +303,7 @@
             const formData = new FormData();
             formData.append('pdfFile', file);
             // Send file to the server for upload
-            fetch('/zebra', { method: 'POST', body: formData })
+            fetch('/zebra/pdf', { method: 'POST', body: formData })
               .then((response) => {
                 if (response.ok) {
                   console.log('File uploaded successfully.');
@@ -321,9 +321,9 @@
           // └──────────────┘
           else if (file.type === 'image/png') {
             const formData = new FormData();
-            formData.append('pngFile', file);
+            formData.append('imgFile', file);
             // Send file to the server for upload
-            fetch('/zebrapng', { method: 'POST', body: formData })
+            fetch('/zebra/image', { method: 'POST', body: formData })
               .then((response) => {
                 if (response.ok) {
                   console.log('File uploaded successfully.');
@@ -347,7 +347,7 @@
             const formData = new FormData();
             formData.append('zipFile', file);
             // Send file to the server for upload
-            fetch('/zebrazip', { method: 'POST', body: formData })
+            fetch('/zebra/zip', { method: 'POST', body: formData })
               .then((response) => {
                 if (response.ok) {
                   console.log('File uploaded successfully.');
@@ -401,7 +401,7 @@
           if (file.type === 'application/pdf') { 	                            // Check if the file is a PDF
             const formData = new FormData();                                  // Create a new FormData object for sending to the server
             formData.append('pdfFile', file);                                 // Add the file to the FormData object
-            fetch('/brother', { method: 'POST', body: formData })             // Send file to the server for upload
+            fetch('/brotherLaser/pdf', { method: 'POST', body: formData })    // Send file to the server for upload
               .then((response) => {
                 if (response.ok) {
                   console.log('File uploaded successfully.');
@@ -423,7 +423,7 @@
                     ){
             const formData = new FormData();                                  // Create a new FormData object for sending to the server
             formData.append('imgFile', file);                                 // Add the file to the FormData object
-            fetch('/brotherImg', { method: 'POST', body: formData })             // Send file to the server for upload
+            fetch('/brotherLaser/image', { method: 'POST', body: formData })  // Send file to the server for upload
               .then((response) => {
                 if (response.ok) {
                   console.log('File uploaded successfully.');

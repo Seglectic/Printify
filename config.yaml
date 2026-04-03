@@ -4,7 +4,7 @@
 # │    examplePrinter:                        │
 # │      driverName: "My Printer Driver"      │
 # │      printMode: "cli"                     │
-# │      inputType: "png"                     │
+# │      acceptedKinds: ["pdf", "image"]      │
 # │      pxSize: "800x1200"                   │
 # │      density: "300"                       │
 # │      cliCommand: "python"                 │
@@ -18,20 +18,20 @@ printers:
   zebra:
     driverName: "Zebra450"
     printMode: "pdfToPrinter"
-    inputType: "pdf"
+    acceptedKinds: ["pdf", "image", "zip"]
     pxSize: "800x1200"
     density: "300"
 
   brotherLaser:
     driverName: "Brother2360DUSB"
     printMode: "unixPrint"
-    inputType: "pdf"
+    acceptedKinds: ["pdf", "image"]
     pxSize: null
     density: null
 
   dymoLabel:
     driverName: "DYMO4XLUSB"
     printMode: "pdfToPrinter"
-    inputType: "pdf"
+    acceptedKinds: ["image"]
     pxSize: "425x200"
     density: "200"

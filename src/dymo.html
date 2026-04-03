@@ -281,8 +281,8 @@
           // ╰─────────────────────╯
           if (file.type === 'image/png' || file.type === 'image/jpeg') {
             const formData = new FormData();
-            formData.append('pngFile', file);                        // Append the file to the form data
-            fetch('/dymopng', { method: 'POST', body: formData })    // Send file to the server for upload
+            formData.append('imgFile', file);                            // Append the file to the form data
+            fetch('/dymoLabel/image', { method: 'POST', body: formData }) // Send file to the server for upload
               .then((response) => {
                 if (response.ok) {
                   console.log('File uploaded successfully.');
@@ -339,9 +339,9 @@
         setTimeout(()=>{
           fabCan.getElement().toBlob((blob) => {
             const formData = new FormData();
-            formData.append('pngFile', blob);                                           // Append the file to the form data
+            formData.append('imgFile', blob, 'label.png');                              // Append the file to the form data
             formData.append('printCount', document.getElementById('printCount').value); // Append the print count to the form data
-            fetch('/dymopng', { method: 'POST', body: formData })
+            fetch('/dymoLabel/image', { method: 'POST', body: formData })
               .then((response) => {
                 if (response.ok) {
                   console.log('File uploaded successfully.');

@@ -26,6 +26,7 @@
   ]);
   const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'tif', 'tiff', 'webp']);
   const ZIP_EXTENSIONS = new Set(['zip']);
+  const OVERSIZE_WARNING_RATIO = 1.5;
 
   const appState = {
     printers: [],
@@ -68,6 +69,17 @@
     return segments.length > 1 ? segments.pop() : '';
   };
 
+  const parsePxSize = pxSize => {
+    const match = String(pxSize || '').match(/^(\d+)x(\d+)$/i);
+
+    if (!match) return null;
+
+    return {
+      width: Number.parseInt(match[1], 10),
+      height: Number.parseInt(match[2], 10),
+    };
+  };
+
   const prettyPrinterKinds = acceptedKinds => (
     acceptedKinds.map(kind => PRINTIFY_FILE_KINDS[kind]?.label || kind.toUpperCase())
   );
@@ -80,6 +92,8 @@
   };
 
   const getPrinterById = printerId => appState.printers.find(printer => printer.id === printerId);
+
+  const formatPixels = ({ width, height }) => `${Math.round(width)}x${Math.round(height)}px`;
 
   const showFeedback = message => {
     feedback.textContent = message;
@@ -202,6 +216,105 @@
     return null;
   };
 
+  const loadImageDimensions = file => new Promise((resolve, reject) => {
+    const image = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    image.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve({
+        width: image.naturalWidth,
+        height: image.naturalHeight,
+      });
+    };
+
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error(`Could not read dimensions for ${file.name}`));
+    };
+
+    image.src = objectUrl;
+  });
+
+  const loadPdfDimensions = async (file, printerDensity) => {
+    if (!window.pdfjsLib) return null;
+
+    if (!window.pdfjsLib.GlobalWorkerOptions.workerSrc) {
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+    }
+
+    const pdfBytes = await file.arrayBuffer();
+    const pdfDocument = await window.pdfjsLib.getDocument({ data: pdfBytes }).promise;
+    const firstPage = await pdfDocument.getPage(1);
+    const viewport = firstPage.getViewport({ scale: 1 });
+    const density = Number.parseInt(printerDensity || '72', 10) || 72;
+
+    return {
+      width: (viewport.width * density) / 72,
+      height: (viewport.height * density) / 72,
+    };
+  };
+
+  const getBestOversizeRatio = (dimensions, target) => {
+    const directRatio = Math.max(dimensions.width / target.width, dimensions.height / target.height);
+    const rotatedRatio = Math.max(dimensions.width / target.height, dimensions.height / target.width);
+    return Math.min(directRatio, rotatedRatio);
+  };
+
+  const buildOversizeWarnings = async (printer, files) => {
+    const targetSize = parsePxSize(printer?.pxSize);
+    if (!targetSize) return [];
+
+    const warnings = [];
+
+    for (const file of files) {
+      const fileKind = detectFileKind(file);
+      if (!fileKind || fileKind === 'zip') continue;
+
+      try {
+        let dimensions = null;
+
+        if (fileKind === 'image') {
+          dimensions = await loadImageDimensions(file);
+        }
+
+        if (fileKind === 'pdf') {
+          dimensions = await loadPdfDimensions(file, printer.density);
+        }
+
+        if (!dimensions) continue;
+
+        const oversizeRatio = getBestOversizeRatio(dimensions, targetSize);
+
+        if (oversizeRatio >= OVERSIZE_WARNING_RATIO) {
+          warnings.push(`${file.name}: ${formatPixels(dimensions)} vs target ${formatPixels(targetSize)}`);
+        }
+      } catch (error) {
+        console.warn(error);
+      }
+    }
+
+    return warnings;
+  };
+
+  const confirmOversizeFiles = async (printer, files) => {
+    const warnings = await buildOversizeWarnings(printer, files);
+    if (!warnings.length) return true;
+
+    const previewLines = warnings.slice(0, 3);
+    const remainingCount = warnings.length - previewLines.length;
+    const warningMessage = [
+      `${printer.displayName} is configured for ${printer.pxSize}.`,
+      'Some files look much larger than that target size:',
+      ...previewLines.map(line => `- ${line}`),
+      remainingCount > 0 ? `- and ${remainingCount} more` : null,
+      '',
+      'Continue anyway?',
+    ].filter(Boolean).join('\n');
+
+    return window.confirm(warningMessage);
+  };
+
   const groupFilesByKind = (printer, files) => {
     const groupedFiles = {
       pdf: [],
@@ -268,6 +381,9 @@
     const printer = getPrinterById(printerId);
 
     if (!printer) throw new Error(`Unknown printer: ${printerId}`);
+
+    const shouldContinue = await confirmOversizeFiles(printer, files);
+    if (!shouldContinue) return;
 
     const groupedFiles = groupFilesByKind(printer, files);
     await uploadGroupedFiles(printer, groupedFiles, extraFields);

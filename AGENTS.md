@@ -43,6 +43,7 @@ Primary responsibilities:
 - Keep comments short and useful. Add them where behavior is non-obvious, cross-platform, or easy to break.
 - When introducing new abstractions, name them clearly enough that they reduce the need for excessive comments.
 - For the index page, keep printer-card labels subtle and monospaced, preserve the drag-to-print affordance, and keep load animations intentional but light.
+- When a release/version bump is part of the task, update both `package.json` and any client-facing version constant together unless the change explicitly calls for them to diverge.
 
 ## Printing Model
 
@@ -92,6 +93,7 @@ Current server endpoints in `Printify.js` include:
 - Keep the index page config-driven from `/printers`; do not hardcode printer availability.
 - Do not reintroduce the removed hero/status/builder UI on the index page.
 - Preserve the footer, Recent Logs button, and clippy on the index page.
+- Do not bump only the client-facing version after major UI or architecture changes; keep the server/package version in step unless the user asks for a split versioning scheme.
 
 ## Known Constraints
 

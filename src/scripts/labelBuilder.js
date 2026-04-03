@@ -68,12 +68,14 @@
       fontSize: Math.max(24, Math.round(canvasHeight * 0.16)),
       fontFamily: 'Arial',
       fill: '#111111',
+      backgroundColor: '#eef4ef',
       textAlign: 'center',
       editable: true,
       transparentCorners: false,
       cornerStyle: 'circle',
       cornerColor: '#1f6f43',
       borderColor: '#1f6f43',
+      borderScaleFactor: 2,
       padding: 8,
     });
 
@@ -88,6 +90,8 @@
       defaultTextbox = buildDefaultTextbox(width, height);
       builderCanvas.add(defaultTextbox);
       builderCanvas.setActiveObject(defaultTextbox);
+      defaultTextbox.enterEditing();
+      defaultTextbox.selectAll();
       builderCanvas.requestRenderAll();
 
       if (size) size.textContent = `${width} x ${height} px`;

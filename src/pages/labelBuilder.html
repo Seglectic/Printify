@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Printify Label Builder Lab</title>
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <script src="https://cdn.jsdelivr.net/npm/fabric@6.4.3/dist/index.min.js"></script>
+    <link href="https://fonts.googleapis.com/css?family=Droid+Sans+Mono&subset=latin" rel="stylesheet" type="text/css">
+    <link rel="stylesheet" type="text/css" href="/styles/index.css">
+  </head>
+  <body>
+    <main class="label-builder-lab">
+      <section class="label-builder-lab__panel">
+        <p class="label-builder-lab__eyebrow">Builder Sandbox</p>
+        <h1 class="label-builder-lab__title">Label Builder Lab</h1>
+        <p class="label-builder-lab__copy">Use this page to tune the reusable label-builder modal without going through the printer cards. Pick any configured printer that has `labelBuilder: true` and open the builder directly.</p>
+
+        <div class="label-builder-lab__controls">
+          <label class="label-builder-lab__field" for="builderPrinterSelect">
+            Builder Printer
+            <select id="builderPrinterSelect"></select>
+          </label>
+          <button class="printer-card__button printer-card__button--primary" id="openBuilderButton" type="button">Open Builder</button>
+        </div>
+      </section>
+    </main>
+
+    <div class="printify-builder" id="labelBuilder">
+      <div class="printify-builder__panel">
+        <div class="printify-builder__header">
+          <div>
+            <p class="printify-builder__eyebrow">Printer Label Builder</p>
+            <h2 class="printify-builder__title" id="labelBuilderTitle">Label Builder</h2>
+            <p class="printify-builder__copy" id="labelBuilderCopy">Build a label to match this printer's target size, then send it through the standard image route.</p>
+          </div>
+          <button class="printify-builder__close" id="labelBuilderClose" type="button">Close</button>
+        </div>
+
+        <div class="printify-builder__canvas-wrap">
+          <div class="printify-builder__canvas-shell">
+            <canvas class="printify-builder__canvas" id="labelCanvas" width="425" height="200"></canvas>
+          </div>
+        </div>
+
+        <div class="printify-builder__footer">
+          <div class="printify-builder__controls">
+            <label class="printify-builder__field" for="labelBuilderCopies">
+              Copies
+              <input id="labelBuilderCopies" type="number" min="1" value="1">
+            </label>
+            <span class="printify-builder__size" id="labelBuilderSize">425 x 200 px</span>
+          </div>
+          <div class="printify-builder__actions">
+            <button class="printer-card__button printer-card__button--secondary" id="labelBuilderReset" type="button">Reset</button>
+            <button class="printer-card__button printer-card__button--secondary" id="labelBuilderCancel" type="button">Cancel</button>
+            <button class="printer-card__button printer-card__button--primary" id="labelBuilderPrint" type="button">Render Test</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="printify-feedback" id="feedback" aria-live="polite"></div>
+    <div class="printify-footer" id="footer"></div>
+
+    <script src="/scripts/labelBuilder.js"></script>
+    <script>
+      (function () {
+        const select = document.getElementById('builderPrinterSelect');
+        const openButton = document.getElementById('openBuilderButton');
+        const feedback = document.getElementById('feedback');
+        const footer = document.getElementById('footer');
+        let printers = [];
+
+        const showFeedback = message => {
+          feedback.textContent = message;
+          feedback.classList.add('is-visible');
+          window.setTimeout(() => {
+            feedback.classList.remove('is-visible');
+          }, 2200);
+        };
+
+        const builder = window.createPrintifyLabelBuilder({
+          onPrint: async (printer, files, extraFields) => {
+            showFeedback(`Rendered ${files[0].name} for ${printer.displayName} at ${extraFields.printCount || 1} copy`);
+          },
+          onError: error => showFeedback(error.message),
+        });
+
+        const getSelectedPrinter = () => printers.find(printer => printer.id === select.value);
+
+        const loadPrinters = async () => {
+          const response = await fetch('/printers');
+          const payload = await response.json();
+          printers = (payload.printers || []).filter(printer => printer.labelBuilder);
+
+          if (!printers.length) {
+            select.innerHTML = '<option value="">No builder printers configured</option>';
+            openButton.disabled = true;
+            return;
+          }
+
+          select.innerHTML = printers.map(printer => (
+            `<option value="${printer.id}">${printer.displayName} (${printer.pxSize || 'default'})</option>`
+          )).join('');
+        };
+
+        openButton.addEventListener('click', () => {
+          const printer = getSelectedPrinter();
+          if (!printer || !builder) return;
+          builder.open(printer);
+        });
+
+        footer.textContent = 'Label Builder Lab';
+        loadPrinters().catch(error => {
+          console.error(error);
+          showFeedback('Could not load builder printers.');
+        });
+      }());
+    </script>
+  </body>
+</html>

@@ -53,6 +53,7 @@ img {
 
 .printify-printers {
   display: grid;
+  align-items: start;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 22px;
 }
@@ -324,6 +325,7 @@ img {
   background: rgba(255, 255, 255, 0.97);
   border: 1px solid rgba(23, 23, 23, 0.08);
   box-shadow: 0 34px 70px rgba(24, 33, 43, 0.24);
+  color: var(--printify-ink);
 }
 
 .printify-builder__header {
@@ -360,6 +362,7 @@ img {
   border-radius: 999px;
   padding: 11px 14px;
   background: rgba(24, 33, 43, 0.08);
+  color: var(--printify-ink);
   cursor: pointer;
   font-weight: 700;
 }
@@ -418,6 +421,74 @@ img {
   border-radius: 14px;
   border: 1px solid rgba(24, 33, 43, 0.12);
   background: rgba(255, 255, 255, 0.92);
+  color: var(--printify-ink);
+}
+
+.label-builder-lab {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: 48px 24px 84px;
+}
+
+.label-builder-lab__panel {
+  width: min(860px, 100%);
+  padding: 28px;
+  border: 1px solid rgba(23, 23, 23, 0.08);
+  border-radius: 28px;
+  background: #ffffff;
+  box-shadow: 0 22px 54px rgba(23, 23, 23, 0.08);
+}
+
+.label-builder-lab__eyebrow {
+  margin: 0;
+  color: rgba(23, 23, 23, 0.48);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.label-builder-lab__title {
+  margin: 8px 0 0;
+  font-size: clamp(32px, 5vw, 56px);
+  line-height: 0.96;
+  letter-spacing: -0.05em;
+}
+
+.label-builder-lab__copy {
+  margin: 14px 0 0;
+  color: var(--printify-muted);
+  line-height: 1.6;
+  max-width: 640px;
+}
+
+.label-builder-lab__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: end;
+  margin-top: 24px;
+}
+
+.label-builder-lab__field {
+  display: grid;
+  gap: 8px;
+  min-width: 240px;
+  color: rgba(23, 23, 23, 0.6);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.label-builder-lab__field select {
+  min-height: 46px;
+  padding: 0 14px;
+  border: 1px solid rgba(23, 23, 23, 0.12);
+  border-radius: 14px;
+  background: #ffffff;
+  color: var(--printify-ink);
 }
 
 .printify-builder__size {

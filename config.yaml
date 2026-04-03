@@ -1,5 +1,3 @@
-
-
 # ╭───────────────────────────────────────────╮
 # │  Example printer config                   │
 # │  printers:                                │
@@ -13,7 +11,7 @@
 # │      cliArgs: ["printChan.py", "{file}"]  │
 # ╰───────────────────────────────────────────╯
 
-port: 8020
+port: 80
 testing: true
 
 printers:

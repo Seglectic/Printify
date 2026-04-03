@@ -76,6 +76,8 @@
         --pld-card: rgba(252, 254, 255, 0.72);
         --pld-card-new: rgba(198, 242, 202, 0.92);
         --pld-icon-bg: #e7eef4;
+        --pld-code-bg: rgba(228, 236, 243, 0.92);
+        --pld-code-border: rgba(24, 33, 43, 0.08);
       }
 
       .printify-log-drawer__toggle {
@@ -209,10 +211,24 @@
         padding: 16px;
       }
 
+      .printify-log-drawer__card {
+        cursor: pointer;
+        transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+      }
+
       .printify-log-drawer__card + .printify-log-drawer__card,
       .printify-log-drawer__card + .printify-log-drawer__empty,
       .printify-log-drawer__empty + .printify-log-drawer__card {
         margin-top: 12px;
+      }
+
+      .printify-log-drawer__card:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 10px 22px rgba(23, 36, 53, 0.08);
+      }
+
+      .printify-log-drawer__card.is-open {
+        border-color: rgba(106, 142, 172, 0.36);
       }
 
       .printify-log-drawer__card.is-new {
@@ -259,13 +275,64 @@
 
       .printify-log-drawer__checksum {
         margin-top: 12px;
+      }
+
+      .printify-log-drawer__checksum-button {
+        width: 100%;
+        border: 1px solid var(--pld-code-border);
+        border-radius: 14px;
+        padding: 10px 12px;
+        background: var(--pld-code-bg);
+        color: var(--pld-muted);
+        cursor: pointer;
+        font-family: "SFMono-Regular", "Menlo", monospace;
+        font-size: 10px;
+        line-height: 1.35;
+        text-align: center;
+        user-select: text;
+        transition: background 180ms ease, border-color 180ms ease;
+      }
+
+      .printify-log-drawer__checksum-line {
+        display: block;
+        width: 32ch;
+        margin: 0 auto;
+      }
+
+      .printify-log-drawer__details {
+        display: none;
+        margin-top: 12px;
         padding-top: 12px;
         border-top: 1px solid var(--pld-line);
+      }
+
+      .printify-log-drawer__card.is-open .printify-log-drawer__details {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 8px;
+      }
+
+      .printify-log-drawer__detail {
+        display: grid;
+        grid-template-columns: 96px minmax(0, 1fr);
+        gap: 10px;
+        align-items: start;
+      }
+
+      .printify-log-drawer__detail-label {
         color: var(--pld-muted);
-        font-family: "SFMono-Regular", "Menlo", monospace;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .printify-log-drawer__detail-value {
+        min-width: 0;
+        color: var(--pld-ink);
         font-size: 12px;
-        line-height: 1.5;
-        word-break: break-all;
+        line-height: 1.45;
+        word-break: break-word;
       }
 
       .printify-log-drawer__empty {
@@ -356,7 +423,9 @@
 
           let logSocket = null;
           let reconnectTimer = null;
+          let currentJobs = [];
           let previousJobKeys = new Set();
+          const expandedJobKeys = new Set();
           const highlightedJobKeys = new Map();
           const highlightDurationMs = 1800;
 
@@ -391,6 +460,62 @@
             });
           }
 
+          function formatChecksumMarkup(checksum) {
+            const safeChecksum = escapeHtml(checksum || 'Checksum unavailable');
+
+            if (!checksum || checksum.length !== 64) {
+              return safeChecksum;
+            }
+
+            const firstHalf = safeChecksum.slice(0, 32);
+            const secondHalf = safeChecksum.slice(32, 64);
+
+            return [
+              `<span class="printify-log-drawer__checksum-line">${firstHalf}</span>`,
+              `<span class="printify-log-drawer__checksum-line">${secondHalf}</span>`,
+            ].join('');
+          }
+
+          function formatDetailValue(value) {
+            if (value === null || value === undefined || value === '') {
+              return null;
+            }
+
+            if (typeof value === 'boolean') {
+              return value ? 'Yes' : 'No';
+            }
+
+            return String(value);
+          }
+
+          function renderDetailsMarkup(job) {
+            const details = [
+              ['Result', job.result],
+              ['Testing', job.testing],
+              ['Print Mode', job.printMode],
+              ['Source Type', job.sourceType],
+              ['Source Route', job.sourceRoute],
+              ['Stored Name', job.storedFilename],
+              ['Archive', job.sourceArchiveName],
+              ['Copy', job.copyIndex],
+              ['Total Copies', job.totalCopies],
+              ['File Path', job.filePath],
+              ['Transport', job.transportResponse],
+              ['Error', job.error],
+            ].filter(([, value]) => formatDetailValue(value) !== null);
+
+            if (!details.length) {
+              return '';
+            }
+
+            return details.map(([label, value]) => `
+              <div class="printify-log-drawer__detail">
+                <div class="printify-log-drawer__detail-label">${escapeHtml(label)}</div>
+                <div class="printify-log-drawer__detail-value">${escapeHtml(formatDetailValue(value))}</div>
+              </div>
+            `).join('');
+          }
+
           function pruneHighlightedJobKeys() {
             const now = Date.now();
 
@@ -402,6 +527,8 @@
           }
 
           function renderLogs(jobs) {
+            currentJobs = jobs;
+
             if (!jobs.length) {
               previousJobKeys = new Set();
               highlightedJobKeys.clear();
@@ -420,14 +547,16 @@
               }
 
               const isNew = highlightedJobKeys.has(jobKey);
+              const isOpen = expandedJobKeys.has(jobKey);
               const iconPath = settings.printerIcons[job.printerId] || 'favicon.ico';
               const printerLabel = escapeHtml(job.printerName || job.printerId || 'Unknown printer');
               const filename = escapeHtml(job.originalFilename || 'Unnamed file');
-              const checksum = escapeHtml(job.chksum || 'Checksum unavailable');
+              const checksumMarkup = formatChecksumMarkup(job.chksum);
+              const detailsMarkup = renderDetailsMarkup(job);
               const time = escapeHtml(formatTimestamp(job.timestamp));
 
               return `
-                <article class="printify-log-drawer__card${isNew ? ' is-new' : ''}">
+                <article class="printify-log-drawer__card${isNew ? ' is-new' : ''}${isOpen ? ' is-open' : ''}" data-role="log-card" data-job-key="${escapeHtml(jobKey)}">
                   <div class="printify-log-drawer__row">
                     <img class="printify-log-drawer__icon" src="${iconPath}" alt="${printerLabel}">
                     <div class="printify-log-drawer__main">
@@ -435,7 +564,16 @@
                       <div class="printify-log-drawer__meta">${printerLabel} | ${time}</div>
                     </div>
                   </div>
-                  <div class="printify-log-drawer__checksum">${checksum}</div>
+                  <div class="printify-log-drawer__checksum">
+                    <button
+                      class="printify-log-drawer__checksum-button"
+                      type="button"
+                      data-role="checksum-select"
+                    >
+                      ${checksumMarkup}
+                    </button>
+                  </div>
+                  <div class="printify-log-drawer__details">${detailsMarkup}</div>
                 </article>
               `;
             }).join('');
@@ -517,6 +655,32 @@
 
           scrim.on('click', () => {
             setOpenState(false);
+          });
+
+          list.on('click', '[data-role="log-card"]', event => {
+            const card = $(event.currentTarget);
+            const jobKey = card.data('jobKey');
+
+            if (expandedJobKeys.has(jobKey)) {
+              expandedJobKeys.delete(jobKey);
+            } else {
+              expandedJobKeys.add(jobKey);
+            }
+
+            renderLogs(currentJobs);
+          });
+
+          list.on('click', '[data-role="checksum-select"]', event => {
+            event.stopPropagation();
+          });
+
+          list.on('dblclick', '[data-role="checksum-select"]', event => {
+            event.stopPropagation();
+            const selection = window.getSelection();
+            const range = document.createRange();
+            range.selectNodeContents(event.currentTarget);
+            selection.removeAllRanges();
+            selection.addRange(range);
           });
 
           $(document).on('keydown.printifyLogDrawer', event => {

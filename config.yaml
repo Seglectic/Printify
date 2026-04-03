@@ -2,9 +2,13 @@
 # │  Example printer config                   │
 # │  printers:                                │
 # │    examplePrinter:                        │
+# │      displayName: "Shipping Labels"       │
 # │      driverName: "My Printer Driver"      │
 # │      printMode: "cli"                     │
 # │      acceptedKinds: ["pdf", "image"]      │
+# │      uiMode: "dropzone"                   │
+# │      enableLabelBuilder: false            │
+# │      bundleImageCopies: false             │
 # │      pxSize: "800x1200"                   │
 # │      density: "300"                       │
 # │      cliCommand: "python"                 │
@@ -16,22 +20,34 @@ testing: true
 
 printers:
   zebra:
+    displayName: "Zebra Label Printer"
     driverName: "Zebra450"
     printMode: "pdfToPrinter"
     acceptedKinds: ["pdf", "image", "zip"]
+    uiMode: "dropzone"
+    enableLabelBuilder: false
+    bundleImageCopies: false
     pxSize: "800x1200"
     density: "300"
 
   brotherLaser:
+    displayName: "Brother Laser Printer"
     driverName: "Brother2360DUSB"
     printMode: "unixPrint"
     acceptedKinds: ["pdf", "image"]
+    uiMode: "dropzone"
+    enableLabelBuilder: false
+    bundleImageCopies: false
     pxSize: null
     density: null
 
   dymoLabel:
+    displayName: "Dymo Label Builder"
     driverName: "DYMO4XLUSB"
     printMode: "pdfToPrinter"
     acceptedKinds: ["image"]
+    uiMode: "label-builder"
+    enableLabelBuilder: true
+    bundleImageCopies: true
     pxSize: "425x200"
     density: "200"

@@ -15,7 +15,12 @@ const {
   printers,
 } = require('./lib/configurator');
 const { createConverter }        = require('./lib/converter');
-const { createJobLogEntry, logStamp, errorLogStamp } = require('./lib/logger');
+const {
+  createFileChecksum,
+  createJobLogEntry,
+  logStamp,
+  errorLogStamp,
+} = require('./lib/logger');
 const { createUpload }            = require('./lib/upload');
 const { createServerSave }        = require('./lib/serverSave');
 const { createPrintingService }   = require('./lib/printing');
@@ -38,6 +43,7 @@ const converter = createConverter({
 const printingService = createPrintingService({
   testing,
   serverSave,
+  createFileChecksum,
   createJobLogEntry,
   logStamp,
   errorLogStamp,

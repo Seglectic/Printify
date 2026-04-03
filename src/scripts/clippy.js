@@ -844,7 +844,7 @@ clippy.Balloon.prototype = {
 
 };
 
-clippy.BASE_PATH = '/agents/';
+clippy.BASE_PATH = '/scripts/agents/';
 
 clippy.load = function (name, successCb, failCb) {
     var path = clippy.BASE_PATH + name;
@@ -1012,4 +1012,3 @@ clippy.Queue.prototype = {
         this._progressQueue();
     }
 };
-

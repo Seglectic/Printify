@@ -4,12 +4,13 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>P3D Printify</title>
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fabric@6.4.3/dist/index.js"></script>
     <link href="https://fonts.googleapis.com/css?family=Droid+Sans+Mono&subset=latin" rel="stylesheet" type="text/css">
-    <link rel="stylesheet" type="text/css" href="clippy.css" media="all">
-    <link rel="stylesheet" type="text/css" href="index.css">
-    <link rel="stylesheet" type="text/css" href="logDrawer.css">
+    <link rel="stylesheet" type="text/css" href="/styles/clippy.css" media="all">
+    <link rel="stylesheet" type="text/css" href="/styles/index.css">
+    <link rel="stylesheet" type="text/css" href="/styles/logDrawer.css">
   </head>
   <body>
     <div class="printify-log-drawer" id="printifyLogDrawer"></div>
@@ -95,13 +96,13 @@
     <div class="printify-feedback" id="feedback" aria-live="polite"></div>
 
     <div class="printify-confirm" id="confirmLayer">
-      <video class="printify-confirm__video" id="confirmVideo" src="checkMark.mp4" muted></video>
+      <video class="printify-confirm__video" id="confirmVideo" src="/media/checkMark.mp4" muted></video>
     </div>
 
     <div class="printify-footer" id="footer"></div>
 
-    <script src="clippy.js"></script>
-    <script src="logDrawer.js"></script>
-    <script src="index.js"></script>
+    <script src="/scripts/clippy.js"></script>
+    <script src="/scripts/logDrawer.js"></script>
+    <script src="/scripts/index.js"></script>
   </body>
 </html>

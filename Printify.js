@@ -6,6 +6,7 @@
 // ╰──────────────────────────╯
 const http = require('http');
 const express = require('express');
+const path = require('path');
 
 let WebSocketServer = null;
 let WebSocket = null;
@@ -100,6 +101,9 @@ app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use(express.static(staticDir));
 app.use('/icons', express.static(iconsDir));
+app.get('/favicon.ico', (req, res) => {
+  res.sendFile(path.join(iconsDir, 'favicon.ico'));
+});
 
 // Mount all app routes with the shared services they depend on.
 registerRoutes({

@@ -43,7 +43,14 @@ Primary responsibilities:
 - Keep comments short and useful. Add them where behavior is non-obvious, cross-platform, or easy to break.
 - When introducing new abstractions, name them clearly enough that they reduce the need for excessive comments.
 - For the index page, keep printer-card labels subtle and monospaced, preserve the drag-to-print affordance, and keep load animations intentional but light.
-- When a release/version bump is part of the task, update both `package.json` and any client-facing version constant together unless the change explicitly calls for them to diverge.
+- Split versioning is acceptable in this repo. Do not assume `package.json` and any client-facing version constant should match unless the task explicitly calls for alignment.
+
+## Delegation Preferences
+
+- When sub-agents are available, prefer a dedicated worker for git commit creation instead of having the main worker make commits directly.
+- When version numbers need to change, prefer a dedicated version-audit worker first. Base the bump on the actual change set since the last relevant version, not on guesswork or a generic patch bump.
+- When `AGENTS.md` is part of the task, prefer assigning a dedicated worker to maintain or revise this file so repo guidance stays intentional and isolated.
+- Commit messages from the git worker should read naturally and a bit casual rather than overly formal.
 
 ## Printing Model
 
@@ -93,7 +100,7 @@ Current server endpoints in `Printify.js` include:
 - Keep the index page config-driven from `/printers`; do not hardcode printer availability.
 - Do not reintroduce the removed hero/status/builder UI on the index page.
 - Preserve the footer, Recent Logs button, and clippy on the index page.
-- Do not bump only the client-facing version after major UI or architecture changes; keep the server/package version in step unless the user asks for a split versioning scheme.
+- Do not force server/package and client-facing versions to match unless the user explicitly asks for aligned versioning.
 
 ## Known Constraints
 
@@ -106,6 +113,9 @@ Current server endpoints in `Printify.js` include:
 
 1. Read `package.json` and `Printify.js` first.
 2. Confirm whether the task affects server routes, frontend pages, printer availability rendering, or print pipeline behavior.
-3. If editing print behavior, verify which printer object and endpoint are involved.
-4. Prefer verifying with `npm start` when sandbox rules allow port binding.
-5. Report clearly when runtime verification is blocked by the environment.
+3. If version numbers need to change, use a version-audit worker to identify the correct server and client bumps from the real change history before editing version files.
+4. If `AGENTS.md` is in scope, use a dedicated worker to update it.
+5. If editing print behavior, verify which printer object and endpoint are involved.
+6. Prefer verifying with `npm start` when sandbox rules allow port binding.
+7. If commits are requested, prefer routing them through a dedicated git worker and keep each commit scoped to one slice of work.
+8. Report clearly when runtime verification is blocked by the environment.

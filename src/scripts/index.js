@@ -136,19 +136,6 @@
   // ╭──────────────────────────╮
   // │  Printer rendering       │
   // ╰──────────────────────────╯
-  const buildPrinterSummary = printer => {
-    const acceptedKinds = prettyPrinterKinds(printer.acceptedKinds || []);
-    return acceptedKinds.length
-      ? `Accepts ${acceptedKinds.join(', ')} files.`
-      : 'No file types are configured.';
-  };
-
-  const buildPrinterMode = printer => {
-    if (printer.bundleImageCopies) return 'Bundled image copies';
-    if (printer.printMode) return printer.printMode;
-    return 'Default transport';
-  };
-
   const buildAcceptValue = acceptedKinds => {
     const accepts = [];
 
@@ -183,33 +170,14 @@
         <p class="printer-card__name">${escapeHtml(printer.displayName)}</p>
         <div class="printer-card__body">
           <img class="printer-card__icon" src="${printer.iconUrl || '/favicon.ico'}" alt="${escapeHtml(printer.displayName)}">
-          <p class="printer-card__hint">Drop files anywhere on this card</p>
         </div>
         <div class="printer-card__details">
-          <p class="printer-card__summary">${escapeHtml(buildPrinterSummary(printer))}</p>
+          <p class="printer-card__hint">Drop files anywhere on this card</p>
           <div class="printer-card__kind-bubbles">
             ${(printer.acceptedKinds || []).map(fileKind => `
               <span class="printer-card__kind-bubble ${getFileKindToneClass(fileKind)}">${escapeHtml(PRINTIFY_FILE_KINDS[fileKind]?.label || fileKind.toUpperCase())}</span>
             `).join('')}
           </div>
-          <dl class="printer-card__meta">
-            <div class="printer-card__meta-row">
-              <dt>Name</dt>
-              <dd>${escapeHtml(printer.displayName)}</dd>
-            </div>
-            <div class="printer-card__meta-row">
-              <dt>Driver</dt>
-              <dd>${escapeHtml(printer.driverName || 'Not reported')}</dd>
-            </div>
-            <div class="printer-card__meta-row">
-              <dt>Mode</dt>
-              <dd>${escapeHtml(buildPrinterMode(printer))}</dd>
-            </div>
-            <div class="printer-card__meta-row">
-              <dt>Files</dt>
-              <dd>${escapeHtml(prettyPrinterKinds(printer.acceptedKinds || []).join(', ') || 'None')}</dd>
-            </div>
-          </dl>
           <div class="printer-card__actions">
             <button class="printer-card__button printer-card__button--primary" type="button" data-role="choose-files" data-printer-id="${printer.id}">Choose Files</button>
             ${printer.labelBuilder ? `<button class="printer-card__button printer-card__button--secondary" type="button" data-role="label-builder" data-printer-id="${printer.id}">Label Builder</button>` : ''}

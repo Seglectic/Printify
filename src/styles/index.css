@@ -166,22 +166,15 @@ img {
 }
 
 .printer-card.is-open .printer-card__details {
-  max-height: 360px;
+  max-height: 220px;
   margin-top: 10px;
   opacity: 1;
 }
 
-.printer-card__summary,
 .printer-card__empty-copy {
   margin: 0;
   color: rgba(23, 23, 23, 0.66);
   line-height: 1.6;
-}
-
-.printer-card__meta {
-  display: grid;
-  gap: 10px;
-  margin: 0;
 }
 
 .printer-card__kind-bubbles {
@@ -211,27 +204,6 @@ img {
 
 .printer-card__kind-bubble--zip {
   color: var(--printify-zip);
-}
-
-.printer-card__meta-row {
-  display: grid;
-  grid-template-columns: 72px minmax(0, 1fr);
-  gap: 12px;
-}
-
-.printer-card__meta-row dt {
-  margin: 0;
-  color: rgba(23, 23, 23, 0.42);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.printer-card__meta-row dd {
-  margin: 0;
-  color: rgba(23, 23, 23, 0.78);
-  line-height: 1.45;
 }
 
 .printer-card__actions {

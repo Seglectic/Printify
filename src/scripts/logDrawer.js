@@ -3,7 +3,7 @@
   // │  Shared drawer markup    │
   // ╰──────────────────────────╯
   const buildDrawerMarkup = () => `
-    <button class="printify-log-drawer__toggle" type="button" data-role="toggle">Recent Logs</button>
+    <button class="printify-log-drawer__toggle" type="button" data-role="toggle">Logs</button>
     <div class="printify-log-drawer__scrim" data-role="scrim"></div>
     <aside class="printify-log-drawer__panel" data-role="panel">
       <div class="printify-log-drawer__header">
@@ -11,7 +11,10 @@
           <h2 class="printify-log-drawer__title">Printify Logs</h2>
           <button class="printify-log-drawer__close" type="button" data-role="close">Close</button>
         </div>
-        <p class="printify-log-drawer__subhead">Recent print jobs from the last 60 minutes. Use the left arrow key to open the drawer and Escape to close it.</p>
+        <div class="printify-log-drawer__toolbar">
+          <p class="printify-log-drawer__subhead" data-role="subhead">Recent print logs from the last 60 minutes.</p>
+          <button class="printify-log-drawer__window-button" type="button" data-role="window-button">60 minutes</button>
+        </div>
       </div>
       <div class="printify-log-drawer__list" data-role="list">
         <div class="printify-log-drawer__empty">Loading recent print jobs...</div>
@@ -61,6 +64,7 @@
   // │  Drawer factory          │
   // ╰──────────────────────────╯
   function createPrintifyLogDrawer(rootSelector, options) {
+    const LOOKBACK_OPTIONS = [30, 60, 360, 720, 1440];
     const settings = Object.assign({
       recentLogsUrl: '/logs/recent',
       printersUrl: '/printers',
@@ -78,15 +82,31 @@
     const list = root.querySelector('[data-role="list"]');
     const toggle = root.querySelector('[data-role="toggle"]');
     const close = root.querySelector('[data-role="close"]');
+    const subhead = root.querySelector('[data-role="subhead"]');
+    const windowButton = root.querySelector('[data-role="window-button"]');
 
     let logSocket = null;
     let reconnectTimer = null;
+    let reloadTimer = null;
     let currentJobs = [];
+    let currentWindowIndex = LOOKBACK_OPTIONS.indexOf(60);
     let printerIconsById = {};
     let previousJobKeys = new Set();
     const expandedJobKeys = new Set();
     const highlightedJobKeys = new Map();
     const highlightDurationMs = 1800;
+    const getCurrentWindowMinutes = () => LOOKBACK_OPTIONS[currentWindowIndex] || 60;
+    const formatWindowLabel = windowMinutes => {
+      if (windowMinutes < 60) return `${windowMinutes} minutes`;
+      if (windowMinutes % 60 === 0) return `${windowMinutes / 60} hours`;
+      return `${windowMinutes} minutes`;
+    };
+
+    const syncWindowUi = () => {
+      const windowMinutes = getCurrentWindowMinutes();
+      if (subhead) subhead.textContent = `Recent print logs from the last ${formatWindowLabel(windowMinutes)}.`;
+      if (windowButton) windowButton.textContent = formatWindowLabel(windowMinutes);
+    };
 
     const getJobKey = job => [
       job.timestamp || '',
@@ -137,7 +157,7 @@
       if (!jobs.length) {
         previousJobKeys = new Set();
         highlightedJobKeys.clear();
-        list.innerHTML = '<div class="printify-log-drawer__empty">No print jobs were logged in the last 60 minutes.</div>';
+        list.innerHTML = `<div class="printify-log-drawer__empty">No print jobs were logged in the last ${formatWindowLabel(getCurrentWindowMinutes())}.</div>`;
         return;
       }
 
@@ -188,7 +208,11 @@
         printerIconsById = {};
       });
 
-    const loadRecentLogs = () => fetch(settings.recentLogsUrl)
+    const loadRecentLogs = () => {
+      const url = new URL(settings.recentLogsUrl, window.location.origin);
+      url.searchParams.set('lookBack', String(getCurrentWindowMinutes()));
+
+      return fetch(url.toString())
       .then(response => response.json())
       .then(payload => {
         renderLogs(payload.jobs || []);
@@ -196,6 +220,16 @@
       .catch(() => {
         list.innerHTML = '<div class="printify-log-drawer__empty">Could not load recent log data from the server.</div>';
       });
+    };
+
+    const queueRecentLogReload = () => {
+      if (reloadTimer) window.clearTimeout(reloadTimer);
+
+      reloadTimer = window.setTimeout(() => {
+        reloadTimer = null;
+        loadRecentLogs();
+      }, 500);
+    };
 
     const setOpenState = isOpen => {
       panel.classList.toggle('is-open', isOpen);
@@ -252,6 +286,12 @@
 
     close.addEventListener('click', () => {
       setOpenState(false);
+    });
+
+    windowButton.addEventListener('click', () => {
+      currentWindowIndex = (currentWindowIndex + 1) % LOOKBACK_OPTIONS.length;
+      syncWindowUi();
+      queueRecentLogReload();
     });
 
     scrim.addEventListener('click', () => {
@@ -314,6 +354,7 @@
       if (event.key === 'Escape') setOpenState(false);
     });
 
+    syncWindowUi();
     loadRecentLogs();
     connectLogSocket();
 

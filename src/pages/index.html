@@ -6,7 +6,6 @@
     <title>P3D Printify</title>
     <link rel="icon" href="/favicon.ico" type="image/x-icon">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/fabric@6.4.3/dist/index.js"></script>
     <link href="https://fonts.googleapis.com/css?family=Droid+Sans+Mono&subset=latin" rel="stylesheet" type="text/css">
     <link rel="stylesheet" type="text/css" href="/styles/clippy.css" media="all">
     <link rel="stylesheet" type="text/css" href="/styles/index.css">
@@ -16,81 +15,13 @@
     <div class="printify-log-drawer" id="printifyLogDrawer"></div>
 
     <div class="printify-app">
-      <div class="printify-shell">
-        <header class="printify-hero">
-          <section class="printify-hero__panel">
-            <p class="printify-hero__eyebrow">Config Driven Queue</p>
-            <h1 class="printify-hero__title">Printify Control Deck</h1>
-            <p class="printify-hero__copy">Every printer card on this page is rendered from the server configuration. Drag files onto a card, browse for uploads, or open the Dymo label builder without leaving the main queue screen.</p>
-          </section>
-
-          <aside class="printify-status">
-            <h2 class="printify-status__title">Live Snapshot</h2>
-            <div class="printify-status__grid">
-              <div class="printify-status__item">
-                <span class="printify-status__label">Configured Printers</span>
-                <span class="printify-status__value" id="printerCountValue">0</span>
-              </div>
-              <div class="printify-status__item">
-                <span class="printify-status__label">Page Hits</span>
-                <span class="printify-status__value" id="pageHitsValue">0</span>
-              </div>
-              <div class="printify-status__item">
-                <span class="printify-status__label">Printed Jobs</span>
-                <span class="printify-status__value" id="printCounterValue">0</span>
-              </div>
-              <div class="printify-status__item">
-                <span class="printify-status__label">Route Style</span>
-                <span class="printify-status__value">Dynamic</span>
-              </div>
-            </div>
-          </aside>
-        </header>
-
-        <main class="printify-main">
-          <section class="printify-section">
-            <h2 class="printify-section__title">Active Printers</h2>
-            <p class="printify-section__copy">Printer uploads are grouped by file kind and automatically sent to their inferred single or multi route names. Bundled Dymo image copies are converted into one multi-page PDF before printing.</p>
-            <div class="printify-printers" id="printerGrid">
-              <article class="printer-card">
-                <p class="printer-card__copy">Loading printer configuration from the server...</p>
-              </article>
-            </div>
-          </section>
-        </main>
-      </div>
-    </div>
-
-    <div class="printify-builder" id="labelBuilder">
-      <div class="printify-builder__panel">
-        <div class="printify-builder__header">
-          <div>
-            <p class="printify-builder__eyebrow">Integrated Builder</p>
-            <h2 class="printify-builder__title" id="labelBuilderTitle">Label Builder</h2>
-            <p class="printify-builder__copy">Edit the label directly on canvas, then send the image through the printer’s normal upload route so the server can bundle repeated copies into a multi-page PDF when configured.</p>
-          </div>
-          <button class="printify-builder__close" id="labelBuilderClose" type="button">Close</button>
-        </div>
-
-        <div class="printify-builder__canvas-wrap">
-          <div class="printify-builder__canvas-shell">
-            <canvas class="printify-builder__canvas" id="labelCanvas" width="425" height="200"></canvas>
-          </div>
-        </div>
-
-        <div class="printify-builder__footer">
-          <div class="printify-builder__controls">
-            <label class="printify-builder__field" for="labelBuilderCopies">
-              Copies
-              <input id="labelBuilderCopies" type="number" min="1" value="1">
-            </label>
-          </div>
-          <div class="printify-builder__actions">
-            <button class="printer-card__button printer-card__button--secondary" id="labelBuilderCancel" type="button">Cancel</button>
-            <button class="printer-card__button printer-card__button--primary" id="labelBuilderPrint" type="button">Print Label</button>
-          </div>
-        </div>
-      </div>
+      <main class="printify-shell">
+        <section class="printify-printers" id="printerGrid" aria-live="polite">
+          <article class="printer-card printer-card--empty">
+            <p class="printer-card__empty-copy">Loading printer configuration from the server...</p>
+          </article>
+        </section>
+      </main>
     </div>
 
     <div class="printify-feedback" id="feedback" aria-live="polite"></div>

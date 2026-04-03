@@ -2,7 +2,7 @@
   // ╭──────────────────────────╮
   // │  Shared constants        │
   // ╰──────────────────────────╯
-  const APP_VERSION = '2.0.0';
+  const APP_VERSION = '2.1.0';
   const PRINTIFY_LOG_ROUTE = '#printifyLogDrawer';
   const PRINTIFY_FILE_KINDS = {
     pdf: {
@@ -33,23 +33,13 @@
     printCounter: 0,
     serverVersion: 'Unknown',
     feedbackTimer: null,
-    labelPrinterId: null,
-    labelCanvas: null,
-    labelAgent: null,
+    clippyAgent: null,
   };
 
+  const dragDepth = new Map();
   const printerGrid = document.getElementById('printerGrid');
   const footer = document.getElementById('footer');
-  const pageHitsValue = document.getElementById('pageHitsValue');
-  const printCounterValue = document.getElementById('printCounterValue');
-  const printerCountValue = document.getElementById('printerCountValue');
   const feedback = document.getElementById('feedback');
-  const builder = document.getElementById('labelBuilder');
-  const builderTitle = document.getElementById('labelBuilderTitle');
-  const builderClose = document.getElementById('labelBuilderClose');
-  const builderCancel = document.getElementById('labelBuilderCancel');
-  const builderPrint = document.getElementById('labelBuilderPrint');
-  const builderCopies = document.getElementById('labelBuilderCopies');
   const confirmLayer = document.getElementById('confirmLayer');
   const confirmVideo = document.getElementById('confirmVideo');
 
@@ -63,6 +53,13 @@
       }, speed * index);
     }
   };
+
+  const escapeHtml = value => String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 
   const getFileExtension = fileName => {
     const segments = String(fileName || '').toLowerCase().split('.');
@@ -99,8 +96,8 @@
       confirmLayer.classList.remove('is-visible');
     }, 700);
 
-    if (appState.labelAgent && typeof appState.labelAgent.speak === 'function') {
-      appState.labelAgent.speak(message);
+    if (appState.clippyAgent && typeof appState.clippyAgent.speak === 'function') {
+      appState.clippyAgent.speak(message);
     }
   };
 
@@ -113,8 +110,7 @@
       appState.serverVersion = serverData.version;
       appState.pageHits = serverData.pageHits;
       appState.printCounter = serverData.printCounter;
-      pageHitsValue.textContent = String(serverData.pageHits);
-      printCounterValue.textContent = String(serverData.printCounter);
+      footer.textContent = '';
       typeWrite(footer, `Client v${APP_VERSION}`, 40);
       window.setTimeout(() => {
         typeWrite(footer, ` | Server v${serverData.version}`, 40);
@@ -125,59 +121,72 @@
     .then(response => response.json())
     .then(payload => {
       appState.printers = payload.printers || [];
-      printerCountValue.textContent = String(appState.printers.length);
       renderPrinters(appState.printers);
     });
 
   // ╭──────────────────────────╮
   // │  Printer rendering       │
   // ╰──────────────────────────╯
-  const buildPrinterDescription = printer => {
-    if (printer.enableLabelBuilder) {
-      return 'Drop image files, choose them from disk, or open the built-in label canvas for quick edits and bundled Dymo output.';
-    }
-
-    return `Accepts ${prettyPrinterKinds(printer.acceptedKinds).join(', ')} uploads from the shared browser queue.`;
+  const buildPrinterSummary = printer => {
+    const acceptedKinds = prettyPrinterKinds(printer.acceptedKinds || []);
+    return acceptedKinds.length
+      ? `Accepts ${acceptedKinds.join(', ')} files.`
+      : 'No file types are configured.';
   };
 
-  const buildAcceptValue = acceptedKinds => {
-    const accepts = [];
-
-    if (acceptedKinds.includes('pdf')) accepts.push('.pdf,application/pdf');
-    if (acceptedKinds.includes('image')) accepts.push('image/png,image/jpeg,image/jpg,image/tiff,image/webp,.png,.jpg,.jpeg,.tif,.tiff,.webp');
-    if (acceptedKinds.includes('zip')) accepts.push('.zip,application/zip,application/x-zip,application/x-zip-compressed,application/octet-stream');
-
-    return accepts.join(',');
+  const buildPrinterMode = printer => {
+    if (printer.bundleImageCopies) return 'Bundled image copies';
+    if (printer.printMode) return printer.printMode;
+    return 'Default transport';
   };
 
   const renderPrinters = printers => {
     if (!printers.length) {
-      printerGrid.innerHTML = '<article class="printer-card"><p class="printer-card__copy">No printers are configured on the server.</p></article>';
+      printerGrid.innerHTML = `
+        <article class="printer-card printer-card--empty">
+          <p class="printer-card__empty-copy">No printers are configured on the server.</p>
+        </article>
+      `;
       return;
     }
 
-    printerGrid.innerHTML = printers.map(printer => `
-      <article class="printer-card" data-printer-id="${printer.id}">
-        <header class="printer-card__header">
-          <img class="printer-card__icon" src="${printer.iconUrl || '/favicon.ico'}" alt="${printer.displayName}">
-          <div>
-            <h2 class="printer-card__title">${printer.displayName}</h2>
-            <p class="printer-card__driver">${printer.driverName}</p>
-          </div>
-        </header>
-        <p class="printer-card__copy">${buildPrinterDescription(printer)}</p>
-        <ul class="printer-card__kinds">
-          ${prettyPrinterKinds(printer.acceptedKinds).map(kind => `<li class="printer-card__kind">${kind}</li>`).join('')}
-        </ul>
-        <div class="printer-card__drop" data-role="dropzone" data-printer-id="${printer.id}">
-          <p class="printer-card__drop-title">Drop files here</p>
-          <p class="printer-card__drop-copy">The server picks the right route from printer ID, file kind, and single-vs-multi upload count.</p>
+    printerGrid.innerHTML = printers.map((printer, index) => `
+      <article
+        class="printer-card"
+        data-role="printer-card"
+        data-printer-id="${printer.id}"
+        style="--card-index:${index};"
+        role="button"
+        tabindex="0"
+        aria-expanded="false"
+      >
+        <div class="printer-card__overlay" aria-hidden="true"></div>
+        <p class="printer-card__name">${escapeHtml(printer.displayName)}</p>
+        <div class="printer-card__body">
+          <img class="printer-card__icon" src="${printer.iconUrl || '/favicon.ico'}" alt="${escapeHtml(printer.displayName)}">
+          <p class="printer-card__hint">Drop files anywhere on this card</p>
         </div>
-        <div class="printer-card__actions">
-          <button class="printer-card__button printer-card__button--primary" type="button" data-role="browse" data-printer-id="${printer.id}">Choose Files</button>
-          ${printer.enableLabelBuilder ? `<button class="printer-card__button printer-card__button--secondary" type="button" data-role="label-builder" data-printer-id="${printer.id}">Open Label Builder</button>` : ''}
+        <div class="printer-card__details">
+          <p class="printer-card__summary">${escapeHtml(buildPrinterSummary(printer))}</p>
+          <dl class="printer-card__meta">
+            <div class="printer-card__meta-row">
+              <dt>Name</dt>
+              <dd>${escapeHtml(printer.displayName)}</dd>
+            </div>
+            <div class="printer-card__meta-row">
+              <dt>Driver</dt>
+              <dd>${escapeHtml(printer.driverName || 'Not reported')}</dd>
+            </div>
+            <div class="printer-card__meta-row">
+              <dt>Mode</dt>
+              <dd>${escapeHtml(buildPrinterMode(printer))}</dd>
+            </div>
+            <div class="printer-card__meta-row">
+              <dt>Files</dt>
+              <dd>${escapeHtml(prettyPrinterKinds(printer.acceptedKinds || []).join(', ') || 'None')}</dd>
+            </div>
+          </dl>
         </div>
-        <input class="printer-card__input" data-role="input" data-printer-id="${printer.id}" type="file" multiple accept="${buildAcceptValue(printer.acceptedKinds)}">
       </article>
     `).join('');
   };
@@ -207,7 +216,7 @@
     Array.from(files).forEach(file => {
       const fileKind = detectFileKind(file);
 
-      if (!fileKind || !printer.acceptedKinds.includes(fileKind)) {
+      if (!fileKind || !(printer.acceptedKinds || []).includes(fileKind)) {
         unsupportedFiles.push(file.name);
         return;
       }
@@ -224,7 +233,7 @@
     );
   };
 
-  const uploadGroupedFiles = async (printer, groupedFiles, extraFields = {}) => {
+  const uploadGroupedFiles = async (printer, groupedFiles) => {
     const groupEntries = Object.entries(groupedFiles);
 
     if (!groupEntries.length) {
@@ -241,12 +250,6 @@
         formData.append(PRINTIFY_FILE_KINDS[fileKind].fieldName, file, file.name);
       });
 
-      Object.entries(extraFields).forEach(([fieldName, fieldValue]) => {
-        if (fieldValue !== null && fieldValue !== undefined && fieldValue !== '') {
-          formData.append(fieldName, fieldValue);
-        }
-      });
-
       const response = await fetch(routePath, {
         method: 'POST',
         body: formData,
@@ -258,158 +261,101 @@
     }
   };
 
-  const handlePrinterFiles = async (printerId, files, extraFields = {}) => {
+  const handlePrinterFiles = async (printerId, files) => {
     const printer = getPrinterById(printerId);
 
     if (!printer) throw new Error(`Unknown printer: ${printerId}`);
 
     const groupedFiles = groupFilesByKind(printer, files);
-    await uploadGroupedFiles(printer, groupedFiles, extraFields);
+    await uploadGroupedFiles(printer, groupedFiles);
     showConfirm(`${printer.displayName} job sent`);
-  };
-
-  // ╭──────────────────────────╮
-  // │  Label builder           │
-  // ╰──────────────────────────╯
-  const ensureLabelCanvas = () => {
-    if (appState.labelCanvas || !window.fabric) return;
-
-    appState.labelCanvas = new window.fabric.Canvas('labelCanvas');
-    const textBox = new window.fabric.Textbox('Click to Edit Text', {
-      top: 80,
-      left: 50,
-      width: 300,
-      fontSize: 40,
-      fontFamily: 'Arial',
-      editable: true,
-      fill: 'black',
-      backgroundColor: 'white',
-      borderColor: 'gray',
-      cornerColor: 'blue',
-      cornerSize: 6,
-      transparentCorners: false,
-    });
-
-    appState.labelCanvas.add(textBox);
-    appState.labelCanvas.setActiveObject(textBox);
-  };
-
-  const openLabelBuilder = printerId => {
-    const printer = getPrinterById(printerId);
-
-    if (!printer || !printer.enableLabelBuilder) return;
-
-    ensureLabelCanvas();
-    if (!appState.labelCanvas) {
-      showFeedback('Label builder assets are unavailable in this browser.');
-      return;
-    }
-
-    appState.labelPrinterId = printerId;
-    builderTitle.textContent = printer.displayName;
-    builder.classList.add('is-open');
-  };
-
-  const closeLabelBuilder = () => {
-    builder.classList.remove('is-open');
-  };
-
-  const printBuilderLabel = () => {
-    if (!appState.labelCanvas || !appState.labelPrinterId) return;
-
-    appState.labelCanvas.discardActiveObject();
-    appState.labelCanvas.requestRenderAll();
-
-    window.setTimeout(() => {
-      appState.labelCanvas.getElement().toBlob(async blob => {
-        try {
-          if (!blob) throw new Error('Could not render the label canvas.');
-          const labelFile = new File([blob], 'label.png', { type: 'image/png' });
-          await handlePrinterFiles(appState.labelPrinterId, [labelFile], {
-            printCount: builderCopies.value,
-          });
-          closeLabelBuilder();
-        } catch (error) {
-          showFeedback(error.message);
-        }
-      });
-    }, 80);
   };
 
   // ╭──────────────────────────╮
   // │  UI events               │
   // ╰──────────────────────────╯
+  const setCardHighlight = (card, isHighlighted) => {
+    if (!card) return;
+    card.classList.toggle('is-highlighted', isHighlighted);
+  };
+
+  const resetCardDragState = card => {
+    if (!card) return;
+    dragDepth.delete(card);
+    setCardHighlight(card, false);
+  };
+
+  const toggleCardDetails = card => {
+    const nextOpenState = !card.classList.contains('is-open');
+    card.classList.toggle('is-open', nextOpenState);
+    card.setAttribute('aria-expanded', String(nextOpenState));
+  };
+
   const bindPrinterEvents = () => {
     printerGrid.addEventListener('click', event => {
-      const browseButton = event.target.closest('[data-role="browse"]');
-      const builderButton = event.target.closest('[data-role="label-builder"]');
+      const card = event.target.closest('[data-role="printer-card"]');
+      if (!card) return;
+      toggleCardDetails(card);
+    });
 
-      if (browseButton) {
-        const input = printerGrid.querySelector(`[data-role="input"][data-printer-id="${browseButton.getAttribute('data-printer-id')}"]`);
-        if (input) input.click();
-      }
+    printerGrid.addEventListener('keydown', event => {
+      const card = event.target.closest('[data-role="printer-card"]');
+      if (!card) return;
 
-      if (builderButton) {
-        openLabelBuilder(builderButton.getAttribute('data-printer-id'));
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        toggleCardDetails(card);
       }
     });
 
-    printerGrid.addEventListener('change', async event => {
-      const input = event.target.closest('[data-role="input"]');
+    printerGrid.addEventListener('dragenter', event => {
+      const card = event.target.closest('[data-role="printer-card"]');
+      if (!card) return;
 
-      if (!input || !input.files || !input.files.length) return;
-
-      try {
-        await handlePrinterFiles(input.getAttribute('data-printer-id'), Array.from(input.files));
-      } catch (error) {
-        showFeedback(error.message);
-      } finally {
-        input.value = '';
-      }
+      event.preventDefault();
+      const nextDepth = (dragDepth.get(card) || 0) + 1;
+      dragDepth.set(card, nextDepth);
+      setCardHighlight(card, true);
     });
 
     printerGrid.addEventListener('dragover', event => {
-      const dropzone = event.target.closest('[data-role="dropzone"]');
-
-      if (!dropzone) return;
+      const card = event.target.closest('[data-role="printer-card"]');
+      if (!card) return;
 
       event.preventDefault();
-      dropzone.classList.add('is-highlighted');
+      if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+      setCardHighlight(card, true);
     });
 
     printerGrid.addEventListener('dragleave', event => {
-      const dropzone = event.target.closest('[data-role="dropzone"]');
+      const card = event.target.closest('[data-role="printer-card"]');
+      if (!card) return;
 
-      if (!dropzone) return;
-      dropzone.classList.remove('is-highlighted');
+      const nextDepth = Math.max((dragDepth.get(card) || 1) - 1, 0);
+
+      if (nextDepth === 0) {
+        resetCardDragState(card);
+        return;
+      }
+
+      dragDepth.set(card, nextDepth);
     });
 
     printerGrid.addEventListener('drop', async event => {
-      const dropzone = event.target.closest('[data-role="dropzone"]');
-
-      if (!dropzone) return;
+      const card = event.target.closest('[data-role="printer-card"]');
+      if (!card) return;
 
       event.preventDefault();
-      dropzone.classList.remove('is-highlighted');
+      resetCardDragState(card);
 
       try {
-        await handlePrinterFiles(dropzone.getAttribute('data-printer-id'), Array.from(event.dataTransfer.files || []));
+        await handlePrinterFiles(
+          card.getAttribute('data-printer-id'),
+          Array.from(event.dataTransfer?.files || [])
+        );
       } catch (error) {
         showFeedback(error.message);
       }
-    });
-  };
-
-  const bindBuilderEvents = () => {
-    builderClose.addEventListener('click', closeLabelBuilder);
-    builderCancel.addEventListener('click', closeLabelBuilder);
-    builderPrint.addEventListener('click', printBuilderLabel);
-    builder.addEventListener('click', event => {
-      if (event.target === builder) closeLabelBuilder();
-    });
-
-    document.addEventListener('keydown', event => {
-      if (event.key === 'Escape' && builder.classList.contains('is-open')) closeLabelBuilder();
     });
   };
 
@@ -426,14 +372,14 @@
     if (!window.clippy) return;
 
     window.clippy.load('Clippy', agent => {
-      appState.labelAgent = agent;
+      appState.clippyAgent = agent;
       agent.show();
 
       window.setTimeout(() => {
         const sayings = [
           `We've printed over ${appState.printCounter} files.`,
           `This page has had ${appState.pageHits} visits.`,
-          `Use the log drawer in the top left to inspect recent jobs.`,
+          `Use the Recent Logs button to inspect recent jobs.`,
         ];
 
         agent.speak(sayings[Math.floor(Math.random() * sayings.length)]);
@@ -446,7 +392,6 @@
   // ╰──────────────────────────╯
   const boot = async () => {
     bindPrinterEvents();
-    bindBuilderEvents();
     bootLogDrawer();
 
     try {

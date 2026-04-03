@@ -2,7 +2,7 @@
   // ╭──────────────────────────╮
   // │  Shared constants        │
   // ╰──────────────────────────╯
-  const APP_VERSION = '2.1.0';
+  const APP_VERSION = '2.1.1';
   const PRINTIFY_LOG_ROUTE = '#printifyLogDrawer';
   const PRINTIFY_FILE_KINDS = {
     pdf: {

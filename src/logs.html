@@ -400,13 +400,9 @@
         function createPrintifyLogDrawer(rootSelector, options) {
           const settings = $.extend({
             recentLogsUrl: '/logs/recent',
+            printersUrl: '/printers',
             websocketPath: '/ws/logs',
             reconnectDelayMs: 2500,
-            printerIcons: {
-              zebra: 'zebra.png',
-              brotherLaser: 'brother.png',
-              dymoLabel: 'dymo4xl.png',
-            },
           }, options || {});
 
           const root = $(rootSelector);
@@ -424,6 +420,7 @@
           let logSocket = null;
           let reconnectTimer = null;
           let currentJobs = [];
+          let printerIconsById = {};
           let previousJobKeys = new Set();
           const expandedJobKeys = new Set();
           const highlightedJobKeys = new Map();
@@ -548,7 +545,7 @@
 
               const isNew = highlightedJobKeys.has(jobKey);
               const isOpen = expandedJobKeys.has(jobKey);
-              const iconPath = settings.printerIcons[job.printerId] || 'favicon.ico';
+              const iconPath = job.iconUrl || printerIconsById[job.printerId] || '/favicon.ico';
               const printerLabel = escapeHtml(job.printerName || job.printerId || 'Unknown printer');
               const filename = escapeHtml(job.originalFilename || 'Unnamed file');
               const checksumMarkup = formatChecksumMarkup(job.chksum);
@@ -580,6 +577,19 @@
 
             list.html(html);
             previousJobKeys = nextJobKeys;
+          }
+
+          function loadPrinters() {
+            return fetch(settings.printersUrl)
+              .then(response => response.json())
+              .then(payload => {
+                printerIconsById = Object.fromEntries(
+                  (payload.printers || []).map(printer => [printer.id, printer.iconUrl || '/favicon.ico'])
+                );
+              })
+              .catch(() => {
+                printerIconsById = {};
+              });
           }
 
           function loadRecentLogs() {
@@ -645,7 +655,9 @@
             setOpenState(shouldOpen);
 
             if (shouldOpen) {
-              loadRecentLogs();
+              loadPrinters().finally(() => {
+                loadRecentLogs();
+              });
             }
           });
 

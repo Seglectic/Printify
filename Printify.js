@@ -24,6 +24,7 @@ try {
 const {
   rootDir,
   staticDir,
+  iconsDir,
   serverDataPath,
   version,
   port,
@@ -98,6 +99,7 @@ logStamp(`Printify.js v${version}`);
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use(express.static(staticDir));
+app.use('/icons', express.static(iconsDir));
 
 // Mount all app routes with the shared services they depend on.
 registerRoutes({

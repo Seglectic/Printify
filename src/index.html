@@ -105,12 +105,12 @@
 
     <!-- Zebra Labelmaker DropZone -->
     <div class="drop-zone" id="zebraZone">
-      <img src="zebra.png"></img>
+      <img data-printer-id="zebra" src="/favicon.ico"></img>
       <!-- <p>Drag and drop a PDF file<br> to the Zebra label maker</p> -->
     </div>
 
     <div class="drop-zone" id="brotherZone">
-      <img src="brother.png"></img>
+      <img data-printer-id="brotherLaser" src="/favicon.ico"></img>
       <!-- <p>Drag and drop a PDF file<br> to the Brother laser printer</p> -->
     </div>
 
@@ -211,6 +211,23 @@
 
       // footer.append(`Client  v${Version}`)
       typeWrite(footer, `Client  v${Version}`, 50);
+
+      // Resolve printer icons from config-linked filenames in /src/icons.
+      fetch('/printers')
+        .then(response => response.json())
+        .then(payload => {
+          (payload.printers || []).forEach(printer => {
+            const printerIcon = document.querySelector(`[data-printer-id="${printer.id}"]`);
+
+            if (printerIcon && printer.iconUrl) {
+              printerIcon.src = printer.iconUrl;
+              printerIcon.alt = printer.driverName || printer.id;
+            }
+          });
+        })
+        .catch(error => {
+          console.error('Could not load printer icons:', error);
+        });
 
       //Corner info thing
       function cornerDisplay() {

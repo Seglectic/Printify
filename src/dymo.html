@@ -121,7 +121,7 @@
 
     <!-- Zebra Labelmaker DropZone -->
     <div class="drop-zone" id="dymoZone">
-      <img src="dymo4xl.png"></img>
+      <img data-printer-id="dymoLabel" src="/favicon.ico"></img>
       <!-- <p>Drag and drop a PDF file<br> to the Zebra label maker</p> -->
     </div>
     
@@ -189,6 +189,23 @@
       // footer.append(`Client  v${Version}`)
       typeWrite(footer, `Client  v${Version}`, 50);
 
+      // Resolve printer icons from config-linked filenames in /src/icons.
+      fetch('/printers')
+      .then((response) => response.json())
+      .then((payload) => {
+        (payload.printers || []).forEach((printer) => {
+          const printerIcon = document.querySelector(`[data-printer-id="${printer.id}"]`);
+
+          if (printerIcon && printer.iconUrl) {
+            printerIcon.src = printer.iconUrl;
+            printerIcon.alt = printer.driverName || printer.id;
+          }
+        });
+      })
+      .catch((error) => {
+        console.error('Could not load printer icons:', error);
+      });
+      
       //Corner info thing
       $(document).ready(function() {
         var cornerInfo = $('#cornerInfo');

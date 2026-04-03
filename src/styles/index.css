@@ -283,16 +283,38 @@ img {
   cursor: pointer;
   font-weight: 700;
   letter-spacing: 0.03em;
+  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+}
+
+.printer-card__button:hover,
+.printer-card__button:focus-visible {
+  transform: translateY(-1px);
+}
+
+.printer-card__button:active {
+  transform: translateY(0) scale(0.97);
 }
 
 .printer-card__button--primary {
   background: #1f6f43;
   color: #f7fbf8;
+  box-shadow: 0 12px 24px rgba(31, 111, 67, 0.18);
+}
+
+.printer-card__button--primary:hover,
+.printer-card__button--primary:focus-visible {
+  background: #25814e;
+  box-shadow: 0 16px 28px rgba(31, 111, 67, 0.22);
 }
 
 .printer-card__button--secondary {
   background: var(--printify-button-secondary);
   color: var(--printify-ink);
+}
+
+.printer-card__button--secondary:hover,
+.printer-card__button--secondary:focus-visible {
+  background: var(--printify-toggle-hover);
 }
 
 .printer-card__file-input {
@@ -416,12 +438,24 @@ img {
   padding-bottom: 8px;
 }
 
-.printify-builder__canvas {
-  display: block;
+.printify-builder__canvas-shell.is-drop-target .canvas-container {
+  border-color: rgba(100, 212, 123, 0.55);
+  box-shadow: 0 0 0 4px rgba(100, 212, 123, 0.12), inset 0 0 0 1px rgba(24, 33, 43, 0.04);
+}
+
+.printify-builder__canvas-shell .canvas-container {
   margin: 0 auto;
-  background: #ffffff;
   border: 2px solid var(--printify-line);
   box-shadow: inset 0 0 0 1px rgba(24, 33, 43, 0.04);
+}
+
+.printify-builder__canvas.lower-canvas {
+  display: block;
+  background: #ffffff;
+}
+
+.printify-builder__canvas.upper-canvas {
+  background: transparent;
 }
 
 .printify-builder__footer {
@@ -440,6 +474,10 @@ img {
   gap: 12px;
 }
 
+.printify-builder__controls--tools {
+  justify-content: flex-start;
+}
+
 .printify-builder__field {
   display: flex;
   align-items: center;
@@ -451,13 +489,33 @@ img {
   text-transform: uppercase;
 }
 
-.printify-builder__field input {
+.printify-builder__field--wide {
+  flex: 1 1 280px;
+}
+
+.printify-builder__field input,
+.printify-builder__field select {
   width: 72px;
   padding: 10px 12px;
   border-radius: 14px;
   border: 1px solid var(--printify-line);
   background: color-mix(in srgb, var(--printify-card) 86%, transparent);
   color: var(--printify-ink);
+}
+
+.printify-builder__field--wide input {
+  width: min(420px, 100%);
+}
+
+.printify-builder__segmented {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.printify-builder__segmented .printer-card__button.is-active {
+  background: #1f6f43;
+  color: #f7fbf8;
 }
 
 .label-builder-lab {
@@ -516,6 +574,50 @@ img {
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+}
+
+.label-builder-lab__preview {
+  margin-top: 26px;
+  padding-top: 22px;
+  border-top: 1px solid var(--printify-line);
+}
+
+.label-builder-lab__preview-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.label-builder-lab__preview-eyebrow {
+  margin: 0;
+  color: var(--printify-muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.label-builder-lab__preview-meta {
+  color: var(--printify-muted);
+  font-size: 13px;
+}
+
+.label-builder-lab__preview-shell {
+  margin-top: 14px;
+  padding: 18px;
+  border: 1px solid var(--printify-line);
+  border-radius: 22px;
+  background: var(--printify-builder-shell);
+  overflow: auto;
+}
+
+.label-builder-lab__preview-shell img {
+  display: block;
+  max-width: 100%;
+  margin: 0 auto;
+  background: #ffffff;
 }
 
 .label-builder-lab__field select {

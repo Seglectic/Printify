@@ -6,6 +6,7 @@
     width: 425,
     height: 200,
   };
+  const DEFAULT_TEXT_PLACEHOLDER = 'Click to Edit Text';
 
   const parsePxSize = pxSize => {
     const match = String(pxSize || '').match(/^(\d+)x(\d+)$/i);
@@ -29,9 +30,19 @@
       resetSelector: '#labelBuilderReset',
       printSelector: '#labelBuilderPrint',
       copiesSelector: '#labelBuilderCopies',
+      fontSelector: '#labelBuilderFont',
+      fontSizeSelector: '#labelBuilderFontSize',
+      imageInputSelector: '#labelBuilderImageInput',
+      addImageSelector: '#labelBuilderAddImage',
+      canvasShellSelector: '.printify-builder__canvas-shell',
+      addTextSelector: '#labelBuilderAddText',
+      alignLeftSelector: '#labelBuilderAlignLeft',
+      alignCenterSelector: '#labelBuilderAlignCenter',
+      alignRightSelector: '#labelBuilderAlignRight',
       canvasId: 'labelCanvas',
       onPrint: async () => {},
       onError: () => {},
+      closeOnPrint: true,
     }, options || {});
 
     const root = document.querySelector(settings.rootSelector);
@@ -43,12 +54,23 @@
     const resetButton = document.querySelector(settings.resetSelector);
     const printButton = document.querySelector(settings.printSelector);
     const copiesInput = document.querySelector(settings.copiesSelector);
+    const fontSelect = document.querySelector(settings.fontSelector);
+    const fontSizeInput = document.querySelector(settings.fontSizeSelector);
+    const imageInput = document.querySelector(settings.imageInputSelector);
+    const addImageButton = document.querySelector(settings.addImageSelector);
+    const canvasShell = document.querySelector(settings.canvasShellSelector);
+    const addTextButton = document.querySelector(settings.addTextSelector);
+    const alignLeftButton = document.querySelector(settings.alignLeftSelector);
+    const alignCenterButton = document.querySelector(settings.alignCenterSelector);
+    const alignRightButton = document.querySelector(settings.alignRightSelector);
 
     if (!root || !window.fabric) return null;
 
     let currentPrinter = null;
     let canvas = null;
     let defaultTextbox = null;
+    let isSyncingFontInput = false;
+    let isSyncingFontSizeInput = false;
 
     const ensureCanvas = () => {
       if (canvas) return canvas;
@@ -56,28 +78,239 @@
       canvas = new window.fabric.Canvas(settings.canvasId, {
         preserveObjectStacking: true,
         backgroundColor: '#ffffff',
+        uniformScaling: true,
+        uniScaleKey: null,
       });
 
       return canvas;
     };
 
-    const buildDefaultTextbox = (canvasWidth, canvasHeight) => new window.fabric.Textbox('Click to Edit Text', {
-      left: Math.round(canvasWidth * 0.12),
-      top: Math.round(canvasHeight * 0.38),
-      width: Math.round(canvasWidth * 0.76),
-      fontSize: Math.max(24, Math.round(canvasHeight * 0.16)),
+    const syncFontInput = textObject => {
+      if (!fontSelect) return;
+
+      isSyncingFontInput = true;
+      fontSelect.value = textObject?.fontFamily || 'Arial';
+      fontSelect.disabled = !textObject;
+      isSyncingFontInput = false;
+    };
+
+    const syncFontSizeInput = textObject => {
+      if (!fontSizeInput) return;
+
+      isSyncingFontSizeInput = true;
+      fontSizeInput.value = textObject?.fontSize ? String(Math.round(textObject.fontSize)) : '';
+      fontSizeInput.disabled = !textObject;
+      isSyncingFontSizeInput = false;
+    };
+
+    const syncAlignmentButtons = textObject => {
+      const buttons = [
+        [alignLeftButton, 'left'],
+        [alignCenterButton, 'center'],
+        [alignRightButton, 'right'],
+      ];
+
+      buttons.forEach(([button, value]) => {
+        if (!button) return;
+        button.disabled = !textObject;
+        button.classList.toggle('is-active', textObject?.textAlign === value);
+      });
+    };
+
+    const syncTextControls = textObject => {
+      syncFontInput(textObject);
+      syncFontSizeInput(textObject);
+      syncAlignmentButtons(textObject);
+    };
+
+    const getEditableTextObject = () => {
+      const activeObject = ensureCanvas().getActiveObject();
+      return activeObject instanceof window.fabric.Textbox ? activeObject : null;
+    };
+
+    const attachTextboxFrameBehavior = textbox => {
+      const baseCalcTextHeight = textbox.calcTextHeight.bind(textbox);
+
+      textbox.isPlaceholderText = textbox.text === DEFAULT_TEXT_PLACEHOLDER;
+      textbox.frameHeight = Math.max(textbox.frameHeight || 0, textbox.height || 0);
+      textbox.calcTextHeight = function () {
+        return Math.max(baseCalcTextHeight(), this.frameHeight || 0);
+      };
+      textbox.initDimensions();
+      textbox.setCoords();
+
+      return textbox;
+    };
+
+    const buildTextbox = (canvasWidth, canvasHeight, overrides = {}) => attachTextboxFrameBehavior(new window.fabric.Textbox(overrides.text || DEFAULT_TEXT_PLACEHOLDER, {
+      left: Math.round(canvasWidth * 0.08),
+      top: Math.round(canvasHeight * 0.28),
+      width: Math.round(canvasWidth * 0.84),
+      fontSize: Math.max(28, Math.round(canvasHeight * 0.2)),
       fontFamily: 'Arial',
+      fontWeight: '700',
       fill: '#111111',
-      backgroundColor: '#eef4ef',
       textAlign: 'center',
       editable: true,
+      cursorColor: '#1f6f43',
+      cursorWidth: 2,
+      selectionColor: 'rgba(31, 111, 67, 0.2)',
       transparentCorners: false,
       cornerStyle: 'circle',
       cornerColor: '#1f6f43',
       borderColor: '#1f6f43',
       borderScaleFactor: 2,
-      padding: 8,
+      padding: 10,
+      frameHeight: Math.max(56, Math.round(canvasHeight * 0.28)),
+      ...overrides,
+    }));
+
+    const focusTextbox = textObject => {
+      const builderCanvas = ensureCanvas();
+      builderCanvas.setActiveObject(textObject);
+      syncTextControls(textObject);
+      builderCanvas.requestRenderAll();
+    };
+
+    const focusObject = object => {
+      const builderCanvas = ensureCanvas();
+      builderCanvas.setActiveObject(object);
+      syncTextControls(object instanceof window.fabric.Textbox ? object : null);
+      builderCanvas.requestRenderAll();
+    };
+
+    const beginTextboxEditing = textObject => {
+      if (!(textObject instanceof window.fabric.Textbox)) return;
+
+      if (textObject.isPlaceholderText) {
+        textObject.set('text', '');
+        textObject.isPlaceholderText = false;
+        textObject.initDimensions();
+      }
+
+      textObject.enterEditing();
+      textObject.selectAll();
+      syncTextControls(textObject);
+      ensureCanvas().requestRenderAll();
+    };
+
+    const addTextbox = () => {
+      const builderCanvas = ensureCanvas();
+      const textboxCount = builderCanvas.getObjects().filter(object => object instanceof window.fabric.Textbox).length;
+      const fontSize = Math.max(24, Math.round(builderCanvas.getHeight() * 0.18));
+      const topStep = Math.max(34, Math.round(fontSize * 1.35));
+      const textbox = buildTextbox(builderCanvas.getWidth(), builderCanvas.getHeight(), {
+        text: `Text Box ${textboxCount + 1}`,
+        top: Math.round(builderCanvas.getHeight() * 0.14) + (textboxCount * topStep),
+        fontSize,
+      });
+
+      builderCanvas.add(textbox);
+      focusTextbox(textbox);
+      beginTextboxEditing(textbox);
+    };
+
+    const updateSelectedTextbox = updates => {
+      const textObject = getEditableTextObject();
+      if (!textObject) return;
+
+      textObject.set(updates);
+      textObject.isPlaceholderText = false;
+      textObject.frameHeight = Math.max(textObject.frameHeight || 0, 32);
+      textObject.initDimensions();
+      textObject.setCoords();
+      syncTextControls(textObject);
+      ensureCanvas().requestRenderAll();
+    };
+
+    const readFileAsDataUrl = file => new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(reader.error || new Error('Could not read the image file.'));
+      reader.readAsDataURL(file);
     });
+
+    const loadImageElement = source => new Promise((resolve, reject) => {
+      const element = new Image();
+      element.onload = () => resolve(element);
+      element.onerror = () => reject(new Error('Could not decode the image file.'));
+      element.src = source;
+    });
+
+    const fitObjectToCanvas = object => {
+      const builderCanvas = ensureCanvas();
+      const availableWidth = builderCanvas.getWidth() * 0.72;
+      const availableHeight = builderCanvas.getHeight() * 0.72;
+      const width = object.width || 1;
+      const height = object.height || 1;
+      const scale = Math.min(availableWidth / width, availableHeight / height, 1);
+
+      object.set({
+        left: Math.round((builderCanvas.getWidth() - (width * scale)) / 2),
+        top: Math.round((builderCanvas.getHeight() - (height * scale)) / 2),
+        scaleX: scale,
+        scaleY: scale,
+      });
+      object.setCoords();
+    };
+
+    const addImageFromFile = async file => {
+      if (!file) return;
+      if (!file.type.startsWith('image/')) {
+        settings.onError(new Error('Please choose an image file.'));
+        return;
+      }
+
+      try {
+        const dataUrl = await readFileAsDataUrl(file);
+        const imageElement = await loadImageElement(dataUrl);
+        const FabricImageCtor = window.fabric.FabricImage || window.fabric.Image;
+        const image = new FabricImageCtor(imageElement);
+        image.set({
+          cornerStyle: 'circle',
+          cornerColor: '#1f6f43',
+          borderColor: '#1f6f43',
+          borderScaleFactor: 2,
+          transparentCorners: false,
+        });
+        fitObjectToCanvas(image);
+        ensureCanvas().add(image);
+        focusObject(image);
+      } catch (error) {
+        settings.onError(new Error('Could not load that image into the label builder.'));
+      }
+    };
+
+    const bakeTextboxScale = event => {
+      const textObject = event?.target;
+
+      if (!(textObject instanceof window.fabric.Textbox)) return;
+
+      if (event.e?.shiftKey) {
+        const nextFontSize = Math.max(8, Math.round(textObject.fontSize * Math.max(textObject.scaleX, textObject.scaleY)));
+
+        textObject.set({
+          fontSize: nextFontSize,
+          scaleX: 1,
+          scaleY: 1,
+        });
+      } else {
+        const nextWidth = Math.max(56, Math.round(textObject.width * textObject.scaleX));
+        const nextHeight = Math.max(32, Math.round((textObject.frameHeight || textObject.height) * textObject.scaleY));
+
+        textObject.set({
+          width: nextWidth,
+          frameHeight: nextHeight,
+          scaleX: 1,
+          scaleY: 1,
+        });
+      }
+
+      textObject.initDimensions();
+      textObject.setCoords();
+      syncTextControls(textObject);
+      ensureCanvas().requestRenderAll();
+    };
 
     const resetCanvas = printer => {
       const builderCanvas = ensureCanvas();
@@ -87,11 +320,9 @@
       builderCanvas.setDimensions({ width, height });
       builderCanvas.backgroundColor = '#ffffff';
 
-      defaultTextbox = buildDefaultTextbox(width, height);
+      defaultTextbox = buildTextbox(width, height);
       builderCanvas.add(defaultTextbox);
-      builderCanvas.setActiveObject(defaultTextbox);
-      defaultTextbox.enterEditing();
-      defaultTextbox.selectAll();
+      focusTextbox(defaultTextbox);
       builderCanvas.requestRenderAll();
 
       if (size) size.textContent = `${width} x ${height} px`;
@@ -117,12 +348,19 @@
       if (!currentPrinter) return;
 
       const builderCanvas = ensureCanvas();
+      builderCanvas.getObjects().forEach(object => {
+        if (typeof object.exitEditing === 'function') object.exitEditing();
+        object.set({
+          hasBorders: false,
+          hasControls: false,
+        });
+      });
       builderCanvas.discardActiveObject();
-      builderCanvas.requestRenderAll();
+      builderCanvas.renderAll();
 
       const copies = Math.max(1, Number.parseInt(copiesInput?.value || '1', 10) || 1);
 
-      builderCanvas.getElement().toBlob(async blob => {
+      builderCanvas.lowerCanvasEl.toBlob(async blob => {
         try {
           if (!blob) throw new Error('Could not render the label canvas.');
 
@@ -130,12 +368,104 @@
           await settings.onPrint(currentPrinter, [labelFile], {
             printCount: copies,
           });
-          close();
+          if (settings.closeOnPrint) close();
         } catch (error) {
           settings.onError(error);
         }
       });
     };
+
+    const bindCanvasEvents = () => {
+      const builderCanvas = ensureCanvas();
+
+      builderCanvas.on('selection:created', event => {
+        syncTextControls(event.selected?.[0] instanceof window.fabric.Textbox ? event.selected[0] : null);
+      });
+
+      builderCanvas.on('selection:updated', event => {
+        syncTextControls(event.selected?.[0] instanceof window.fabric.Textbox ? event.selected[0] : null);
+      });
+
+      builderCanvas.on('selection:cleared', () => {
+        syncTextControls(null);
+      });
+
+      builderCanvas.on('text:changed', event => {
+        if (event.target instanceof window.fabric.Textbox) {
+          event.target.isPlaceholderText = false;
+        }
+        syncTextControls(event.target || null);
+      });
+
+      builderCanvas.on('mouse:down', event => {
+        if (!(event.target instanceof window.fabric.Textbox)) return;
+        if (!event.target.isPlaceholderText) return;
+        builderCanvas.setActiveObject(event.target);
+        beginTextboxEditing(event.target);
+      });
+
+      builderCanvas.on('object:scaling', bakeTextboxScale);
+
+      builderCanvas.on('mouse:dblclick', event => {
+        if (!(event.target instanceof window.fabric.Textbox)) return;
+        builderCanvas.setActiveObject(event.target);
+        beginTextboxEditing(event.target);
+      });
+    };
+
+    bindCanvasEvents();
+
+    fontSelect?.addEventListener('change', () => {
+      if (isSyncingFontInput) return;
+      updateSelectedTextbox({
+        fontFamily: fontSelect.value || 'Arial',
+      });
+    });
+
+    fontSizeInput?.addEventListener('input', () => {
+      if (isSyncingFontSizeInput) return;
+
+      const parsedValue = Number.parseInt(fontSizeInput.value || '', 10);
+      if (!Number.isFinite(parsedValue)) return;
+
+      updateSelectedTextbox({
+        fontSize: Math.max(8, parsedValue),
+      });
+    });
+
+    addImageButton?.addEventListener('click', () => {
+      imageInput?.click();
+    });
+    imageInput?.addEventListener('change', async () => {
+      const [file] = Array.from(imageInput.files || []);
+      await addImageFromFile(file);
+      imageInput.value = '';
+    });
+
+    addTextButton?.addEventListener('click', addTextbox);
+    alignLeftButton?.addEventListener('click', () => updateSelectedTextbox({ textAlign: 'left' }));
+    alignCenterButton?.addEventListener('click', () => updateSelectedTextbox({ textAlign: 'center' }));
+    alignRightButton?.addEventListener('click', () => updateSelectedTextbox({ textAlign: 'right' }));
+
+    canvasShell?.addEventListener('dragenter', event => {
+      event.preventDefault();
+      canvasShell.classList.add('is-drop-target');
+    });
+    canvasShell?.addEventListener('dragover', event => {
+      event.preventDefault();
+      canvasShell.classList.add('is-drop-target');
+    });
+    canvasShell?.addEventListener('dragleave', event => {
+      if (event.target === canvasShell) {
+        canvasShell.classList.remove('is-drop-target');
+      }
+    });
+    canvasShell?.addEventListener('drop', async event => {
+      event.preventDefault();
+      canvasShell.classList.remove('is-drop-target');
+      const [file] = Array.from(event.dataTransfer?.files || []);
+      await addImageFromFile(file);
+    });
 
     closeButton?.addEventListener('click', close);
     cancelButton?.addEventListener('click', close);

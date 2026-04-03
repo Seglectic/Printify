@@ -23,6 +23,16 @@
           </label>
           <button class="printer-card__button printer-card__button--primary" id="openBuilderButton" type="button">Open Builder</button>
         </div>
+
+        <div class="label-builder-lab__preview" id="labPreview" hidden>
+          <div class="label-builder-lab__preview-header">
+            <p class="label-builder-lab__preview-eyebrow">Last Render</p>
+            <span class="label-builder-lab__preview-meta" id="labPreviewMeta"></span>
+          </div>
+          <div class="label-builder-lab__preview-shell">
+            <img id="labPreviewImage" alt="Latest label render preview">
+          </div>
+        </div>
       </section>
     </main>
 
@@ -41,15 +51,42 @@
           <div class="printify-builder__canvas-shell">
             <canvas class="printify-builder__canvas" id="labelCanvas" width="425" height="200"></canvas>
           </div>
+          <input id="labelBuilderImageInput" type="file" accept="image/*" hidden>
         </div>
 
         <div class="printify-builder__footer">
           <div class="printify-builder__controls">
+            <label class="printify-builder__field" for="labelBuilderFont">
+              Font
+              <select id="labelBuilderFont">
+                <option value="Arial" selected>Arial</option>
+                <option value="Helvetica Neue">Helvetica Neue</option>
+                <option value="Verdana">Verdana</option>
+                <option value="Tahoma">Tahoma</option>
+                <option value="Trebuchet MS">Trebuchet MS</option>
+                <option value="Georgia">Georgia</option>
+                <option value="Times New Roman">Times New Roman</option>
+                <option value="Courier New">Courier New</option>
+              </select>
+            </label>
+            <label class="printify-builder__field" for="labelBuilderFontSize">
+              Size
+              <input id="labelBuilderFontSize" type="number" min="8" step="1" value="40">
+            </label>
             <label class="printify-builder__field" for="labelBuilderCopies">
               Copies
               <input id="labelBuilderCopies" type="number" min="1" value="1">
             </label>
             <span class="printify-builder__size" id="labelBuilderSize">425 x 200 px</span>
+          </div>
+          <div class="printify-builder__controls printify-builder__controls--tools">
+            <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAddImage" type="button">Add Image</button>
+            <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAddText" type="button">Add Text Box</button>
+            <div class="printify-builder__segmented" role="group" aria-label="Text alignment">
+              <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAlignLeft" type="button">Left</button>
+              <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAlignCenter" type="button">Center</button>
+              <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAlignRight" type="button">Right</button>
+            </div>
           </div>
           <div class="printify-builder__actions">
             <button class="printer-card__button printer-card__button--secondary" id="labelBuilderReset" type="button">Reset</button>
@@ -70,7 +107,11 @@
         const openButton = document.getElementById('openBuilderButton');
         const feedback = document.getElementById('feedback');
         const footer = document.getElementById('footer');
+        const preview = document.getElementById('labPreview');
+        const previewImage = document.getElementById('labPreviewImage');
+        const previewMeta = document.getElementById('labPreviewMeta');
         let printers = [];
+        let previewUrl = null;
 
         const showFeedback = message => {
           feedback.textContent = message;
@@ -82,7 +123,12 @@
 
         const builder = window.createPrintifyLabelBuilder({
           onPrint: async (printer, files, extraFields) => {
-            showFeedback(`Rendered ${files[0].name} for ${printer.displayName} at ${extraFields.printCount || 1} copy`);
+            if (previewUrl) URL.revokeObjectURL(previewUrl);
+            previewUrl = URL.createObjectURL(files[0]);
+            previewImage.src = previewUrl;
+            previewMeta.textContent = `${printer.displayName} • ${printer.pxSize || 'default'} • ${extraFields.printCount || 1} copy`;
+            preview.hidden = false;
+            showFeedback(`Rendered ${files[0].name} for ${printer.displayName}`);
           },
           onError: error => showFeedback(error.message),
         });

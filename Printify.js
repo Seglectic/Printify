@@ -14,6 +14,7 @@ const {
   imPath,
   printers,
 } = require('./lib/configurator');
+const { createConverter }        = require('./lib/converter');
 const { logStamp, errorLogStamp } = require('./lib/logger');
 const { createUpload }            = require('./lib/upload');
 const { createServerSave }        = require('./lib/serverSave');
@@ -27,14 +28,19 @@ const { registerRoutes }          = require('./lib/routes');
 const app = express();                                   // Main Express app instance
 const upload = createUpload();                           // Shared Multer uploader for file endpoints
 const serverSave = createServerSave({ serverDataPath }); // Persist lightweight server stats across restarts.
+const converter = createConverter({
+  imPath,
+  logStamp,
+  errorLogStamp,
+});
 
 // Centralize print prep and dispatch so routes stay thin.
 const printingService = createPrintingService({
   testing,
-  imPath,
   serverSave,
   logStamp,
   errorLogStamp,
+  converter,
 });
 
 

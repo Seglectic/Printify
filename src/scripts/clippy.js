@@ -155,6 +155,7 @@ clippy.Agent.prototype = {
     show:function (fast) {
 
         this._hidden = false;
+        this._applyPinnedPosition();
         if (fast) {
             this._el.show();
             this.resume();
@@ -162,7 +163,7 @@ clippy.Agent.prototype = {
             return;
         }
 
-        if (this._el.css('top') === 'auto' || !this._el.css('left') === 'auto') {
+        if (!this._pinnedCorner && (this._el.css('top') === 'auto' || !this._el.css('left') === 'auto')) {
             var left = $(window).width() * 0.8;
             var top = ($(window).height() + $(document).scrollTop()) * 0.8;
             this._el.css({top:top, left:left});
@@ -362,17 +363,29 @@ clippy.Agent.prototype = {
         this._pinnedCorner = null;
     },
 
+    _getPinnedPosition:function () {
+        if (!this._pinnedCorner) return null;
+
+        var footerHeight = $('#footer').outerHeight() || 0;
+        var pinnedLeft = $(window).width() - this._el.outerWidth() - this._pinnedCorner.right;
+        var pinnedTop = $(window).height() - footerHeight - this._el.outerHeight() - this._pinnedCorner.bottom;
+
+        return {
+            left: Math.max(5, pinnedLeft),
+            top: Math.max(5, pinnedTop)
+        };
+    },
+
+    _applyPinnedPosition:function () {
+        var pinnedPosition = this._getPinnedPosition();
+        if (!pinnedPosition) return;
+        this._el.css(pinnedPosition);
+    },
+
     reposition:function () {
         if (!this._el.is(':visible')) return;
         if (this._pinnedCorner) {
-            var footerHeight = $('#footer').outerHeight() || 0;
-            var pinnedLeft = $(window).width() - this._el.outerWidth() - this._pinnedCorner.right;
-            var pinnedTop = $(window).height() - footerHeight - this._el.outerHeight() - this._pinnedCorner.bottom;
-
-            this._el.css({
-                left: Math.max(5, pinnedLeft),
-                top: Math.max(5, pinnedTop)
-            });
+            this._applyPinnedPosition();
             this._balloon.reposition();
             return;
         }
@@ -828,22 +841,22 @@ clippy.Balloon.prototype = {
     _sayWords:function (text, hold, complete) {
         this._active = true;
         this._hold = hold;
-        var words = text.split(/[^\S-]/);
-        var time = this.WORD_SPEAK_TIME;
+        var chars = text.split('');
+        var time = Math.max(18, Math.round(this.WORD_SPEAK_TIME / 10));
         var el = this._content;
         var idx = 1;
 
 
         this._addWord = $.proxy(function () {
             if (!this._active) return;
-            if (idx > words.length) {
+            if (idx > chars.length) {
                 this._active = false;
                 if (!this._hold) {
                     complete();
                     this.hide();
                 }
             } else {
-                el.text(words.slice(0, idx).join(' '));
+                el.text(chars.slice(0, idx).join(''));
                 idx++;
                 this._loop = window.setTimeout($.proxy(this._addWord, this), time);
             }

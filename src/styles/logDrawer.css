@@ -116,6 +116,157 @@
   transform: translateX(0);
 }
 
+.printify-log-drawer__preview-pane {
+  position: fixed;
+  top: 20px;
+  left: min(460px, calc(92vw + 28px));
+  z-index: 28;
+  width: min(420px, calc(100vw - 480px));
+}
+
+.printify-log-drawer__preview-card {
+  border: 1px solid var(--pld-line);
+  border-radius: 24px;
+  background: var(--pld-panel);
+  box-shadow: var(--pld-shadow);
+  padding: 18px;
+  backdrop-filter: blur(12px);
+}
+
+.printify-log-drawer__preview-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.printify-log-drawer__preview-eyebrow {
+  margin: 0 0 6px;
+  color: var(--pld-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.printify-log-drawer__preview-title {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.printify-log-drawer__preview-close,
+.printify-log-drawer__preview-button {
+  min-height: 40px;
+  border-radius: 999px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.printify-log-drawer__preview-close {
+  border: 0;
+  padding: 0 14px;
+  background: var(--pld-close);
+  color: var(--pld-ink);
+}
+
+.printify-log-drawer__preview-close:hover,
+.printify-log-drawer__preview-close:focus-visible,
+.printify-log-drawer__preview-button:hover,
+.printify-log-drawer__preview-button:focus-visible {
+  transform: translateY(-1px);
+}
+
+.printify-log-drawer__preview-close:hover,
+.printify-log-drawer__preview-close:focus-visible {
+  background: var(--pld-close-hover);
+}
+
+.printify-log-drawer__preview-close:active,
+.printify-log-drawer__preview-button:active {
+  transform: translateY(0) scale(0.97);
+}
+
+.printify-log-drawer__preview-body {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.printify-log-drawer__preview-image {
+  width: 100%;
+  max-height: min(44vh, 420px);
+  border-radius: 18px;
+  object-fit: contain;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid var(--pld-code-border);
+  padding: 10px;
+}
+
+.printify-log-drawer__preview-meta {
+  color: var(--pld-muted);
+  font-size: 12px;
+  line-height: 1.5;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.printify-log-drawer__preview-actions {
+  display: flex;
+  align-items: end;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.printify-log-drawer__preview-field {
+  min-width: 0;
+  color: var(--pld-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.printify-log-drawer__preview-input {
+  width: 82px;
+  min-height: 40px;
+  margin-top: 6px;
+  border: 1px solid var(--pld-line);
+  border-radius: 14px;
+  padding: 0 12px;
+  background: var(--pld-code-bg);
+  color: var(--pld-ink);
+  font: inherit;
+}
+
+.printify-log-drawer__preview-button {
+  border: 1px solid var(--pld-line);
+  padding: 0 14px;
+}
+
+.printify-log-drawer__preview-button--secondary {
+  background: var(--pld-button);
+  color: var(--pld-ink);
+}
+
+.printify-log-drawer__preview-button--primary {
+  background: var(--pld-close-hover);
+  color: var(--pld-ink);
+}
+
+.printify-log-drawer__preview-status {
+  min-height: 18px;
+  margin: 12px 0 0;
+  color: var(--pld-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .printify-log-drawer__header {
   padding: 28px 24px 18px;
   border-bottom: 1px solid var(--pld-line);
@@ -301,6 +452,20 @@
   padding: 4px;
 }
 
+.printify-log-drawer__preview-trigger {
+  flex-shrink: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  transition: transform 160ms ease;
+}
+
+.printify-log-drawer__preview-trigger:hover,
+.printify-log-drawer__preview-trigger:focus-visible {
+  transform: translateY(-1px) scale(1.02);
+}
+
 .printify-log-drawer__filename {
   margin: 0;
   font-size: 15px;
@@ -398,6 +563,12 @@
 }
 
 @media (max-width: 640px) {
+  .printify-log-drawer__preview-pane {
+    top: 12px;
+    left: 12px;
+    width: calc(100vw - 24px);
+  }
+
   .printify-log-drawer__toolbar {
     flex-direction: column;
     align-items: stretch;
@@ -405,6 +576,10 @@
 
   .printify-log-drawer__window-button {
     width: 100%;
+  }
+
+  .printify-log-drawer__preview-actions {
+    flex-wrap: wrap;
   }
 }
 

@@ -20,6 +20,30 @@
         <div class="printify-log-drawer__empty">Loading recent print jobs...</div>
       </div>
     </aside>
+    <div class="printify-log-drawer__preview-pane" data-role="preview-pane" hidden>
+      <div class="printify-log-drawer__preview-card">
+        <div class="printify-log-drawer__preview-header">
+          <div>
+            <p class="printify-log-drawer__preview-eyebrow">Logged Preview</p>
+            <h3 class="printify-log-drawer__preview-title" data-role="preview-title">Print Preview</h3>
+          </div>
+          <button class="printify-log-drawer__preview-close" type="button" data-role="preview-close">Close</button>
+        </div>
+        <div class="printify-log-drawer__preview-body">
+          <img class="printify-log-drawer__preview-image" data-role="preview-image" alt="">
+          <div class="printify-log-drawer__preview-meta" data-role="preview-meta"></div>
+        </div>
+        <div class="printify-log-drawer__preview-actions">
+          <label class="printify-log-drawer__preview-field" for="printifyLogDrawerCopies">
+            Copies
+            <input class="printify-log-drawer__preview-input" id="printifyLogDrawerCopies" data-role="preview-copies" type="number" min="1" max="50" value="1">
+          </label>
+          <button class="printify-log-drawer__preview-button printify-log-drawer__preview-button--secondary" type="button" data-role="preview-open">Open Image</button>
+          <button class="printify-log-drawer__preview-button printify-log-drawer__preview-button--primary" type="button" data-role="preview-print">Reprint</button>
+        </div>
+        <p class="printify-log-drawer__preview-status" data-role="preview-status"></p>
+      </div>
+    </div>
   `;
 
   // ╭──────────────────────────╮
@@ -68,6 +92,7 @@
     const settings = Object.assign({
       recentLogsUrl: '/logs/recent',
       printersUrl: '/printers',
+      reprintUrl: '/logs/reprint',
       websocketPath: '/ws/logs',
       reconnectDelayMs: 2500,
     }, options || {});
@@ -84,6 +109,15 @@
     const close = root.querySelector('[data-role="close"]');
     const subhead = root.querySelector('[data-role="subhead"]');
     const windowButton = root.querySelector('[data-role="window-button"]');
+    const previewPane = root.querySelector('[data-role="preview-pane"]');
+    const previewTitle = root.querySelector('[data-role="preview-title"]');
+    const previewImage = root.querySelector('[data-role="preview-image"]');
+    const previewMeta = root.querySelector('[data-role="preview-meta"]');
+    const previewCopies = root.querySelector('[data-role="preview-copies"]');
+    const previewStatus = root.querySelector('[data-role="preview-status"]');
+    const previewClose = root.querySelector('[data-role="preview-close"]');
+    const previewOpen = root.querySelector('[data-role="preview-open"]');
+    const previewPrint = root.querySelector('[data-role="preview-print"]');
 
     let logSocket = null;
     let reconnectTimer = null;
@@ -91,6 +125,7 @@
     let currentJobs = [];
     let currentWindowIndex = LOOKBACK_OPTIONS.indexOf(60);
     let printerIconsById = {};
+    let selectedPreviewJobKey = null;
     let previousJobKeys = new Set();
     const expandedJobKeys = new Set();
     const highlightedJobKeys = new Map();
@@ -144,6 +179,40 @@
       `).join('');
     };
 
+    const findJobByKey = jobKey => currentJobs.find(job => getJobKey(job) === jobKey) || null;
+
+    const formatPreviewMeta = job => [
+      job.displayName || job.printerName || job.printerId,
+      formatTimestamp(job.timestamp),
+      job.result || 'Unknown result',
+    ].filter(Boolean).join(' | ');
+
+    const closePreviewPane = () => {
+      selectedPreviewJobKey = null;
+      if (previewPane) previewPane.hidden = true;
+      if (previewStatus) previewStatus.textContent = '';
+    };
+
+    const syncPreviewPane = () => {
+      if (!previewPane) return;
+
+      const job = selectedPreviewJobKey ? findJobByKey(selectedPreviewJobKey) : null;
+
+      if (!job || !job.previewUrl) {
+        closePreviewPane();
+        return;
+      }
+
+      previewPane.hidden = false;
+      previewTitle.textContent = job.originalFilename || 'Print Preview';
+      previewImage.src = job.previewUrl;
+      previewImage.alt = `Preview for ${job.originalFilename || 'print job'}`;
+      previewMeta.textContent = formatPreviewMeta(job);
+      previewOpen.disabled = false;
+      previewPrint.disabled = !job.filePath || !job.printerId || !job.chksum;
+      previewStatus.textContent = previewPrint.disabled ? 'This preview can be inspected, but the original file is no longer available for reprint.' : '';
+    };
+
     const pruneHighlightedJobKeys = () => {
       const now = Date.now();
 
@@ -184,7 +253,7 @@
                 <h3 class="printify-log-drawer__filename">${escapeHtml(job.originalFilename || 'Unnamed file')}</h3>
                 <div class="printify-log-drawer__meta">${printerLabel} | ${escapeHtml(formatTimestamp(job.timestamp))}</div>
               </div>
-              ${job.previewUrl ? `<img class="printify-log-drawer__preview" src="${escapeHtml(job.previewUrl)}" alt="Preview for ${escapeHtml(job.originalFilename || 'print job')}" loading="lazy">` : ''}
+              ${job.previewUrl ? `<button class="printify-log-drawer__preview-trigger" type="button" data-role="preview-trigger"><img class="printify-log-drawer__preview" src="${escapeHtml(job.previewUrl)}" alt="Preview for ${escapeHtml(job.originalFilename || 'print job')}" loading="lazy"></button>` : ''}
             </div>
             <div class="printify-log-drawer__checksum">
               <button class="printify-log-drawer__checksum-button" type="button" data-role="checksum-select">
@@ -218,6 +287,7 @@
       .then(response => response.json())
       .then(payload => {
         renderLogs(payload.jobs || []);
+        syncPreviewPane();
       })
       .catch(() => {
         list.innerHTML = '<div class="printify-log-drawer__empty">Could not load recent log data from the server.</div>';
@@ -301,6 +371,17 @@
     });
 
     list.addEventListener('click', event => {
+      const previewTrigger = event.target.closest('[data-role="preview-trigger"]');
+
+      if (previewTrigger) {
+        event.stopPropagation();
+        const card = previewTrigger.closest('[data-role="log-card"]');
+        if (!card) return;
+        selectedPreviewJobKey = card.getAttribute('data-job-key');
+        syncPreviewPane();
+        return;
+      }
+
       const checksumButton = event.target.closest('[data-role="checksum-select"]');
 
       if (checksumButton) {
@@ -321,6 +402,75 @@
       }
 
       renderLogs(currentJobs);
+    });
+
+    previewClose?.addEventListener('click', () => {
+      closePreviewPane();
+    });
+
+    previewOpen?.addEventListener('click', () => {
+      const job = selectedPreviewJobKey ? findJobByKey(selectedPreviewJobKey) : null;
+      if (!job?.previewUrl) return;
+      window.open(job.previewUrl, '_blank', 'noopener,noreferrer');
+    });
+
+    previewPrint?.addEventListener('click', () => {
+      const job = selectedPreviewJobKey ? findJobByKey(selectedPreviewJobKey) : null;
+
+      if (!job || !job.printerId || !job.chksum || !job.timestamp) return;
+
+      const copyCount = Number.parseInt(previewCopies?.value, 10);
+      const normalizedCopyCount = Number.isFinite(copyCount)
+        ? Math.min(Math.max(copyCount, 1), 50)
+        : 1;
+
+      previewPrint.disabled = true;
+      previewStatus.textContent = normalizedCopyCount > 1
+        ? `Sending ${normalizedCopyCount} copies...`
+        : 'Sending reprint...';
+
+      fetch(settings.reprintUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          timestamp: job.timestamp,
+          printerId: job.printerId,
+          chksum: job.chksum,
+          copyCount: normalizedCopyCount,
+        }),
+      })
+        .then(async response => {
+          if (!response.ok) {
+            throw new Error(await response.text() || 'Reprint failed');
+          }
+
+          return response.json();
+        })
+        .then(payload => {
+          previewStatus.textContent = payload.copyCount > 1
+            ? `Queued ${payload.copyCount} copies.`
+            : 'Queued 1 copy.';
+          queueRecentLogReload();
+        })
+        .catch(error => {
+          previewStatus.textContent = error.message;
+        })
+        .finally(() => {
+          previewPrint.disabled = false;
+        });
+    });
+
+    document.addEventListener('click', event => {
+      if (previewPane?.hidden) return;
+
+      const clickedInsidePreview = event.target.closest('[data-role="preview-pane"]');
+      const clickedPreviewTrigger = event.target.closest('[data-role="preview-trigger"]');
+
+      if (clickedInsidePreview || clickedPreviewTrigger) return;
+
+      closePreviewPane();
     });
 
     list.addEventListener('dblclick', event => {
@@ -353,7 +503,14 @@
         return;
       }
 
-      if (event.key === 'Escape') setOpenState(false);
+      if (event.key === 'Escape') {
+        if (!previewPane?.hidden) {
+          closePreviewPane();
+          return;
+        }
+
+        setOpenState(false);
+      }
     });
 
     syncWindowUi();

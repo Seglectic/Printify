@@ -184,6 +184,7 @@
                 <h3 class="printify-log-drawer__filename">${escapeHtml(job.originalFilename || 'Unnamed file')}</h3>
                 <div class="printify-log-drawer__meta">${printerLabel} | ${escapeHtml(formatTimestamp(job.timestamp))}</div>
               </div>
+              ${job.previewUrl ? `<img class="printify-log-drawer__preview" src="${escapeHtml(job.previewUrl)}" alt="Preview for ${escapeHtml(job.originalFilename || 'print job')}" loading="lazy">` : ''}
             </div>
             <div class="printify-log-drawer__checksum">
               <button class="printify-log-drawer__checksum-button" type="button" data-role="checksum-select">

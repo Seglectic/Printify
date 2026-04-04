@@ -26,6 +26,7 @@ const {
   rootDir,
   staticDir,
   iconsDir,
+  previewCacheDir,
   serverDataPath,
   version,
   port,
@@ -34,6 +35,7 @@ const {
   printers,
 } = require('./lib/configurator');
 const { createConverter }        = require('./lib/converter');
+const { createPreviewer }        = require('./lib/previewer');
 const {
   createFileChecksum,
   createJobLogEntry,
@@ -61,6 +63,13 @@ const converter = createConverter({
   logStamp,
   errorLogStamp,
 });
+const previewer = createPreviewer({
+  imPath,
+  previewCacheDir,
+  serverSave,
+  logStamp,
+  errorLogStamp,
+});
 
 // Centralize print prep and dispatch so routes stay thin.
 const printingService = createPrintingService({
@@ -71,6 +80,7 @@ const printingService = createPrintingService({
   logStamp,
   errorLogStamp,
   converter,
+  previewer,
 });
 
 
@@ -112,6 +122,7 @@ registerRoutes({
   upload,
   printers,
   printingService,
+  previewer,
   serverSave,
   version,
   errorLogStamp,

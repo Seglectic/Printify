@@ -31,6 +31,8 @@ Primary responsibilities:
 - `src/styles/index.css`: index-page styling
 - `src/scripts/logDrawer.js`: Recent Logs drawer behavior
 - `src/scripts/clippy.js`: clippy mascot UI
+- `lib/previewer.js`: preview-cache generation and checksum-keyed thumbnail lookup
+- `lib/previewCache/`: generated log thumbnail cache keyed by checksum
 - `src/dymo.html`: legacy Dymo-specific browser UI, if still present
 - `serverData.json`: persisted counters for page hits and print count
 - `uploads/`: temporary uploaded and extracted files
@@ -97,6 +99,10 @@ Current server endpoints in `Printify.js` include:
 - Prefer minimal edits over broad refactors.
 - Do not remove `testing` mode unless explicitly requested.
 - Be careful with filesystem writes in `uploads/` and `serverData.json`.
+- Treat `lib/previewCache/` as generated cache output, not hand-edited source.
+- Keep preview filenames checksum-keyed and prefer direct file existence checks over scanning historical logs for dedupe.
+- Preserve `chksum` on log entries so log-drawer thumbnails can resolve through the shared checksum key.
+- Keep preview generation best-effort. Preview failures should not turn successful prints into failed jobs unless the user explicitly asks for stricter behavior.
 - Keep the index page config-driven from `/printers`; do not hardcode printer availability.
 - Do not reintroduce the removed hero/status/builder UI on the index page.
 - Preserve the footer, Recent Logs button, and clippy on the index page.
@@ -116,6 +122,7 @@ Current server endpoints in `Printify.js` include:
 3. If version numbers need to change, use a version-audit worker to identify the correct server and client bumps from the real change history before editing version files.
 4. If `AGENTS.md` is in scope, use a dedicated worker to update it.
 5. If editing print behavior, verify which printer object and endpoint are involved.
-6. Prefer verifying with `npm start` when sandbox rules allow port binding.
-7. If commits are requested, prefer routing them through a dedicated git worker and keep each commit scoped to one slice of work.
-8. Report clearly when runtime verification is blocked by the environment.
+6. If the task touches previews or log thumbnails, keep `lib/previewer.js` as the owner of ImageMagick preview generation and cache lookup instead of scattering preview logic across routes or UI code.
+7. Prefer verifying with `npm start` when sandbox rules allow port binding.
+8. If commits are requested, prefer routing them through a dedicated git worker and keep each commit scoped to one slice of work.
+9. Report clearly when runtime verification is blocked by the environment.

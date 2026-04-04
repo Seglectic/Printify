@@ -577,13 +577,13 @@
       window.setTimeout(() => agent.reposition(), 80);
 
       window.setTimeout(() => {
-        const sayings = [
-          `We've printed over ${appState.printCounter} files.`,
-          `This page has had ${appState.pageHits} visits.`,
-          `Use the Recent Logs button to inspect recent jobs.`,
-        ];
+        const line = window.PrintifyQuippy?.getRandomBootLine({
+          printCounter: appState.printCounter,
+          pageHits: appState.pageHits,
+          printers: appState.printers,
+        }) || 'I appear to be between remarks at the moment.';
 
-        agent.speak(sayings[Math.floor(Math.random() * sayings.length)]);
+        agent.speak(line);
       }, 3200);
     });
   };

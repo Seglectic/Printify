@@ -31,13 +31,17 @@
       printSelector: '#labelBuilderPrint',
       copiesSelector: '#labelBuilderCopies',
       textCardSelector: '#labelBuilderTextCard',
+      qrCardSelector: '#labelBuilderQrCard',
       fontSelector: '#labelBuilderFont',
       fontSizeSelector: '#labelBuilderFontSize',
       autoFitSelector: '#labelBuilderAutoFit',
+      qrFormatSelector: '#labelBuilderQrFormat',
+      qrTextSelector: '#labelBuilderQrText',
       imageInputSelector: '#labelBuilderImageInput',
       addImageSelector: '#labelBuilderAddImage',
       canvasShellSelector: '.printify-builder__canvas-shell',
       addTextSelector: '#labelBuilderAddText',
+      addQrSelector: '#labelBuilderAddQr',
       alignLeftSelector: '#labelBuilderAlignLeft',
       alignCenterSelector: '#labelBuilderAlignCenter',
       alignRightSelector: '#labelBuilderAlignRight',
@@ -57,13 +61,17 @@
     const printButton = document.querySelector(settings.printSelector);
     const copiesInput = document.querySelector(settings.copiesSelector);
     const textCard = document.querySelector(settings.textCardSelector);
+    const qrCard = document.querySelector(settings.qrCardSelector);
     const fontSelect = document.querySelector(settings.fontSelector);
     const fontSizeInput = document.querySelector(settings.fontSizeSelector);
     const autoFitInput = document.querySelector(settings.autoFitSelector);
+    const qrFormatSelect = document.querySelector(settings.qrFormatSelector);
+    const qrTextInput = document.querySelector(settings.qrTextSelector);
     const imageInput = document.querySelector(settings.imageInputSelector);
     const addImageButton = document.querySelector(settings.addImageSelector);
     const canvasShell = document.querySelector(settings.canvasShellSelector);
     const addTextButton = document.querySelector(settings.addTextSelector);
+    const addQrButton = document.querySelector(settings.addQrSelector);
     const alignLeftButton = document.querySelector(settings.alignLeftSelector);
     const alignCenterButton = document.querySelector(settings.alignCenterSelector);
     const alignRightButton = document.querySelector(settings.alignRightSelector);
@@ -76,6 +84,8 @@
     let isSyncingFontInput = false;
     let isSyncingFontSizeInput = false;
     let isSyncingAutoFitInput = false;
+    let isSyncingQrInput = false;
+    let qrUpdateTimer = null;
 
     const ensureCanvas = () => {
       if (canvas) return canvas;
@@ -83,12 +93,15 @@
       canvas = new window.fabric.Canvas(settings.canvasId, {
         preserveObjectStacking: true,
         backgroundColor: '#ffffff',
+        enableRetinaScaling: false,
         uniformScaling: true,
         uniScaleKey: null,
       });
 
       return canvas;
     };
+
+    const isCodeObject = object => object?.printifyObjectType === 'code';
 
     const syncFontInput = textObject => {
       if (!fontSelect) return;
@@ -131,12 +144,28 @@
       });
     };
 
-    const syncTextControls = textObject => {
+    const syncCodeInputs = codeObject => {
+      if (!qrTextInput || !qrFormatSelect) return;
+
+      isSyncingQrInput = true;
+      qrTextInput.value = codeObject?.codeText || '';
+      qrTextInput.disabled = !codeObject;
+      qrFormatSelect.value = codeObject?.codeFormat || 'qrcode';
+      qrFormatSelect.disabled = !codeObject;
+      isSyncingQrInput = false;
+    };
+
+    const syncTextControls = activeObject => {
+      const textObject = activeObject instanceof window.fabric.Textbox ? activeObject : null;
+      const codeObject = isCodeObject(activeObject) ? activeObject : null;
+
       if (textCard) textCard.hidden = !textObject;
+      if (qrCard) qrCard.hidden = !codeObject;
       syncFontInput(textObject);
       syncFontSizeInput(textObject);
       syncAutoFitInput(textObject);
       syncAlignmentButtons(textObject);
+      syncCodeInputs(codeObject);
     };
 
     const fitTextboxFontToFrame = textObject => {
@@ -195,6 +224,11 @@
       return activeObject instanceof window.fabric.Textbox ? activeObject : null;
     };
 
+    const getEditableCodeObject = () => {
+      const activeObject = ensureCanvas().getActiveObject();
+      return isCodeObject(activeObject) ? activeObject : null;
+    };
+
     const attachTextboxFrameBehavior = textbox => {
       const baseCalcTextHeight = textbox.calcTextHeight.bind(textbox);
 
@@ -247,7 +281,7 @@
     const focusObject = object => {
       const builderCanvas = ensureCanvas();
       builderCanvas.setActiveObject(object);
-      syncTextControls(object instanceof window.fabric.Textbox ? object : null);
+      syncTextControls(object || null);
       builderCanvas.requestRenderAll();
     };
 
@@ -315,6 +349,16 @@
       element.src = source;
     });
 
+    const buildCodeSourceUrl = (codeText, codeFormat) => {
+      const builderCanvas = ensureCanvas();
+      const codeSize = Math.max(256, Math.round(Math.max(builderCanvas.getWidth(), builderCanvas.getHeight())));
+      const codeUrl = new URL('/label-builder/code', window.location.origin);
+      codeUrl.searchParams.set('text', codeText);
+      codeUrl.searchParams.set('format', codeFormat || 'qrcode');
+      codeUrl.searchParams.set('size', String(codeSize));
+      return codeUrl.toString();
+    };
+
     const fitObjectToCanvas = object => {
       const builderCanvas = ensureCanvas();
       const availableWidth = builderCanvas.getWidth() * 0.72;
@@ -356,6 +400,83 @@
         focusObject(image);
       } catch (error) {
         settings.onError(new Error('Could not load that image into the label builder.'));
+      }
+    };
+
+    const buildCodeImage = async (codeText, codeFormat = 'qrcode') => {
+      const codeSourceUrl = buildCodeSourceUrl(codeText, codeFormat);
+      const imageElement = await loadImageElement(codeSourceUrl);
+      const FabricImageCtor = window.fabric.FabricImage || window.fabric.Image;
+      const codeImage = new FabricImageCtor(imageElement);
+
+      codeImage.set({
+        cornerStyle: 'circle',
+        cornerColor: '#1f6f43',
+        borderColor: '#1f6f43',
+        borderScaleFactor: 2,
+        transparentCorners: false,
+        codeText,
+        codeFormat,
+        printifyObjectType: 'code',
+      });
+
+      return codeImage;
+    };
+
+    const addQrCode = async () => {
+      const builderCanvas = ensureCanvas();
+      const codeCount = builderCanvas.getObjects().filter(isCodeObject).length;
+      const defaultCodeText = codeCount === 0 ? 'https://example.com' : `Code ${codeCount + 1}`;
+
+      try {
+        const codeImage = await buildCodeImage(defaultCodeText, 'qrcode');
+        fitObjectToCanvas(codeImage);
+        builderCanvas.add(codeImage);
+        focusObject(codeImage);
+        window.setTimeout(() => {
+          if (!qrTextInput) return;
+          qrTextInput.focus();
+          qrTextInput.select();
+        }, 0);
+      } catch (error) {
+        settings.onError(new Error('Could not generate a QR code for the label builder.'));
+      }
+    };
+
+    const updateSelectedCode = async (nextCodeText, nextCodeFormat) => {
+      const codeObject = getEditableCodeObject();
+      if (!codeObject) return;
+
+      const normalizedText = nextCodeText.trim();
+      const normalizedFormat = nextCodeFormat || codeObject.codeFormat || 'qrcode';
+      if (!normalizedText) return;
+
+      const renderedWidth = (codeObject.width || 1) * (codeObject.scaleX || 1);
+      const renderedHeight = (codeObject.height || 1) * (codeObject.scaleY || 1);
+      const lockedValues = {
+        left: codeObject.left,
+        top: codeObject.top,
+        angle: codeObject.angle || 0,
+      };
+
+      try {
+        const nextImageElement = await loadImageElement(buildCodeSourceUrl(normalizedText, normalizedFormat));
+
+        codeObject.setElement(nextImageElement);
+        codeObject.set({
+          width: nextImageElement.naturalWidth || nextImageElement.width,
+          height: nextImageElement.naturalHeight || nextImageElement.height,
+          scaleX: renderedWidth / (nextImageElement.naturalWidth || nextImageElement.width || 1),
+          scaleY: renderedHeight / (nextImageElement.naturalHeight || nextImageElement.height || 1),
+          codeText: normalizedText,
+          codeFormat: normalizedFormat,
+          ...lockedValues,
+        });
+        codeObject.setCoords();
+        syncTextControls(codeObject);
+        ensureCanvas().requestRenderAll();
+      } catch (error) {
+        settings.onError(new Error('Could not update that code object.'));
       }
     };
 
@@ -445,7 +566,38 @@
         try {
           if (!blob) throw new Error('Could not render the label canvas.');
 
-          const labelFile = new File([blob], 'label.png', { type: 'image/png' });
+          const logicalCanvas = document.createElement('canvas');
+          logicalCanvas.width = builderCanvas.getWidth();
+          logicalCanvas.height = builderCanvas.getHeight();
+          const logicalContext = logicalCanvas.getContext('2d');
+
+          if (!logicalContext) {
+            throw new Error('Could not prepare the label image.');
+          }
+
+          logicalContext.fillStyle = '#ffffff';
+          logicalContext.fillRect(0, 0, logicalCanvas.width, logicalCanvas.height);
+          logicalContext.drawImage(
+            builderCanvas.lowerCanvasEl,
+            0,
+            0,
+            builderCanvas.lowerCanvasEl.width,
+            builderCanvas.lowerCanvasEl.height,
+            0,
+            0,
+            logicalCanvas.width,
+            logicalCanvas.height
+          );
+
+          const normalizedBlob = await new Promise(resolve => {
+            logicalCanvas.toBlob(resolve, 'image/png');
+          });
+
+          if (!normalizedBlob) {
+            throw new Error('Could not normalize the label image.');
+          }
+
+          const labelFile = new File([normalizedBlob], 'label.png', { type: 'image/png' });
           await settings.onPrint(currentPrinter, [labelFile], {
             printCount: copies,
           });
@@ -477,11 +629,11 @@
       const builderCanvas = ensureCanvas();
 
       builderCanvas.on('selection:created', event => {
-        syncTextControls(event.selected?.[0] instanceof window.fabric.Textbox ? event.selected[0] : null);
+        syncTextControls(event.selected?.[0] || null);
       });
 
       builderCanvas.on('selection:updated', event => {
-        syncTextControls(event.selected?.[0] instanceof window.fabric.Textbox ? event.selected[0] : null);
+        syncTextControls(event.selected?.[0] || null);
       });
 
       builderCanvas.on('selection:cleared', () => {
@@ -559,9 +711,29 @@
     });
 
     addTextButton?.addEventListener('click', addTextbox);
+    addQrButton?.addEventListener('click', addQrCode);
     alignLeftButton?.addEventListener('click', () => updateSelectedTextbox({ textAlign: 'left' }));
     alignCenterButton?.addEventListener('click', () => updateSelectedTextbox({ textAlign: 'center' }));
     alignRightButton?.addEventListener('click', () => updateSelectedTextbox({ textAlign: 'right' }));
+    qrTextInput?.addEventListener('input', () => {
+      if (isSyncingQrInput) return;
+
+      const codeObject = getEditableCodeObject();
+      if (!codeObject) return;
+
+      window.clearTimeout(qrUpdateTimer);
+      qrUpdateTimer = window.setTimeout(() => {
+        updateSelectedCode(qrTextInput.value || '', qrFormatSelect?.value || codeObject.codeFormat);
+      }, 500);
+    });
+    qrFormatSelect?.addEventListener('change', () => {
+      if (isSyncingQrInput) return;
+
+      const codeObject = getEditableCodeObject();
+      if (!codeObject) return;
+
+      updateSelectedCode(qrTextInput?.value || codeObject.codeText || '', qrFormatSelect.value || 'qrcode');
+    });
 
     canvasShell?.addEventListener('dragenter', event => {
       event.preventDefault();

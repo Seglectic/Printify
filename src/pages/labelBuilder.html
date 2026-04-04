@@ -54,37 +54,58 @@
           <input id="labelBuilderImageInput" type="file" accept="image/*" hidden>
         </div>
 
-        <div class="printify-builder__text-card" id="labelBuilderTextCard" hidden>
-          <div class="printify-builder__text-card-header">
-            <p class="printify-builder__text-card-eyebrow">Text Box</p>
+        <div class="printify-builder__control-stack">
+          <div class="printify-builder__text-card" id="labelBuilderTextCard" hidden>
+            <div class="printify-builder__text-card-header">
+              <p class="printify-builder__text-card-eyebrow">Text Box</p>
+            </div>
+            <div class="printify-builder__text-card-controls">
+              <label class="printify-builder__field" for="labelBuilderFont">
+                Font
+                <select id="labelBuilderFont">
+                  <option value="Arial" selected>Arial</option>
+                  <option value="Helvetica Neue">Helvetica Neue</option>
+                  <option value="Verdana">Verdana</option>
+                  <option value="Tahoma">Tahoma</option>
+                  <option value="Trebuchet MS">Trebuchet MS</option>
+                  <option value="Georgia">Georgia</option>
+                  <option value="Times New Roman">Times New Roman</option>
+                  <option value="Courier New">Courier New</option>
+                </select>
+              </label>
+              <label class="printify-builder__field" for="labelBuilderFontSize">
+                Size
+                <input id="labelBuilderFontSize" type="number" min="8" step="1" value="40">
+              </label>
+              <label class="printify-builder__field printify-builder__field--checkbox" for="labelBuilderAutoFit">
+                <input id="labelBuilderAutoFit" type="checkbox" checked>
+                <span>Auto Resize</span>
+              </label>
+            </div>
+            <div class="printify-builder__segmented" role="group" aria-label="Text alignment">
+              <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAlignLeft" type="button">Left</button>
+              <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAlignCenter" type="button">Center</button>
+              <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAlignRight" type="button">Right</button>
+            </div>
           </div>
-          <div class="printify-builder__text-card-controls">
-            <label class="printify-builder__field" for="labelBuilderFont">
-              Font
-              <select id="labelBuilderFont">
-                <option value="Arial" selected>Arial</option>
-                <option value="Helvetica Neue">Helvetica Neue</option>
-                <option value="Verdana">Verdana</option>
-                <option value="Tahoma">Tahoma</option>
-                <option value="Trebuchet MS">Trebuchet MS</option>
-                <option value="Georgia">Georgia</option>
-                <option value="Times New Roman">Times New Roman</option>
-                <option value="Courier New">Courier New</option>
-              </select>
-            </label>
-            <label class="printify-builder__field" for="labelBuilderFontSize">
-              Size
-              <input id="labelBuilderFontSize" type="number" min="8" step="1" value="40">
-            </label>
-            <label class="printify-builder__field printify-builder__field--checkbox" for="labelBuilderAutoFit">
-              <input id="labelBuilderAutoFit" type="checkbox" checked>
-              Auto Resize
-            </label>
-          </div>
-          <div class="printify-builder__segmented" role="group" aria-label="Text alignment">
-            <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAlignLeft" type="button">Left</button>
-            <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAlignCenter" type="button">Center</button>
-            <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAlignRight" type="button">Right</button>
+
+          <div class="printify-builder__text-card" id="labelBuilderQrCard" hidden>
+            <div class="printify-builder__text-card-header">
+              <p class="printify-builder__text-card-eyebrow">Code</p>
+            </div>
+            <div class="printify-builder__text-card-controls">
+              <label class="printify-builder__field" for="labelBuilderQrFormat">
+                Type
+                <select id="labelBuilderQrFormat">
+                  <option value="qrcode" selected>QR Code</option>
+                  <option value="code128">Code 128</option>
+                </select>
+              </label>
+              <label class="printify-builder__field printify-builder__field--wide" for="labelBuilderQrText">
+                Data
+                <textarea class="printify-builder__textarea" id="labelBuilderQrText" rows="4" placeholder="Enter text or a URL"></textarea>
+              </label>
+            </div>
           </div>
         </div>
 
@@ -99,6 +120,7 @@
           <div class="printify-builder__controls printify-builder__controls--tools">
             <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAddImage" type="button">Add Image</button>
             <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAddText" type="button">Add Text Box</button>
+            <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAddQr" type="button">Add QR Code</button>
           </div>
           <div class="printify-builder__actions">
             <button class="printer-card__button printer-card__button--secondary" id="labelBuilderReset" type="button">Reset</button>

@@ -466,7 +466,7 @@ img {
 }
 
 .printify-builder__text-card {
-  margin-top: 14px;
+  margin-top: 0;
   padding: 14px;
   border: 1px solid var(--printify-line);
   border-radius: 18px;
@@ -493,8 +493,8 @@ img {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
-  margin-top: 10px;
+  gap: 10px;
+  margin-top: 8px;
 }
 
 .printify-builder__canvas.lower-canvas {
@@ -504,6 +504,11 @@ img {
 
 .printify-builder__canvas.upper-canvas {
   background: transparent;
+}
+
+.printify-builder__control-stack {
+  min-height: 176px;
+  margin-top: 14px;
 }
 
 .printify-builder__footer {
@@ -529,7 +534,7 @@ img {
 .printify-builder__field {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   color: var(--printify-muted);
   font-size: 13px;
   font-weight: 700;
@@ -538,7 +543,7 @@ img {
 }
 
 .printify-builder__field--checkbox {
-  gap: 10px;
+  gap: 5px;
 }
 
 .printify-builder__field--checkbox input {
@@ -561,6 +566,19 @@ img {
   color: var(--printify-ink);
 }
 
+.printify-builder__field textarea {
+  width: min(420px, 100%);
+  min-height: 94px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--printify-line);
+  background: color-mix(in srgb, var(--printify-card) 86%, transparent);
+  color: var(--printify-ink);
+  font: inherit;
+  line-height: 1.5;
+  resize: vertical;
+}
+
 .printify-builder__field--wide input {
   width: min(420px, 100%);
 }
@@ -569,7 +587,7 @@ img {
   display: inline-flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 12px;
+  margin-top: 10px;
 }
 
 .printify-builder__segmented .printer-card__button.is-active {

@@ -567,7 +567,14 @@
 
     window.clippy.load('Clippy', agent => {
       appState.clippyAgent = agent;
+      if (typeof agent.pinToCorner === 'function') {
+        agent.pinToCorner({
+          right: 15,
+          bottom: 15,
+        });
+      }
       agent.show();
+      window.setTimeout(() => agent.reposition(), 80);
 
       window.setTimeout(() => {
         const sayings = [

@@ -7,6 +7,7 @@ var clippy = {};
  */
 clippy.Agent = function (path, data, sounds) {
     this.path = path;
+    this._pinnedCorner = null;
 
     this._queue = new clippy.Queue($.proxy(this._onQueueEmpty, this));
 
@@ -348,8 +349,34 @@ clippy.Agent.prototype = {
         }
     },
 
+    pinToCorner:function (options) {
+        options = options || {};
+        this._pinnedCorner = {
+            right: options.right !== undefined ? options.right : 15,
+            bottom: options.bottom !== undefined ? options.bottom : 15
+        };
+        this.reposition();
+    },
+
+    clearPinnedCorner:function () {
+        this._pinnedCorner = null;
+    },
+
     reposition:function () {
         if (!this._el.is(':visible')) return;
+        if (this._pinnedCorner) {
+            var footerHeight = $('#footer').outerHeight() || 0;
+            var pinnedLeft = $(window).width() - this._el.outerWidth() - this._pinnedCorner.right;
+            var pinnedTop = $(window).height() - footerHeight - this._el.outerHeight() - this._pinnedCorner.bottom;
+
+            this._el.css({
+                left: Math.max(5, pinnedLeft),
+                top: Math.max(5, pinnedTop)
+            });
+            this._balloon.reposition();
+            return;
+        }
+
         var o = this._el.offset();
         var bH = this._el.outerHeight();
         var bW = this._el.outerWidth();
@@ -431,6 +458,12 @@ clippy.Agent.prototype = {
         // remove handles
         $(window).off('mousemove', this._moveHandle);
         $(window).off('mouseup', this._upHandle);
+        if (this._pinnedCorner) {
+            var offset = this._el.offset();
+            var footerHeight = $('#footer').outerHeight() || 0;
+            this._pinnedCorner.right = Math.max(5, $(window).width() - (offset.left + this._el.outerWidth()));
+            this._pinnedCorner.bottom = Math.max(5, $(window).height() - footerHeight - (offset.top + this._el.outerHeight()));
+        }
         // resume animations
         this._balloon.show();
         this.reposition();

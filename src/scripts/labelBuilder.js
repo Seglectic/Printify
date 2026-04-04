@@ -6,7 +6,7 @@
     width: 425,
     height: 200,
   };
-  const DEFAULT_TEXT_PLACEHOLDER = 'Click to Edit Text';
+  const DEFAULT_CODE_FALLBACK_LABEL = 'Printify';
 
   const parsePxSize = pxSize => {
     const match = String(pxSize || '').match(/^(\d+)x(\d+)$/i);
@@ -25,6 +25,7 @@
       titleSelector: '#labelBuilderTitle',
       copySelector: '#labelBuilderCopy',
       sizeSelector: '#labelBuilderSize',
+      enterConfirmSelector: '#labelBuilderEnterConfirm',
       closeSelector: '#labelBuilderClose',
       cancelSelector: '#labelBuilderCancel',
       resetSelector: '#labelBuilderReset',
@@ -55,6 +56,7 @@
     const title = document.querySelector(settings.titleSelector);
     const copy = document.querySelector(settings.copySelector);
     const size = document.querySelector(settings.sizeSelector);
+    const enterConfirm = document.querySelector(settings.enterConfirmSelector);
     const closeButton = document.querySelector(settings.closeSelector);
     const cancelButton = document.querySelector(settings.cancelSelector);
     const resetButton = document.querySelector(settings.resetSelector);
@@ -86,6 +88,8 @@
     let isSyncingAutoFitInput = false;
     let isSyncingQrInput = false;
     let qrUpdateTimer = null;
+    let enterPrintArmed = false;
+    let enterPrintTimer = null;
 
     const ensureCanvas = () => {
       if (canvas) return canvas;
@@ -102,6 +106,31 @@
     };
 
     const isCodeObject = object => object?.printifyObjectType === 'code';
+
+    const resolveBuilderVersionLabel = () => {
+      const clientVersion = String(window.PRINTIFY_CLIENT_VERSION || '').trim();
+      return clientVersion ? `${DEFAULT_CODE_FALLBACK_LABEL} ${clientVersion}` : DEFAULT_CODE_FALLBACK_LABEL;
+    };
+
+    const getCodeTextOrFallback = nextCodeText => {
+      const normalizedText = String(nextCodeText || '').trim();
+      return normalizedText || resolveBuilderVersionLabel();
+    };
+
+    const clearEnterPrintPrompt = () => {
+      enterPrintArmed = false;
+      window.clearTimeout(enterPrintTimer);
+      if (enterConfirm) enterConfirm.hidden = true;
+    };
+
+    const showEnterPrintPrompt = () => {
+      enterPrintArmed = true;
+      if (enterConfirm) enterConfirm.hidden = false;
+      window.clearTimeout(enterPrintTimer);
+      enterPrintTimer = window.setTimeout(() => {
+        clearEnterPrintPrompt();
+      }, 2200);
+    };
 
     const syncFontInput = textObject => {
       if (!fontSelect) return;
@@ -232,7 +261,7 @@
     const attachTextboxFrameBehavior = textbox => {
       const baseCalcTextHeight = textbox.calcTextHeight.bind(textbox);
 
-      textbox.isPlaceholderText = textbox.text === DEFAULT_TEXT_PLACEHOLDER;
+      textbox.isPlaceholderText = false;
       textbox.autoFitText = textbox.autoFitText !== false;
       textbox.frameWidth = Math.max(textbox.frameWidth || 0, textbox.width || 0);
       textbox.frameHeight = Math.max(textbox.frameHeight || 0, textbox.height || 0);
@@ -248,7 +277,7 @@
       return textbox;
     };
 
-    const buildTextbox = (canvasWidth, canvasHeight, overrides = {}) => attachTextboxFrameBehavior(new window.fabric.Textbox(overrides.text || DEFAULT_TEXT_PLACEHOLDER, {
+    const buildTextbox = (canvasWidth, canvasHeight, overrides = {}) => attachTextboxFrameBehavior(new window.fabric.Textbox(Object.prototype.hasOwnProperty.call(overrides, 'text') ? overrides.text : '', {
       left: Math.round(canvasWidth * 0.08),
       top: Math.round(canvasHeight * 0.08),
       width: Math.round(canvasWidth * 0.76),
@@ -288,13 +317,6 @@
     const beginTextboxEditing = textObject => {
       if (!(textObject instanceof window.fabric.Textbox)) return;
 
-      if (textObject.isPlaceholderText) {
-        textObject.set('text', '');
-        textObject.isPlaceholderText = false;
-        if (textObject.autoFitText) fitTextboxFontToFrame(textObject);
-        textObject.initDimensions();
-      }
-
       textObject.enterEditing();
       textObject.selectAll();
       syncTextControls(textObject);
@@ -307,7 +329,7 @@
       const fontSize = Math.max(24, Math.round(builderCanvas.getHeight() * 0.18));
       const topStep = Math.max(34, Math.round(fontSize * 1.35));
       const textbox = buildTextbox(builderCanvas.getWidth(), builderCanvas.getHeight(), {
-        text: `Text Box ${textboxCount + 1}`,
+        text: '',
         top: Math.round(builderCanvas.getHeight() * 0.12) + (textboxCount * topStep),
         fontSize,
         frameHeight: Math.max(48, Math.round(builderCanvas.getHeight() * 0.34)),
@@ -425,8 +447,7 @@
 
     const addQrCode = async () => {
       const builderCanvas = ensureCanvas();
-      const codeCount = builderCanvas.getObjects().filter(isCodeObject).length;
-      const defaultCodeText = codeCount === 0 ? 'https://example.com' : `Code ${codeCount + 1}`;
+      const defaultCodeText = resolveBuilderVersionLabel();
 
       try {
         const codeImage = await buildCodeImage(defaultCodeText, 'qrcode');
@@ -447,9 +468,8 @@
       const codeObject = getEditableCodeObject();
       if (!codeObject) return;
 
-      const normalizedText = nextCodeText.trim();
+      const normalizedText = getCodeTextOrFallback(nextCodeText);
       const normalizedFormat = nextCodeFormat || codeObject.codeFormat || 'qrcode';
-      if (!normalizedText) return;
 
       const renderedWidth = (codeObject.width || 1) * (codeObject.scaleX || 1);
       const renderedHeight = (codeObject.height || 1) * (codeObject.scaleY || 1);
@@ -529,9 +549,11 @@
 
       if (size) size.textContent = `${width} x ${height} px`;
       if (copy) copy.textContent = `Build a label sized for ${printer.displayName}, then send it through the standard image print flow.`;
+      clearEnterPrintPrompt();
     };
 
     const close = () => {
+      clearEnterPrintPrompt();
       root.classList.remove('is-open');
     };
 
@@ -548,6 +570,7 @@
 
     const print = async () => {
       if (!currentPrinter) return;
+      clearEnterPrintPrompt();
 
       const builderCanvas = ensureCanvas();
       builderCanvas.getObjects().forEach(object => {
@@ -758,6 +781,7 @@
     closeButton?.addEventListener('click', close);
     cancelButton?.addEventListener('click', close);
     resetButton?.addEventListener('click', () => {
+      clearEnterPrintPrompt();
       if (currentPrinter) resetCanvas(currentPrinter);
     });
     printButton?.addEventListener('click', print);
@@ -765,18 +789,41 @@
       if (event.target === root) close();
     });
     document.addEventListener('keydown', event => {
-      if (event.key === 'Escape' && root.classList.contains('is-open')) close();
       if (!root.classList.contains('is-open')) return;
-      if (event.key !== 'Delete' && event.key !== 'Backspace') return;
 
       const activeTextbox = getEditableTextObject();
-      if (activeTextbox?.isEditing) return;
-
+      const isEditingTextbox = Boolean(activeTextbox?.isEditing);
       const isTypingIntoField = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName);
-      if (isTypingIntoField) return;
 
-      if (deleteActiveObject()) {
+      if (event.key === 'Escape') {
+        if (enterPrintArmed) {
+          clearEnterPrintPrompt();
+          return;
+        }
+        close();
+        return;
+      }
+
+      if (event.key === 'Enter' && !event.shiftKey && !event.metaKey && !event.ctrlKey && !event.altKey) {
+        if (isEditingTextbox || isTypingIntoField) return;
+
         event.preventDefault();
+
+        if (enterPrintArmed) {
+          print();
+          return;
+        }
+
+        showEnterPrintPrompt();
+        return;
+      }
+
+      clearEnterPrintPrompt();
+
+      if ((event.key === 'Delete' || event.key === 'Backspace') && !isEditingTextbox && !isTypingIntoField) {
+        if (deleteActiveObject()) {
+          event.preventDefault();
+        }
       }
     });
 

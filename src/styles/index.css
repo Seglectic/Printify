@@ -492,8 +492,8 @@ img {
 .printify-builder__text-card-controls {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
+  align-items: flex-start;
+  gap: 8px;
   margin-top: 8px;
 }
 
@@ -515,8 +515,8 @@ img {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 14px;
+  justify-content: flex-start;
+  gap: 12px;
   margin-top: 18px;
 }
 
@@ -524,11 +524,19 @@ img {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .printify-builder__controls--tools {
   justify-content: flex-start;
+}
+
+.printify-builder__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
 }
 
 .printify-builder__field {
@@ -543,7 +551,17 @@ img {
 }
 
 .printify-builder__field--checkbox {
+  gap: 3px;
+}
+
+.printify-builder__field--stacked {
+  flex-direction: column;
+  align-items: flex-start;
   gap: 5px;
+}
+
+.printify-builder__field--copies {
+  letter-spacing: 0.06em;
 }
 
 .printify-builder__field--checkbox input {
@@ -566,8 +584,12 @@ img {
   color: var(--printify-ink);
 }
 
+.printify-builder__field--stacked select {
+  width: min(240px, 100%);
+}
+
 .printify-builder__field textarea {
-  width: min(420px, 100%);
+  width: 100%;
   min-height: 94px;
   padding: 9px 12px;
   border-radius: 12px;
@@ -576,11 +598,16 @@ img {
   color: var(--printify-ink);
   font: inherit;
   line-height: 1.5;
-  resize: vertical;
+  resize: none;
 }
 
 .printify-builder__field--wide input {
   width: min(420px, 100%);
+}
+
+.printify-builder__field--wide textarea,
+.printify-builder__field--wide select {
+  width: 100%;
 }
 
 .printify-builder__segmented {
@@ -599,6 +626,15 @@ img {
   padding: 9px 12px;
   font-size: 13px;
   letter-spacing: 0.02em;
+}
+
+.printify-builder__enter-confirm {
+  margin-top: 10px;
+  color: var(--printify-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .label-builder-lab {

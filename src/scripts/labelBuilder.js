@@ -30,8 +30,10 @@
       resetSelector: '#labelBuilderReset',
       printSelector: '#labelBuilderPrint',
       copiesSelector: '#labelBuilderCopies',
+      textCardSelector: '#labelBuilderTextCard',
       fontSelector: '#labelBuilderFont',
       fontSizeSelector: '#labelBuilderFontSize',
+      autoFitSelector: '#labelBuilderAutoFit',
       imageInputSelector: '#labelBuilderImageInput',
       addImageSelector: '#labelBuilderAddImage',
       canvasShellSelector: '.printify-builder__canvas-shell',
@@ -54,8 +56,10 @@
     const resetButton = document.querySelector(settings.resetSelector);
     const printButton = document.querySelector(settings.printSelector);
     const copiesInput = document.querySelector(settings.copiesSelector);
+    const textCard = document.querySelector(settings.textCardSelector);
     const fontSelect = document.querySelector(settings.fontSelector);
     const fontSizeInput = document.querySelector(settings.fontSizeSelector);
+    const autoFitInput = document.querySelector(settings.autoFitSelector);
     const imageInput = document.querySelector(settings.imageInputSelector);
     const addImageButton = document.querySelector(settings.addImageSelector);
     const canvasShell = document.querySelector(settings.canvasShellSelector);
@@ -71,6 +75,7 @@
     let defaultTextbox = null;
     let isSyncingFontInput = false;
     let isSyncingFontSizeInput = false;
+    let isSyncingAutoFitInput = false;
 
     const ensureCanvas = () => {
       if (canvas) return canvas;
@@ -103,6 +108,15 @@
       isSyncingFontSizeInput = false;
     };
 
+    const syncAutoFitInput = textObject => {
+      if (!autoFitInput) return;
+
+      isSyncingAutoFitInput = true;
+      autoFitInput.checked = Boolean(textObject?.autoFitText);
+      autoFitInput.disabled = !textObject;
+      isSyncingAutoFitInput = false;
+    };
+
     const syncAlignmentButtons = textObject => {
       const buttons = [
         [alignLeftButton, 'left'],
@@ -118,9 +132,62 @@
     };
 
     const syncTextControls = textObject => {
+      if (textCard) textCard.hidden = !textObject;
       syncFontInput(textObject);
       syncFontSizeInput(textObject);
+      syncAutoFitInput(textObject);
       syncAlignmentButtons(textObject);
+    };
+
+    const fitTextboxFontToFrame = textObject => {
+      if (!(textObject instanceof window.fabric.Textbox)) return;
+      if (!textObject.autoFitText) return;
+      if (!textObject.text?.trim()) return;
+
+      const minSize = 8;
+      const maxSize = Math.max(minSize, Math.round((textObject.frameHeight || textObject.height || 0) * 0.6));
+      const availableWidth = Math.max(12, (textObject.frameWidth || textObject.width) - (textObject.padding * 2));
+      const availableHeight = Math.max(12, (textObject.frameHeight || textObject.height) - (textObject.padding * 2));
+      const lockedLeft = textObject.left;
+      const lockedTop = textObject.top;
+
+      const measure = () => {
+        textObject.set('width', textObject.frameWidth || textObject.width);
+        textObject.initDimensions();
+        const lineWidths = Array.isArray(textObject.__lineWidths) ? textObject.__lineWidths : [];
+        const maxLineWidth = lineWidths.length ? Math.max(...lineWidths) : 0;
+        const textHeight = typeof textObject.measureTextHeight === 'function' ? textObject.measureTextHeight() : textObject.height;
+
+        return {
+          maxLineWidth,
+          textHeight,
+        };
+      };
+
+      let nextSize = Math.max(minSize, Math.min(maxSize, Math.round(textObject.fontSize || minSize)));
+      textObject.set('fontSize', nextSize);
+      let metrics = measure();
+
+      while (nextSize > minSize && (metrics.maxLineWidth > availableWidth || metrics.textHeight > availableHeight)) {
+        nextSize -= 1;
+        textObject.set('fontSize', nextSize);
+        metrics = measure();
+      }
+
+      while (nextSize < maxSize) {
+        textObject.set('fontSize', nextSize + 1);
+        const nextMetrics = measure();
+        if (nextMetrics.maxLineWidth > availableWidth || nextMetrics.textHeight > availableHeight) break;
+        nextSize += 1;
+        metrics = nextMetrics;
+      }
+
+      textObject.set('fontSize', nextSize);
+      textObject.initDimensions();
+      textObject.set({
+        left: lockedLeft,
+        top: lockedTop,
+      });
     };
 
     const getEditableTextObject = () => {
@@ -132,10 +199,15 @@
       const baseCalcTextHeight = textbox.calcTextHeight.bind(textbox);
 
       textbox.isPlaceholderText = textbox.text === DEFAULT_TEXT_PLACEHOLDER;
+      textbox.autoFitText = textbox.autoFitText !== false;
+      textbox.frameWidth = Math.max(textbox.frameWidth || 0, textbox.width || 0);
       textbox.frameHeight = Math.max(textbox.frameHeight || 0, textbox.height || 0);
+      textbox.measureTextHeight = () => baseCalcTextHeight();
       textbox.calcTextHeight = function () {
         return Math.max(baseCalcTextHeight(), this.frameHeight || 0);
       };
+      textbox.splitByGrapheme = true;
+      textbox.width = textbox.frameWidth;
       textbox.initDimensions();
       textbox.setCoords();
 
@@ -144,9 +216,9 @@
 
     const buildTextbox = (canvasWidth, canvasHeight, overrides = {}) => attachTextboxFrameBehavior(new window.fabric.Textbox(overrides.text || DEFAULT_TEXT_PLACEHOLDER, {
       left: Math.round(canvasWidth * 0.08),
-      top: Math.round(canvasHeight * 0.28),
-      width: Math.round(canvasWidth * 0.84),
-      fontSize: Math.max(28, Math.round(canvasHeight * 0.2)),
+      top: Math.round(canvasHeight * 0.08),
+      width: Math.round(canvasWidth * 0.76),
+      fontSize: 35,
       fontFamily: 'Arial',
       fontWeight: '700',
       fill: '#111111',
@@ -161,7 +233,7 @@
       borderColor: '#1f6f43',
       borderScaleFactor: 2,
       padding: 10,
-      frameHeight: Math.max(56, Math.round(canvasHeight * 0.28)),
+      frameHeight: Math.max(56, Math.round(canvasHeight * 0.82)),
       ...overrides,
     }));
 
@@ -185,6 +257,7 @@
       if (textObject.isPlaceholderText) {
         textObject.set('text', '');
         textObject.isPlaceholderText = false;
+        if (textObject.autoFitText) fitTextboxFontToFrame(textObject);
         textObject.initDimensions();
       }
 
@@ -201,8 +274,10 @@
       const topStep = Math.max(34, Math.round(fontSize * 1.35));
       const textbox = buildTextbox(builderCanvas.getWidth(), builderCanvas.getHeight(), {
         text: `Text Box ${textboxCount + 1}`,
-        top: Math.round(builderCanvas.getHeight() * 0.14) + (textboxCount * topStep),
+        top: Math.round(builderCanvas.getHeight() * 0.12) + (textboxCount * topStep),
         fontSize,
+        frameHeight: Math.max(48, Math.round(builderCanvas.getHeight() * 0.34)),
+        autoFitText: false,
       });
 
       builderCanvas.add(textbox);
@@ -216,7 +291,10 @@
 
       textObject.set(updates);
       textObject.isPlaceholderText = false;
+      textObject.frameWidth = Math.max(textObject.frameWidth || textObject.width || 0, 48);
       textObject.frameHeight = Math.max(textObject.frameHeight || 0, 32);
+      textObject.width = textObject.frameWidth;
+      if (textObject.autoFitText) fitTextboxFontToFrame(textObject);
       textObject.initDimensions();
       textObject.setCoords();
       syncTextControls(textObject);
@@ -291,6 +369,7 @@
 
         textObject.set({
           fontSize: nextFontSize,
+          autoFitText: false,
           scaleX: 1,
           scaleY: 1,
         });
@@ -299,11 +378,13 @@
         const nextHeight = Math.max(32, Math.round((textObject.frameHeight || textObject.height) * textObject.scaleY));
 
         textObject.set({
+          frameWidth: nextWidth,
           width: nextWidth,
           frameHeight: nextHeight,
           scaleX: 1,
           scaleY: 1,
         });
+        if (textObject.autoFitText) fitTextboxFontToFrame(textObject);
       }
 
       textObject.initDimensions();
@@ -393,6 +474,8 @@
       builderCanvas.on('text:changed', event => {
         if (event.target instanceof window.fabric.Textbox) {
           event.target.isPlaceholderText = false;
+          event.target.width = event.target.frameWidth || event.target.width;
+          if (event.target.autoFitText) fitTextboxFontToFrame(event.target);
         }
         syncTextControls(event.target || null);
       });
@@ -428,9 +511,25 @@
       const parsedValue = Number.parseInt(fontSizeInput.value || '', 10);
       if (!Number.isFinite(parsedValue)) return;
 
+      if (autoFitInput) autoFitInput.checked = false;
       updateSelectedTextbox({
         fontSize: Math.max(8, parsedValue),
+        autoFitText: false,
       });
+    });
+
+    autoFitInput?.addEventListener('change', () => {
+      if (isSyncingAutoFitInput) return;
+
+      const textObject = getEditableTextObject();
+      if (!textObject) return;
+
+      textObject.set('autoFitText', autoFitInput.checked);
+      if (textObject.autoFitText) fitTextboxFontToFrame(textObject);
+      textObject.initDimensions();
+      textObject.setCoords();
+      syncTextControls(textObject);
+      ensureCanvas().requestRenderAll();
     });
 
     addImageButton?.addEventListener('click', () => {

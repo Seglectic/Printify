@@ -54,8 +54,11 @@
           <input id="labelBuilderImageInput" type="file" accept="image/*" hidden>
         </div>
 
-        <div class="printify-builder__footer">
-          <div class="printify-builder__controls">
+        <div class="printify-builder__text-card" id="labelBuilderTextCard" hidden>
+          <div class="printify-builder__text-card-header">
+            <p class="printify-builder__text-card-eyebrow">Text Box</p>
+          </div>
+          <div class="printify-builder__text-card-controls">
             <label class="printify-builder__field" for="labelBuilderFont">
               Font
               <select id="labelBuilderFont">
@@ -73,6 +76,20 @@
               Size
               <input id="labelBuilderFontSize" type="number" min="8" step="1" value="40">
             </label>
+            <label class="printify-builder__field printify-builder__field--checkbox" for="labelBuilderAutoFit">
+              <input id="labelBuilderAutoFit" type="checkbox" checked>
+              Auto Resize
+            </label>
+          </div>
+          <div class="printify-builder__segmented" role="group" aria-label="Text alignment">
+            <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAlignLeft" type="button">Left</button>
+            <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAlignCenter" type="button">Center</button>
+            <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAlignRight" type="button">Right</button>
+          </div>
+        </div>
+
+        <div class="printify-builder__footer">
+          <div class="printify-builder__controls">
             <label class="printify-builder__field" for="labelBuilderCopies">
               Copies
               <input id="labelBuilderCopies" type="number" min="1" value="1">
@@ -82,11 +99,6 @@
           <div class="printify-builder__controls printify-builder__controls--tools">
             <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAddImage" type="button">Add Image</button>
             <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAddText" type="button">Add Text Box</button>
-            <div class="printify-builder__segmented" role="group" aria-label="Text alignment">
-              <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAlignLeft" type="button">Left</button>
-              <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAlignCenter" type="button">Center</button>
-              <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAlignRight" type="button">Right</button>
-            </div>
           </div>
           <div class="printify-builder__actions">
             <button class="printer-card__button printer-card__button--secondary" id="labelBuilderReset" type="button">Reset</button>

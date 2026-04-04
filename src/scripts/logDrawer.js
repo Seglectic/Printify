@@ -89,6 +89,7 @@
   // ╰──────────────────────────╯
   function createPrintifyLogDrawer(rootSelector, options) {
     const LOOKBACK_OPTIONS = [30, 60, 360, 720, 1440];
+    const WINDOW_STORAGE_KEY = 'printify-log-window';
     const settings = Object.assign({
       recentLogsUrl: '/logs/recent',
       printersUrl: '/printers',
@@ -123,7 +124,10 @@
     let reconnectTimer = null;
     let reloadTimer = null;
     let currentJobs = [];
-    let currentWindowIndex = LOOKBACK_OPTIONS.indexOf(60);
+    const storedWindowMinutes = Number.parseInt(window.localStorage.getItem(WINDOW_STORAGE_KEY), 10);
+    let currentWindowIndex = LOOKBACK_OPTIONS.indexOf(
+      LOOKBACK_OPTIONS.includes(storedWindowMinutes) ? storedWindowMinutes : 60
+    );
     let printerIconsById = {};
     let selectedPreviewJobKey = null;
     let previousJobKeys = new Set();
@@ -362,6 +366,7 @@
 
     windowButton.addEventListener('click', () => {
       currentWindowIndex = (currentWindowIndex + 1) % LOOKBACK_OPTIONS.length;
+      window.localStorage.setItem(WINDOW_STORAGE_KEY, String(getCurrentWindowMinutes()));
       syncWindowUi();
       queueRecentLogReload();
     });

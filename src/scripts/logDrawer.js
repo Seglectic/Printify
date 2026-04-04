@@ -98,6 +98,7 @@
     const getCurrentWindowMinutes = () => LOOKBACK_OPTIONS[currentWindowIndex] || 60;
     const formatWindowLabel = windowMinutes => {
       if (windowMinutes < 60) return `${windowMinutes} minutes`;
+      if (windowMinutes === 60) return 'hour';
       if (windowMinutes % 60 === 0) return `${windowMinutes / 60} hours`;
       return `${windowMinutes} minutes`;
     };

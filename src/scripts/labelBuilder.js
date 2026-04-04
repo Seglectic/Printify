@@ -206,7 +206,7 @@
       textbox.calcTextHeight = function () {
         return Math.max(baseCalcTextHeight(), this.frameHeight || 0);
       };
-      textbox.splitByGrapheme = true;
+      textbox.splitByGrapheme = false;
       textbox.width = textbox.frameWidth;
       textbox.initDimensions();
       textbox.setCoords();
@@ -456,6 +456,23 @@
       });
     };
 
+    const deleteActiveObject = () => {
+      const builderCanvas = ensureCanvas();
+      const activeObject = builderCanvas.getActiveObject();
+
+      if (!activeObject) return false;
+      if (activeObject instanceof window.fabric.ActiveSelection) {
+        activeObject.getObjects().forEach(object => builderCanvas.remove(object));
+      } else {
+        builderCanvas.remove(activeObject);
+      }
+
+      builderCanvas.discardActiveObject();
+      syncTextControls(null);
+      builderCanvas.requestRenderAll();
+      return true;
+    };
+
     const bindCanvasEvents = () => {
       const builderCanvas = ensureCanvas();
 
@@ -577,6 +594,18 @@
     });
     document.addEventListener('keydown', event => {
       if (event.key === 'Escape' && root.classList.contains('is-open')) close();
+      if (!root.classList.contains('is-open')) return;
+      if (event.key !== 'Delete' && event.key !== 'Backspace') return;
+
+      const activeTextbox = getEditableTextObject();
+      if (activeTextbox?.isEditing) return;
+
+      const isTypingIntoField = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName);
+      if (isTypingIntoField) return;
+
+      if (deleteActiveObject()) {
+        event.preventDefault();
+      }
     });
 
     return {

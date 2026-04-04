@@ -141,6 +141,8 @@ img {
   animation: printer-card-enter 620ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
   animation-delay: calc(var(--card-index, 0) * 90ms);
   transition: border-color 180ms ease, box-shadow 180ms ease, background 180ms ease, transform 180ms ease;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .printer-card:hover,
@@ -205,6 +207,9 @@ img {
   aspect-ratio: 1;
   object-fit: contain;
   transition: transform 160ms ease;
+  -webkit-user-drag: none;
+  user-select: none;
+  pointer-events: none;
 }
 
 .printer-card.is-highlighted .printer-card__icon {
@@ -273,7 +278,18 @@ img {
 .printer-card__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  align-items: center;
+  gap: 8px;
+}
+
+.printer-card__actions [data-role='label-builder'] {
+  margin-left: auto;
+}
+
+.printer-card__actions .printer-card__button {
+  padding: 10px 14px;
+  font-size: 13px;
+  letter-spacing: 0.02em;
 }
 
 .printer-card__button {

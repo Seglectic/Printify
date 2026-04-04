@@ -137,9 +137,12 @@
 
 .printify-log-drawer__close {
   flex-shrink: 0;
+  width: 118px;
+  min-width: 118px;
+  min-height: 40px;
   border: 0;
   border-radius: 999px;
-  padding: 10px 14px;
+  padding: 0 14px;
   background: var(--pld-close);
   color: var(--pld-ink);
   cursor: pointer;
@@ -148,10 +151,17 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
 }
 
-.printify-log-drawer__close:hover {
+.printify-log-drawer__close:hover,
+.printify-log-drawer__close:focus-visible {
   background: var(--pld-close-hover);
+  transform: translateY(-1px);
+}
+
+.printify-log-drawer__close:active {
+  transform: translateY(0) scale(0.97);
 }
 
 .printify-log-drawer__toolbar {
@@ -171,6 +181,8 @@
 
 .printify-log-drawer__window-button {
   flex-shrink: 0;
+  width: 118px;
+  min-width: 118px;
   min-height: 40px;
   padding: 0 14px;
   border: 1px solid var(--pld-line);

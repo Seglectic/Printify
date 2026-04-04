@@ -1,15 +1,15 @@
 // ╭──────────────────────────╮
-// │  Printify.js            │
-// │  Main server entry for  │
-// │  routes, printing, and  │
-// │  live log updates       │
+// │  Printify.js             │
+// │  Main server entry for   │
+// │  routes, printing, and   │
+// │  live log updates        │
 // ╰──────────────────────────╯
-const http = require('http');
+const http    = require('http');
 const express = require('express');
-const path = require('path');
+const path    = require('path');
 
 let WebSocketServer = null;
-let WebSocket = null;
+let WebSocket       = null;
 
 try {
   ({ WebSocketServer, WebSocket } = require('ws'));

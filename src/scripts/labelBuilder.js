@@ -235,7 +235,11 @@
       if (!textObject.text?.trim()) return;
 
       const minSize = 8;
-      const maxSize = Math.max(minSize, Math.round((textObject.frameHeight || textObject.height || 0) * 0.6));
+      const configuredMaxSize = Number.isFinite(textObject.maxAutoFitFontSize)
+        ? Math.round(textObject.maxAutoFitFontSize)
+        : Math.round(textObject.fontSize || minSize);
+      const frameMaxSize = Math.round((textObject.frameHeight || textObject.height || 0) * 0.6);
+      const maxSize = Math.max(minSize, Math.min(configuredMaxSize, frameMaxSize));
       const availableWidth = Math.max(12, (textObject.frameWidth || textObject.width) - (textObject.padding * 2));
       const availableHeight = Math.max(12, (textObject.frameHeight || textObject.height) - (textObject.padding * 2));
       const lockedLeft = textObject.left;
@@ -295,6 +299,9 @@
 
       textbox.isPlaceholderText = false;
       textbox.autoFitText = textbox.autoFitText !== false;
+      textbox.maxAutoFitFontSize = Number.isFinite(textbox.maxAutoFitFontSize)
+        ? Math.max(8, Math.round(textbox.maxAutoFitFontSize))
+        : Math.max(8, Math.round(textbox.fontSize || 8));
       textbox.frameWidth = Math.max(textbox.frameWidth || 0, textbox.width || 0);
       textbox.frameHeight = Math.max(textbox.frameHeight || 0, textbox.height || 0);
       textbox.measureTextHeight = () => baseCalcTextHeight();
@@ -312,6 +319,7 @@
     const applyTextboxPlaceholder = (textbox, placeholderText = DEFAULT_TEXTBOX_PLACEHOLDER) => {
       if (!(textbox instanceof window.fabric.Textbox)) return textbox;
 
+      textbox.maxAutoFitFontSize = Math.max(8, Math.round(textbox.fontSize || 8));
       textbox.set('text', placeholderText);
       textbox.isPlaceholderText = true;
       textbox.initDimensions();
@@ -396,6 +404,9 @@
 
       textObject.set(updates);
       textObject.isPlaceholderText = false;
+      if (Object.prototype.hasOwnProperty.call(updates, 'fontSize')) {
+        textObject.maxAutoFitFontSize = Math.max(8, Math.round(updates.fontSize || textObject.fontSize || 8));
+      }
       textObject.frameWidth = Math.max(textObject.frameWidth || textObject.width || 0, 48);
       textObject.frameHeight = Math.max(textObject.frameHeight || 0, 32);
       textObject.width = textObject.frameWidth;
@@ -563,6 +574,7 @@
           scaleX: 1,
           scaleY: 1,
         });
+        textObject.maxAutoFitFontSize = nextFontSize;
       } else {
         const nextWidth = Math.max(56, Math.round(textObject.width * textObject.scaleX));
         const nextHeight = Math.max(32, Math.round((textObject.frameHeight || textObject.height) * textObject.scaleY));

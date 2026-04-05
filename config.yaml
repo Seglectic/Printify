@@ -23,7 +23,7 @@ printers:
     driverName: "Zebra450"
     printMode: "pdfToPrinter"
     acceptedKinds: ["pdf", "image", "zip"]
-    labelBuilder: false
+    labelBuilder: true
     bundleImageCopies: false
     pxSize: "800x1200"
     density: "300"

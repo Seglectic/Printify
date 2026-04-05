@@ -54,38 +54,49 @@
           <input id="labelBuilderImageInput" type="file" accept="image/*" hidden>
         </div>
 
+        <div class="printify-builder__controls printify-builder__controls--tools">
+          <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAddText" type="button">📝 Textbox</button>
+          <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAddImage" type="button">🖼️ Image</button>
+          <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAddQr" type="button">🔳 Code</button>
+        </div>
+
         <div class="printify-builder__control-stack">
           <div class="printify-builder__text-card" id="labelBuilderTextCard" hidden>
             <div class="printify-builder__text-card-header">
               <p class="printify-builder__text-card-eyebrow">Text Box</p>
             </div>
             <div class="printify-builder__text-card-controls">
-              <label class="printify-builder__field" for="labelBuilderFont">
-                Font
-                <select id="labelBuilderFont">
-                  <option value="Arial" selected>Arial</option>
-                  <option value="Helvetica Neue">Helvetica Neue</option>
-                  <option value="Verdana">Verdana</option>
-                  <option value="Tahoma">Tahoma</option>
-                  <option value="Trebuchet MS">Trebuchet MS</option>
-                  <option value="Georgia">Georgia</option>
-                  <option value="Times New Roman">Times New Roman</option>
-                  <option value="Courier New">Courier New</option>
-                </select>
-              </label>
-              <label class="printify-builder__field" for="labelBuilderFontSize">
-                Size
-                <input id="labelBuilderFontSize" type="number" min="8" step="1" value="40">
-              </label>
-              <label class="printify-builder__field printify-builder__field--checkbox" for="labelBuilderAutoFit">
-                <input id="labelBuilderAutoFit" type="checkbox" checked>
-                <span>Auto Resize</span>
-              </label>
-            </div>
-            <div class="printify-builder__segmented" role="group" aria-label="Text alignment">
-              <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAlignLeft" type="button">Left</button>
-              <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAlignCenter" type="button">Center</button>
-              <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAlignRight" type="button">Right</button>
+              <div class="printify-builder__text-card-column">
+                <div class="printify-builder__text-card-row">
+                  <label class="printify-builder__field printify-builder__field--stacked" for="labelBuilderFont">
+                    Font
+                    <select id="labelBuilderFont">
+                      <option value="Arial" selected>Arial</option>
+                      <option value="Helvetica Neue">Helvetica Neue</option>
+                      <option value="Verdana">Verdana</option>
+                      <option value="Tahoma">Tahoma</option>
+                      <option value="Trebuchet MS">Trebuchet MS</option>
+                      <option value="Georgia">Georgia</option>
+                      <option value="Times New Roman">Times New Roman</option>
+                      <option value="Courier New">Courier New</option>
+                    </select>
+                  </label>
+                  <label class="printify-builder__field printify-builder__field--stacked" for="labelBuilderFontSize">
+                    Size
+                    <input id="labelBuilderFontSize" type="number" min="8" step="1" value="40">
+                  </label>
+                </div>
+                <label class="printify-builder__field printify-builder__field--checkbox" for="labelBuilderAutoFit">
+                  <input id="labelBuilderAutoFit" type="checkbox" checked>
+                  <span class="printify-builder__toggle" aria-hidden="true"></span>
+                  <span>Auto Resize</span>
+                </label>
+                <div class="printify-builder__segmented" role="group" aria-label="Text alignment">
+                  <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAlignLeft" type="button">Left</button>
+                  <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAlignCenter" type="button">Center</button>
+                  <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAlignRight" type="button">Right</button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -110,15 +121,12 @@
         </div>
 
         <div class="printify-builder__footer">
-          <div class="printify-builder__controls printify-builder__controls--tools">
-            <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAddText" type="button">📝 Textbox</button>
-            <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAddImage" type="button">🖼️ Image</button>
-            <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAddQr" type="button">🔳 Code</button>
-          </div>
           <div class="printify-builder__actions">
             <button class="printer-card__button printer-card__button--primary" id="labelBuilderPrint" type="button">Render Test</button>
             <button class="printer-card__button printer-card__button--secondary" id="labelBuilderReset" type="button">Reset</button>
             <button class="printer-card__button printer-card__button--secondary" id="labelBuilderCancel" type="button">Cancel</button>
+          </div>
+          <div class="printify-builder__meta">
             <label class="printify-builder__field printify-builder__field--copies" for="labelBuilderCopies">
               Copies
               <input id="labelBuilderCopies" type="number" min="1" value="1">

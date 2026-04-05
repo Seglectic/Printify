@@ -502,6 +502,10 @@ img {
   align-items: stretch;
 }
 
+.printify-builder__text-card-controls--code .printify-builder__field--wide {
+  flex: 0 0 auto;
+}
+
 .printify-builder__text-card-column {
   display: flex;
   flex-direction: column;
@@ -527,7 +531,7 @@ img {
 }
 
 .printify-builder__control-stack {
-  min-height: 176px;
+  min-height: 0;
   margin-top: 14px;
 }
 

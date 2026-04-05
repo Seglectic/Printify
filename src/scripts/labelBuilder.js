@@ -38,8 +38,14 @@
       fontSelector: '#labelBuilderFont',
       fontSizeSelector: '#labelBuilderFontSize',
       autoFitSelector: '#labelBuilderAutoFit',
+      textSerialEnabledSelector: '#labelBuilderTextSerialEnabled',
+      textSerialValueSelector: '#labelBuilderTextSerialValue',
+      textSerialValueFieldSelector: '#labelBuilderTextSerialValueField',
       qrFormatSelector: '#labelBuilderQrFormat',
       qrTextSelector: '#labelBuilderQrText',
+      codeSerialEnabledSelector: '#labelBuilderCodeSerialEnabled',
+      codeSerialValueSelector: '#labelBuilderCodeSerialValue',
+      codeSerialValueFieldSelector: '#labelBuilderCodeSerialValueField',
       imageInputSelector: '#labelBuilderImageInput',
       addImageSelector: '#labelBuilderAddImage',
       canvasShellSelector: '.printify-builder__canvas-shell',
@@ -71,8 +77,14 @@
     const fontSelect = document.querySelector(settings.fontSelector);
     const fontSizeInput = document.querySelector(settings.fontSizeSelector);
     const autoFitInput = document.querySelector(settings.autoFitSelector);
+    const textSerialEnabledInput = document.querySelector(settings.textSerialEnabledSelector);
+    const textSerialValueInput = document.querySelector(settings.textSerialValueSelector);
+    const textSerialValueField = document.querySelector(settings.textSerialValueFieldSelector);
     const qrFormatSelect = document.querySelector(settings.qrFormatSelector);
     const qrTextInput = document.querySelector(settings.qrTextSelector);
+    const codeSerialEnabledInput = document.querySelector(settings.codeSerialEnabledSelector);
+    const codeSerialValueInput = document.querySelector(settings.codeSerialValueSelector);
+    const codeSerialValueField = document.querySelector(settings.codeSerialValueFieldSelector);
     const imageInput = document.querySelector(settings.imageInputSelector);
     const addImageButton = document.querySelector(settings.addImageSelector);
     const canvasShell = document.querySelector(settings.canvasShellSelector);
@@ -91,6 +103,8 @@
     let isSyncingFontInput = false;
     let isSyncingFontSizeInput = false;
     let isSyncingAutoFitInput = false;
+    let isSyncingTextSerialInput = false;
+    let isSyncingCodeSerialInput = false;
     let isSyncingQrInput = false;
     let qrUpdateTimer = null;
     let enterPrintArmed = false;
@@ -195,6 +209,71 @@
       }
     };
 
+    const normalizeSerialValue = value => {
+      const parsedValue = Number.parseInt(value, 10);
+      return Number.isFinite(parsedValue) ? Math.max(0, parsedValue) : 1;
+    };
+
+    const applySerialTokens = (sourceText, serialValue) => String(sourceText || '').replace(/\{(x+)\}/gi, (_, digits) => (
+      String(normalizeSerialValue(serialValue)).padStart(digits.length, '0')
+    ));
+
+    const renderSerialText = (sourceText, serialEnabled, serialValue) => (
+      serialEnabled ? applySerialTokens(sourceText, serialValue) : String(sourceText || '')
+    );
+
+    const ensureTextboxSerialState = textbox => {
+      if (!(textbox instanceof window.fabric.Textbox)) return textbox;
+
+      textbox.serialEnabled = Boolean(textbox.serialEnabled);
+      textbox.serialCurrentValue = normalizeSerialValue(textbox.serialCurrentValue);
+      if (typeof textbox.serialTemplateText !== 'string') {
+        textbox.serialTemplateText = String(textbox.text || '');
+      }
+
+      return textbox;
+    };
+
+    const ensureCodeSerialState = codeObject => {
+      if (!isCodeObject(codeObject)) return codeObject;
+
+      codeObject.serialEnabled = Boolean(codeObject.serialEnabled);
+      codeObject.serialCurrentValue = normalizeSerialValue(codeObject.serialCurrentValue);
+      codeObject.codeText = String(codeObject.codeText || '');
+
+      return codeObject;
+    };
+
+    const ensureSerialState = object => {
+      if (object instanceof window.fabric.Textbox) return ensureTextboxSerialState(object);
+      if (isCodeObject(object)) return ensureCodeSerialState(object);
+      return object;
+    };
+
+    const refreshTextboxSerialPreview = (textObject, options = {}) => {
+      if (!(textObject instanceof window.fabric.Textbox)) return;
+
+      ensureTextboxSerialState(textObject);
+      if (textObject.isEditing) return;
+
+      const nextText = textObject.serialEnabled
+        ? renderSerialText(textObject.serialTemplateText, true, textObject.serialCurrentValue)
+        : textObject.serialTemplateText;
+
+      textObject.set('text', nextText);
+      textObject.isPlaceholderText = false;
+      textObject.width = textObject.frameWidth || textObject.width;
+
+      if (textObject.autoFitText) {
+        fitTextboxFontToFrame(textObject);
+      } else {
+        textObject.initDimensions();
+      }
+
+      textObject.setCoords();
+      if (!options.skipRender) ensureCanvas().requestRenderAll();
+    };
+
     const clearEnterPrintPrompt = () => {
       enterPrintArmed = false;
       window.clearTimeout(enterPrintTimer);
@@ -237,6 +316,34 @@
       isSyncingAutoFitInput = false;
     };
 
+    const syncTextSerialInputs = textObject => {
+      if (!textSerialEnabledInput || !textSerialValueInput || !textSerialValueField) return;
+
+      const preparedTextbox = textObject instanceof window.fabric.Textbox ? ensureTextboxSerialState(textObject) : null;
+
+      isSyncingTextSerialInput = true;
+      textSerialEnabledInput.checked = Boolean(preparedTextbox?.serialEnabled);
+      textSerialEnabledInput.disabled = !preparedTextbox;
+      textSerialValueField.hidden = !(preparedTextbox?.serialEnabled);
+      textSerialValueInput.value = String(preparedTextbox?.serialCurrentValue || 1);
+      textSerialValueInput.disabled = !preparedTextbox?.serialEnabled;
+      isSyncingTextSerialInput = false;
+    };
+
+    const syncCodeSerialInputs = codeObject => {
+      if (!codeSerialEnabledInput || !codeSerialValueInput || !codeSerialValueField) return;
+
+      const preparedCodeObject = isCodeObject(codeObject) ? ensureCodeSerialState(codeObject) : null;
+
+      isSyncingCodeSerialInput = true;
+      codeSerialEnabledInput.checked = Boolean(preparedCodeObject?.serialEnabled);
+      codeSerialEnabledInput.disabled = !preparedCodeObject;
+      codeSerialValueField.hidden = !(preparedCodeObject?.serialEnabled);
+      codeSerialValueInput.value = String(preparedCodeObject?.serialCurrentValue || 1);
+      codeSerialValueInput.disabled = !preparedCodeObject?.serialEnabled;
+      isSyncingCodeSerialInput = false;
+    };
+
     const syncAlignmentButtons = textObject => {
       const buttons = [
         [alignLeftButton, 'left'],
@@ -273,8 +380,10 @@
       syncFontInput(textObject);
       syncFontSizeInput(textObject);
       syncAutoFitInput(textObject);
+      syncTextSerialInputs(textObject);
       syncAlignmentButtons(textObject);
       syncCodeInputs(codeObject);
+      syncCodeSerialInputs(codeObject);
     };
 
     const fitTextboxFontToFrame = textObject => {
@@ -357,6 +466,14 @@
         return Math.max(baseCalcTextHeight(), this.frameHeight || 0);
       };
       textbox.splitByGrapheme = false;
+      ensureTextboxSerialState(textbox);
+      textbox.on('editing:exited', () => {
+        ensureTextboxSerialState(textbox);
+        textbox.serialTemplateText = String(textbox.text || '');
+        refreshTextboxSerialPreview(textbox, { skipRender: true });
+        syncTextControls(textbox);
+        ensureCanvas().requestRenderAll();
+      });
       textbox.width = textbox.frameWidth;
       textbox.initDimensions();
       textbox.setCoords();
@@ -368,6 +485,7 @@
       if (!(textbox instanceof window.fabric.Textbox)) return textbox;
 
       textbox.maxAutoFitFontSize = Math.max(8, Math.round(textbox.fontSize || 8));
+      textbox.serialTemplateText = placeholderText;
       textbox.set('text', placeholderText);
       textbox.isPlaceholderText = true;
       textbox.initDimensions();
@@ -415,9 +533,15 @@
     const beginTextboxEditing = textObject => {
       if (!(textObject instanceof window.fabric.Textbox)) return;
 
+      ensureTextboxSerialState(textObject);
       if (textObject.isPlaceholderText) {
         textObject.set('text', '');
+        textObject.serialTemplateText = '';
         textObject.isPlaceholderText = false;
+        textObject.initDimensions();
+        textObject.setCoords();
+      } else if (textObject.serialEnabled) {
+        textObject.set('text', textObject.serialTemplateText);
         textObject.initDimensions();
         textObject.setCoords();
       }
@@ -549,6 +673,8 @@
         codeText: rawCodeText,
         codeFormat,
         renderedCodeText: codeText,
+        serialEnabled: false,
+        serialCurrentValue: 1,
         printifyObjectType: 'code',
       });
 
@@ -574,13 +700,17 @@
       }
     };
 
-    const updateSelectedCode = async (nextCodeText, nextCodeFormat, options = {}) => {
-      const codeObject = getEditableCodeObject();
-      if (!codeObject) return;
+    const updateCodeObject = async (codeObject, nextCodeText, nextCodeFormat, options = {}) => {
+      if (!isCodeObject(codeObject)) return;
 
+      ensureCodeSerialState(codeObject);
       const normalizedFormat = nextCodeFormat || codeObject.codeFormat || 'qrcode';
       const normalizedText = String(nextCodeText || '').trim();
-      const compatibleText = getCompatibleCodeText(normalizedText, normalizedFormat);
+      const serialValue = normalizeSerialValue(Object.prototype.hasOwnProperty.call(options, 'serialCurrentValue')
+        ? options.serialCurrentValue
+        : codeObject.serialCurrentValue);
+      const renderedInputText = renderSerialText(normalizedText, codeObject.serialEnabled, serialValue).trim();
+      const compatibleText = getCompatibleCodeText(renderedInputText, normalizedFormat);
       const shouldPreserveWhenBlank = Boolean(options.preserveWhenBlank);
 
       if (!normalizedText && shouldPreserveWhenBlank) {
@@ -588,19 +718,19 @@
           codeText: '',
           codeFormat: normalizedFormat,
         });
-        syncTextControls(codeObject);
+        if (!options.skipControlSync) syncTextControls(codeObject);
         ensureCanvas().requestRenderAll();
         return;
       }
 
       if (normalizedText && !compatibleText && options.skipIncompatibleInput) {
         codeObject.set('codeText', normalizedText);
-        syncTextControls(codeObject);
+        if (!options.skipControlSync) syncTextControls(codeObject);
         return;
       }
 
       const renderedText = compatibleText || resolveFallbackCodeText(normalizedFormat);
-      const storedText = compatibleText ? normalizedText : '';
+      const storedText = normalizedText;
 
       const renderedWidth = (codeObject.width || 1) * (codeObject.scaleX || 1);
       const renderedHeight = (codeObject.height || 1) * (codeObject.scaleY || 1);
@@ -625,11 +755,18 @@
           ...lockedValues,
         });
         codeObject.setCoords();
-        syncTextControls(codeObject);
+        if (!options.skipControlSync) syncTextControls(codeObject);
         ensureCanvas().requestRenderAll();
       } catch (error) {
         settings.onError(new Error('Could not update that code object.'));
       }
+    };
+
+    const updateSelectedCode = async (nextCodeText, nextCodeFormat, options = {}) => {
+      const codeObject = getEditableCodeObject();
+      if (!codeObject) return;
+
+      await updateCodeObject(codeObject, nextCodeText, nextCodeFormat, options);
     };
 
     const fitSelectedImageToLabelHeight = () => {
@@ -688,6 +825,127 @@
       ensureCanvas().requestRenderAll();
     };
 
+    const getSerialObjects = () => ensureCanvas().getObjects().filter(object => {
+      ensureSerialState(object);
+      return Boolean(object?.serialEnabled);
+    });
+
+    const applySerialPreviewForCopy = async copyOffset => {
+      const builderCanvas = ensureCanvas();
+
+      for (const object of builderCanvas.getObjects()) {
+        if (object instanceof window.fabric.Textbox) {
+          ensureTextboxSerialState(object);
+          if (!object.serialEnabled) continue;
+
+          object.set('text', renderSerialText(object.serialTemplateText, true, object.serialCurrentValue + copyOffset));
+          object.width = object.frameWidth || object.width;
+          if (object.autoFitText) {
+            fitTextboxFontToFrame(object);
+          } else {
+            object.initDimensions();
+          }
+          object.setCoords();
+          continue;
+        }
+
+        if (!isCodeObject(object) || !object.serialEnabled) continue;
+
+        await updateCodeObject(object, object.codeText || '', object.codeFormat || 'qrcode', {
+          preserveWhenBlank: true,
+          serialCurrentValue: object.serialCurrentValue + copyOffset,
+          skipControlSync: true,
+        });
+      }
+
+      builderCanvas.requestRenderAll();
+    };
+
+    const restoreSerialPreviewState = async () => {
+      const builderCanvas = ensureCanvas();
+
+      for (const object of builderCanvas.getObjects()) {
+        if (object instanceof window.fabric.Textbox) {
+          ensureTextboxSerialState(object);
+          if (object.serialEnabled) {
+            refreshTextboxSerialPreview(object, { skipRender: true });
+          } else if (!object.isEditing) {
+            object.set('text', object.serialTemplateText);
+            object.width = object.frameWidth || object.width;
+            if (object.autoFitText) {
+              fitTextboxFontToFrame(object);
+            } else {
+              object.initDimensions();
+            }
+            object.setCoords();
+          }
+          continue;
+        }
+
+        if (!isCodeObject(object) || !object.serialEnabled) continue;
+
+        await updateCodeObject(object, object.codeText || '', object.codeFormat || 'qrcode', {
+          preserveWhenBlank: true,
+          skipControlSync: true,
+        });
+      }
+
+      builderCanvas.requestRenderAll();
+    };
+
+    const advanceSerialObjects = copies => {
+      getSerialObjects().forEach(object => {
+        object.serialCurrentValue = normalizeSerialValue(object.serialCurrentValue) + copies;
+      });
+    };
+
+    const buildCanvasLabelFile = async (copyIndex = null) => {
+      const builderCanvas = ensureCanvas();
+      builderCanvas.renderAll();
+
+      const blob = await new Promise(resolve => {
+        builderCanvas.lowerCanvasEl.toBlob(resolve);
+      });
+
+      if (!blob) {
+        throw new Error('Could not render the label canvas.');
+      }
+
+      const logicalCanvas = document.createElement('canvas');
+      logicalCanvas.width = builderCanvas.getWidth();
+      logicalCanvas.height = builderCanvas.getHeight();
+      const logicalContext = logicalCanvas.getContext('2d');
+
+      if (!logicalContext) {
+        throw new Error('Could not prepare the label image.');
+      }
+
+      logicalContext.fillStyle = '#ffffff';
+      logicalContext.fillRect(0, 0, logicalCanvas.width, logicalCanvas.height);
+      logicalContext.drawImage(
+        builderCanvas.lowerCanvasEl,
+        0,
+        0,
+        builderCanvas.lowerCanvasEl.width,
+        builderCanvas.lowerCanvasEl.height,
+        0,
+        0,
+        logicalCanvas.width,
+        logicalCanvas.height
+      );
+
+      const normalizedBlob = await new Promise(resolve => {
+        logicalCanvas.toBlob(resolve, 'image/png');
+      });
+
+      if (!normalizedBlob) {
+        throw new Error('Could not normalize the label image.');
+      }
+
+      const suffix = copyIndex === null ? '' : `-${String(copyIndex + 1).padStart(3, '0')}`;
+      return new File([normalizedBlob], `label${suffix}.png`, { type: 'image/png' });
+    };
+
     const resetCanvas = printer => {
       const builderCanvas = ensureCanvas();
       const { width, height } = parsePxSize(printer?.pxSize);
@@ -731,6 +989,13 @@
       clearEnterPrintPrompt();
 
       const builderCanvas = ensureCanvas();
+      const activeObject = builderCanvas.getActiveObject();
+      const objectControls = builderCanvas.getObjects().map(object => ({
+        object,
+        hasBorders: object.hasBorders,
+        hasControls: object.hasControls,
+      }));
+
       builderCanvas.getObjects().forEach(object => {
         if (typeof object.exitEditing === 'function') object.exitEditing();
         object.set({
@@ -742,51 +1007,49 @@
       builderCanvas.renderAll();
 
       const copies = Math.max(1, Number.parseInt(copiesInput?.value || '1', 10) || 1);
+      const hasSerialObjects = getSerialObjects().length > 0;
 
-      builderCanvas.lowerCanvasEl.toBlob(async blob => {
-        try {
-          if (!blob) throw new Error('Could not render the label canvas.');
+      try {
+        let files = [];
+        let requestedPrintCount = copies;
 
-          const logicalCanvas = document.createElement('canvas');
-          logicalCanvas.width = builderCanvas.getWidth();
-          logicalCanvas.height = builderCanvas.getHeight();
-          const logicalContext = logicalCanvas.getContext('2d');
-
-          if (!logicalContext) {
-            throw new Error('Could not prepare the label image.');
+        if (hasSerialObjects) {
+          requestedPrintCount = 1;
+          for (let copyIndex = 0; copyIndex < copies; copyIndex += 1) {
+            await applySerialPreviewForCopy(copyIndex);
+            files.push(await buildCanvasLabelFile(copyIndex));
           }
-
-          logicalContext.fillStyle = '#ffffff';
-          logicalContext.fillRect(0, 0, logicalCanvas.width, logicalCanvas.height);
-          logicalContext.drawImage(
-            builderCanvas.lowerCanvasEl,
-            0,
-            0,
-            builderCanvas.lowerCanvasEl.width,
-            builderCanvas.lowerCanvasEl.height,
-            0,
-            0,
-            logicalCanvas.width,
-            logicalCanvas.height
-          );
-
-          const normalizedBlob = await new Promise(resolve => {
-            logicalCanvas.toBlob(resolve, 'image/png');
-          });
-
-          if (!normalizedBlob) {
-            throw new Error('Could not normalize the label image.');
-          }
-
-          const labelFile = new File([normalizedBlob], 'label.png', { type: 'image/png' });
-          await settings.onPrint(currentPrinter, [labelFile], {
-            printCount: copies,
-          });
-          if (settings.closeOnPrint) close();
-        } catch (error) {
-          settings.onError(error);
+        } else {
+          files = [await buildCanvasLabelFile()];
         }
-      });
+
+        await settings.onPrint(currentPrinter, files, {
+          printCount: requestedPrintCount,
+        });
+
+        if (hasSerialObjects) {
+          advanceSerialObjects(copies);
+        }
+        await restoreSerialPreviewState();
+
+        objectControls.forEach(({ object, hasBorders, hasControls }) => {
+          object.set({ hasBorders, hasControls });
+        });
+        if (activeObject) builderCanvas.setActiveObject(activeObject);
+        syncTextControls(builderCanvas.getActiveObject() || null);
+        builderCanvas.requestRenderAll();
+
+        if (settings.closeOnPrint) close();
+      } catch (error) {
+        await restoreSerialPreviewState();
+        objectControls.forEach(({ object, hasBorders, hasControls }) => {
+          object.set({ hasBorders, hasControls });
+        });
+        if (activeObject) builderCanvas.setActiveObject(activeObject);
+        syncTextControls(builderCanvas.getActiveObject() || null);
+        builderCanvas.requestRenderAll();
+        settings.onError(error);
+      }
     };
 
     const deleteActiveObject = () => {
@@ -823,6 +1086,8 @@
 
       builderCanvas.on('text:changed', event => {
         if (event.target instanceof window.fabric.Textbox) {
+          ensureTextboxSerialState(event.target);
+          event.target.serialTemplateText = String(event.target.text || '');
           event.target.isPlaceholderText = false;
           event.target.width = event.target.frameWidth || event.target.width;
           if (event.target.autoFitText) fitTextboxFontToFrame(event.target);
@@ -882,6 +1147,33 @@
       ensureCanvas().requestRenderAll();
     });
 
+    textSerialEnabledInput?.addEventListener('change', () => {
+      if (isSyncingTextSerialInput) return;
+
+      const textObject = getEditableTextObject();
+      if (!textObject) return;
+
+      ensureTextboxSerialState(textObject);
+      textObject.serialTemplateText = textObject.isEditing ? String(textObject.text || '') : String(textObject.serialTemplateText || textObject.text || '');
+      textObject.serialEnabled = textSerialEnabledInput.checked;
+      textObject.serialCurrentValue = normalizeSerialValue(textObject.serialCurrentValue);
+
+      refreshTextboxSerialPreview(textObject);
+      syncTextControls(textObject);
+    });
+
+    textSerialValueInput?.addEventListener('input', () => {
+      if (isSyncingTextSerialInput) return;
+
+      const textObject = getEditableTextObject();
+      if (!textObject) return;
+
+      ensureTextboxSerialState(textObject);
+      textObject.serialCurrentValue = normalizeSerialValue(textSerialValueInput.value);
+      refreshTextboxSerialPreview(textObject);
+      syncTextControls(textObject);
+    });
+
     addImageButton?.addEventListener('click', () => {
       imageInput?.click();
     });
@@ -918,6 +1210,32 @@
       if (!codeObject) return;
 
       updateSelectedCode(qrTextInput?.value || codeObject.codeText || '', qrFormatSelect.value || 'qrcode');
+    });
+    codeSerialEnabledInput?.addEventListener('change', () => {
+      if (isSyncingCodeSerialInput) return;
+
+      const codeObject = getEditableCodeObject();
+      if (!codeObject) return;
+
+      ensureCodeSerialState(codeObject);
+      codeObject.serialEnabled = codeSerialEnabledInput.checked;
+      codeObject.serialCurrentValue = normalizeSerialValue(codeObject.serialCurrentValue);
+
+      updateCodeObject(codeObject, codeObject.codeText || '', codeObject.codeFormat || 'qrcode', {
+        preserveWhenBlank: true,
+      });
+    });
+    codeSerialValueInput?.addEventListener('input', () => {
+      if (isSyncingCodeSerialInput) return;
+
+      const codeObject = getEditableCodeObject();
+      if (!codeObject) return;
+
+      ensureCodeSerialState(codeObject);
+      codeObject.serialCurrentValue = normalizeSerialValue(codeSerialValueInput.value);
+      updateCodeObject(codeObject, codeObject.codeText || '', codeObject.codeFormat || 'qrcode', {
+        preserveWhenBlank: true,
+      });
     });
 
     canvasShell?.addEventListener('dragenter', event => {

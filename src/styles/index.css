@@ -526,6 +526,31 @@ img {
   gap: 10px;
 }
 
+.printify-builder__serial-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.printify-builder__serial-row[hidden] {
+  display: none;
+}
+
+.printify-builder__serial-current-input {
+  width: 68px;
+  min-width: 68px;
+  height: 36px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--printify-line);
+  background: color-mix(in srgb, var(--printify-card) 86%, transparent);
+  color: var(--printify-ink);
+  font: inherit;
+  font-weight: 700;
+  text-align: center;
+}
+
 .printify-builder__canvas.lower-canvas {
   display: block;
   background: #ffffff;

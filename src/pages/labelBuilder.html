@@ -71,6 +71,11 @@
             <div class="printify-builder__text-card-controls">
               <div class="printify-builder__text-card-column">
                 <div class="printify-builder__text-card-row">
+                  <div class="printify-builder__segmented" role="group" aria-label="Text alignment">
+                    <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAlignLeft" type="button">Left</button>
+                    <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAlignCenter" type="button">Center</button>
+                    <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAlignRight" type="button">Right</button>
+                  </div>
                   <label class="printify-builder__field printify-builder__field--stacked" for="labelBuilderFont">
                     Font
                     <select id="labelBuilderFont">
@@ -89,15 +94,20 @@
                     <input id="labelBuilderFontSize" type="number" min="8" step="1" value="40">
                   </label>
                 </div>
-                <label class="printify-builder__field printify-builder__field--checkbox" for="labelBuilderAutoFit">
-                  <input id="labelBuilderAutoFit" type="checkbox" checked>
-                  <span class="printify-builder__toggle" aria-hidden="true"></span>
-                  <span>Auto Resize</span>
-                </label>
-                <div class="printify-builder__segmented" role="group" aria-label="Text alignment">
-                  <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAlignLeft" type="button">Left</button>
-                  <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAlignCenter" type="button">Center</button>
-                  <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAlignRight" type="button">Right</button>
+                <div class="printify-builder__text-card-row">
+                  <label class="printify-builder__field printify-builder__field--checkbox" for="labelBuilderAutoFit">
+                    <input id="labelBuilderAutoFit" type="checkbox" checked>
+                    <span class="printify-builder__toggle" aria-hidden="true"></span>
+                    <span>Auto Resize</span>
+                  </label>
+                  <label class="printify-builder__field printify-builder__field--checkbox" for="labelBuilderTextSerialEnabled">
+                    <input id="labelBuilderTextSerialEnabled" type="checkbox">
+                    <span class="printify-builder__toggle" aria-hidden="true"></span>
+                    <span>Serial</span>
+                  </label>
+                </div>
+                <div class="printify-builder__serial-row" id="labelBuilderTextSerialValueField" hidden>
+                  <input class="printify-builder__serial-current-input" id="labelBuilderTextSerialValue" type="number" min="0" step="1" value="1" aria-label="Current serial value" title="Current serial value. Use placeholder {xxx}; each printed copy increments and each 'x' represents a digit.">
                 </div>
               </div>
             </div>
@@ -118,7 +128,6 @@
             </div>
             <div class="printify-builder__text-card-controls printify-builder__text-card-controls--code">
               <label class="printify-builder__field printify-builder__field--stacked printify-builder__field--wide" for="labelBuilderQrFormat">
-                Type
                 <select id="labelBuilderQrFormat">
                   <option value="qrcode" selected>QR Code</option>
                   <option value="datamatrix">Data Matrix</option>
@@ -130,9 +139,18 @@
                 </select>
               </label>
               <label class="printify-builder__field printify-builder__field--stacked printify-builder__field--wide" for="labelBuilderQrText">
-                Data
                 <input class="printify-builder__input printify-builder__input--code" id="labelBuilderQrText" type="text" placeholder="Enter text or a URL">
               </label>
+              <div class="printify-builder__serial-row">
+                <label class="printify-builder__field printify-builder__field--checkbox" for="labelBuilderCodeSerialEnabled">
+                  <input id="labelBuilderCodeSerialEnabled" type="checkbox">
+                  <span class="printify-builder__toggle" aria-hidden="true"></span>
+                  <span>Serial</span>
+                </label>
+                <span id="labelBuilderCodeSerialValueField" hidden>
+                  <input class="printify-builder__serial-current-input" id="labelBuilderCodeSerialValue" type="number" min="0" step="1" value="1" aria-label="Current serial value" title="Current serial value. Use placeholders like {xxxx}; each printed copy increments it.">
+                </span>
+              </div>
             </div>
           </div>
         </div>

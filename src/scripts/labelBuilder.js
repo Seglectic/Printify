@@ -7,6 +7,7 @@
     height: 200,
   };
   const DEFAULT_CODE_FALLBACK_LABEL = 'Printify';
+  const DEFAULT_TEXTBOX_PLACEHOLDER = 'Click to Edit';
 
   const parsePxSize = pxSize => {
     const match = String(pxSize || '').match(/^(\d+)x(\d+)$/i);
@@ -308,6 +309,16 @@
       return textbox;
     };
 
+    const applyTextboxPlaceholder = (textbox, placeholderText = DEFAULT_TEXTBOX_PLACEHOLDER) => {
+      if (!(textbox instanceof window.fabric.Textbox)) return textbox;
+
+      textbox.set('text', placeholderText);
+      textbox.isPlaceholderText = true;
+      textbox.initDimensions();
+      textbox.setCoords();
+      return textbox;
+    };
+
     const buildTextbox = (canvasWidth, canvasHeight, overrides = {}) => attachTextboxFrameBehavior(new window.fabric.Textbox(Object.prototype.hasOwnProperty.call(overrides, 'text') ? overrides.text : '', {
       left: Math.round(canvasWidth * 0.08),
       top: Math.round(canvasHeight * 0.08),
@@ -347,6 +358,13 @@
 
     const beginTextboxEditing = textObject => {
       if (!(textObject instanceof window.fabric.Textbox)) return;
+
+      if (textObject.isPlaceholderText) {
+        textObject.set('text', '');
+        textObject.isPlaceholderText = false;
+        textObject.initDimensions();
+        textObject.setCoords();
+      }
 
       textObject.enterEditing();
       textObject.selectAll();
@@ -573,7 +591,7 @@
       builderCanvas.setDimensions({ width, height });
       builderCanvas.backgroundColor = '#ffffff';
 
-      defaultTextbox = buildTextbox(width, height);
+      defaultTextbox = applyTextboxPlaceholder(buildTextbox(width, height));
       builderCanvas.add(defaultTextbox);
       focusTextbox(defaultTextbox);
       builderCanvas.requestRenderAll();

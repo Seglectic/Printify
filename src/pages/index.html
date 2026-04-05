@@ -94,6 +94,15 @@
             </div>
           </div>
 
+          <div class="printify-builder__text-card" id="labelBuilderImageCard" hidden>
+            <div class="printify-builder__text-card-header">
+              <p class="printify-builder__text-card-eyebrow">Image</p>
+            </div>
+            <div class="printify-builder__text-card-controls printify-builder__text-card-controls--image">
+              <button class="printer-card__button printer-card__button--secondary" id="labelBuilderFitImageHeight" type="button">Fit To Label Height</button>
+            </div>
+          </div>
+
           <div class="printify-builder__text-card" id="labelBuilderQrCard" hidden>
             <div class="printify-builder__text-card-header">
               <p class="printify-builder__text-card-eyebrow">Code</p>
@@ -103,9 +112,9 @@
                 Type
                 <select id="labelBuilderQrFormat">
                   <option value="qrcode" selected>QR Code</option>
+                  <option value="datamatrix">Data Matrix</option>
                   <option value="code128">Code 128</option>
                   <option value="code39">Code 39</option>
-                  <option value="datamatrix">Data Matrix</option>
                   <option value="pdf417">PDF417</option>
                   <option value="ean13">EAN-13</option>
                   <option value="upca">UPC-A</option>
@@ -113,7 +122,7 @@
               </label>
               <label class="printify-builder__field printify-builder__field--stacked printify-builder__field--wide" for="labelBuilderQrText">
                 Data
-                <textarea class="printify-builder__textarea" id="labelBuilderQrText" rows="4" placeholder="Enter text or a URL"></textarea>
+                <input class="printify-builder__input printify-builder__input--code" id="labelBuilderQrText" type="text" placeholder="Enter text or a URL">
               </label>
             </div>
           </div>

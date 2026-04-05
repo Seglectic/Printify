@@ -33,6 +33,7 @@
       printSelector: '#labelBuilderPrint',
       copiesSelector: '#labelBuilderCopies',
       textCardSelector: '#labelBuilderTextCard',
+      imageCardSelector: '#labelBuilderImageCard',
       qrCardSelector: '#labelBuilderQrCard',
       fontSelector: '#labelBuilderFont',
       fontSizeSelector: '#labelBuilderFontSize',
@@ -44,6 +45,7 @@
       canvasShellSelector: '.printify-builder__canvas-shell',
       addTextSelector: '#labelBuilderAddText',
       addQrSelector: '#labelBuilderAddQr',
+      fitImageHeightSelector: '#labelBuilderFitImageHeight',
       alignLeftSelector: '#labelBuilderAlignLeft',
       alignCenterSelector: '#labelBuilderAlignCenter',
       alignRightSelector: '#labelBuilderAlignRight',
@@ -64,6 +66,7 @@
     const printButton = document.querySelector(settings.printSelector);
     const copiesInput = document.querySelector(settings.copiesSelector);
     const textCard = document.querySelector(settings.textCardSelector);
+    const imageCard = document.querySelector(settings.imageCardSelector);
     const qrCard = document.querySelector(settings.qrCardSelector);
     const fontSelect = document.querySelector(settings.fontSelector);
     const fontSizeInput = document.querySelector(settings.fontSizeSelector);
@@ -75,6 +78,7 @@
     const canvasShell = document.querySelector(settings.canvasShellSelector);
     const addTextButton = document.querySelector(settings.addTextSelector);
     const addQrButton = document.querySelector(settings.addQrSelector);
+    const fitImageHeightButton = document.querySelector(settings.fitImageHeightSelector);
     const alignLeftButton = document.querySelector(settings.alignLeftSelector);
     const alignCenterButton = document.querySelector(settings.alignCenterSelector);
     const alignRightButton = document.querySelector(settings.alignRightSelector);
@@ -138,15 +142,57 @@
     };
 
     const isCodeObject = object => object?.printifyObjectType === 'code';
+    const isImageObject = object => object?.printifyObjectType === 'image';
 
     const resolveBuilderVersionLabel = () => {
       const clientVersion = String(window.PRINTIFY_CLIENT_VERSION || '').trim();
-      return clientVersion ? `${DEFAULT_CODE_FALLBACK_LABEL} ${clientVersion}` : DEFAULT_CODE_FALLBACK_LABEL;
+      return clientVersion ? `${DEFAULT_CODE_FALLBACK_LABEL} v${clientVersion}` : DEFAULT_CODE_FALLBACK_LABEL;
     };
 
-    const getCodeTextOrFallback = nextCodeText => {
+    const buildNumericVersionCode = totalDigits => {
+      const clientVersion = String(window.PRINTIFY_CLIENT_VERSION || '').trim();
+      const versionParts = clientVersion
+        .split('.')
+        .map(part => Number.parseInt(part, 10))
+        .filter(Number.isFinite)
+        .slice(0, 3);
+
+      while (versionParts.length < 3) versionParts.push(0);
+
+      const numericBody = versionParts.map(part => String(part).padStart(3, '0')).join('');
+      const prefix = totalDigits === 12 ? '271' : '27';
+      return `${prefix}${numericBody}`.slice(0, totalDigits);
+    };
+
+    const resolveFallbackCodeText = codeFormat => {
+      switch (codeFormat) {
+        case 'ean13':
+          return buildNumericVersionCode(12);
+        case 'upca':
+          return buildNumericVersionCode(11);
+        case 'code39':
+          return resolveBuilderVersionLabel().toUpperCase().replace(/[.]/g, ' ');
+        default:
+          return resolveBuilderVersionLabel();
+      }
+    };
+
+    const getCompatibleCodeText = (nextCodeText, codeFormat) => {
       const normalizedText = String(nextCodeText || '').trim();
-      return normalizedText || resolveBuilderVersionLabel();
+      if (!normalizedText) return null;
+
+      switch (codeFormat) {
+        case 'ean13':
+          return /^\d{12,13}$/.test(normalizedText) ? normalizedText : null;
+        case 'upca':
+          return /^\d{11,12}$/.test(normalizedText) ? normalizedText : null;
+        case 'code39': {
+          const normalizedCode39Text = normalizedText.toUpperCase();
+          return /^[0-9A-Z \-.$/+%]+$/.test(normalizedCode39Text) ? normalizedCode39Text : null;
+        }
+        default:
+          return normalizedText;
+      }
     };
 
     const clearEnterPrintPrompt = () => {
@@ -218,9 +264,11 @@
 
     const syncTextControls = activeObject => {
       const textObject = activeObject instanceof window.fabric.Textbox ? activeObject : null;
+      const imageObject = isImageObject(activeObject) ? activeObject : null;
       const codeObject = isCodeObject(activeObject) ? activeObject : null;
 
       if (textCard) textCard.hidden = !textObject;
+      if (imageCard) imageCard.hidden = !imageObject;
       if (qrCard) qrCard.hidden = !codeObject;
       syncFontInput(textObject);
       syncFontSizeInput(textObject);
@@ -476,6 +524,7 @@
           borderColor: '#1f6f43',
           borderScaleFactor: 2,
           transparentCorners: false,
+          printifyObjectType: 'image',
         });
         fitObjectToCanvas(image);
         ensureCanvas().add(image);
@@ -485,7 +534,7 @@
       }
     };
 
-    const buildCodeImage = async (codeText, codeFormat = 'qrcode') => {
+    const buildCodeImage = async (codeText, codeFormat = 'qrcode', rawCodeText = '') => {
       const codeSourceUrl = buildCodeSourceUrl(codeText, codeFormat);
       const imageElement = await loadImageElement(codeSourceUrl);
       const FabricImageCtor = window.fabric.FabricImage || window.fabric.Image;
@@ -497,8 +546,9 @@
         borderColor: '#1f6f43',
         borderScaleFactor: 2,
         transparentCorners: false,
-        codeText,
+        codeText: rawCodeText,
         codeFormat,
+        renderedCodeText: codeText,
         printifyObjectType: 'code',
       });
 
@@ -507,10 +557,10 @@
 
     const addQrCode = async () => {
       const builderCanvas = ensureCanvas();
-      const defaultCodeText = resolveBuilderVersionLabel();
+      const defaultCodeText = resolveFallbackCodeText('qrcode');
 
       try {
-        const codeImage = await buildCodeImage(defaultCodeText, 'qrcode');
+        const codeImage = await buildCodeImage(defaultCodeText, 'qrcode', '');
         fitObjectToCanvas(codeImage);
         builderCanvas.add(codeImage);
         focusObject(codeImage);
@@ -524,12 +574,33 @@
       }
     };
 
-    const updateSelectedCode = async (nextCodeText, nextCodeFormat) => {
+    const updateSelectedCode = async (nextCodeText, nextCodeFormat, options = {}) => {
       const codeObject = getEditableCodeObject();
       if (!codeObject) return;
 
-      const normalizedText = getCodeTextOrFallback(nextCodeText);
       const normalizedFormat = nextCodeFormat || codeObject.codeFormat || 'qrcode';
+      const normalizedText = String(nextCodeText || '').trim();
+      const compatibleText = getCompatibleCodeText(normalizedText, normalizedFormat);
+      const shouldPreserveWhenBlank = Boolean(options.preserveWhenBlank);
+
+      if (!normalizedText && shouldPreserveWhenBlank) {
+        codeObject.set({
+          codeText: '',
+          codeFormat: normalizedFormat,
+        });
+        syncTextControls(codeObject);
+        ensureCanvas().requestRenderAll();
+        return;
+      }
+
+      if (normalizedText && !compatibleText && options.skipIncompatibleInput) {
+        codeObject.set('codeText', normalizedText);
+        syncTextControls(codeObject);
+        return;
+      }
+
+      const renderedText = compatibleText || resolveFallbackCodeText(normalizedFormat);
+      const storedText = compatibleText ? normalizedText : '';
 
       const renderedWidth = (codeObject.width || 1) * (codeObject.scaleX || 1);
       const renderedHeight = (codeObject.height || 1) * (codeObject.scaleY || 1);
@@ -540,7 +611,7 @@
       };
 
       try {
-        const nextImageElement = await loadImageElement(buildCodeSourceUrl(normalizedText, normalizedFormat));
+        const nextImageElement = await loadImageElement(buildCodeSourceUrl(renderedText, normalizedFormat));
 
         codeObject.setElement(nextImageElement);
         codeObject.set({
@@ -548,8 +619,9 @@
           height: nextImageElement.naturalHeight || nextImageElement.height,
           scaleX: renderedWidth / (nextImageElement.naturalWidth || nextImageElement.width || 1),
           scaleY: renderedHeight / (nextImageElement.naturalHeight || nextImageElement.height || 1),
-          codeText: normalizedText,
+          codeText: storedText,
           codeFormat: normalizedFormat,
+          renderedCodeText: renderedText,
           ...lockedValues,
         });
         codeObject.setCoords();
@@ -558,6 +630,27 @@
       } catch (error) {
         settings.onError(new Error('Could not update that code object.'));
       }
+    };
+
+    const fitSelectedImageToLabelHeight = () => {
+      const builderCanvas = ensureCanvas();
+      const imageObject = builderCanvas.getActiveObject();
+
+      if (!isImageObject(imageObject)) return;
+
+      const intrinsicWidth = imageObject.width || 1;
+      const intrinsicHeight = imageObject.height || 1;
+      const nextScale = builderCanvas.getHeight() / intrinsicHeight;
+      const renderedWidth = intrinsicWidth * nextScale;
+
+      imageObject.set({
+        scaleX: nextScale,
+        scaleY: nextScale,
+        top: 0,
+        left: Math.round((builderCanvas.getWidth() - renderedWidth) / 2),
+      });
+      imageObject.setCoords();
+      builderCanvas.requestRenderAll();
     };
 
     const bakeTextboxScale = event => {
@@ -800,6 +893,7 @@
 
     addTextButton?.addEventListener('click', addTextbox);
     addQrButton?.addEventListener('click', addQrCode);
+    fitImageHeightButton?.addEventListener('click', fitSelectedImageToLabelHeight);
     alignLeftButton?.addEventListener('click', () => updateSelectedTextbox({ textAlign: 'left' }));
     alignCenterButton?.addEventListener('click', () => updateSelectedTextbox({ textAlign: 'center' }));
     alignRightButton?.addEventListener('click', () => updateSelectedTextbox({ textAlign: 'right' }));
@@ -811,7 +905,10 @@
 
       window.clearTimeout(qrUpdateTimer);
       qrUpdateTimer = window.setTimeout(() => {
-        updateSelectedCode(qrTextInput.value || '', qrFormatSelect?.value || codeObject.codeFormat);
+        updateSelectedCode(qrTextInput.value || '', qrFormatSelect?.value || codeObject.codeFormat, {
+          preserveWhenBlank: true,
+          skipIncompatibleInput: true,
+        });
       }, 500);
     });
     qrFormatSelect?.addEventListener('change', () => {

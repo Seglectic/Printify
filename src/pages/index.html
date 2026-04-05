@@ -47,7 +47,10 @@
 
         <div class="printify-builder__controls printify-builder__controls--tools">
           <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAddText" type="button">📝 Textbox</button>
-          <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAddImage" type="button">🖼️ Image</button>
+          <span class="printify-builder__tooltip-wrap">
+            <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAddImage" type="button">🖼️ Image</button>
+            <span class="printify-builder__tooltip" role="tooltip">You can also drag images onto the canvas.</span>
+          </span>
           <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAddQr" type="button">🔳 Code</button>
         </div>
 
@@ -95,12 +98,17 @@
             <div class="printify-builder__text-card-header">
               <p class="printify-builder__text-card-eyebrow">Code</p>
             </div>
-            <div class="printify-builder__text-card-controls">
+            <div class="printify-builder__text-card-controls printify-builder__text-card-controls--code">
               <label class="printify-builder__field printify-builder__field--stacked printify-builder__field--wide" for="labelBuilderQrFormat">
                 Type
                 <select id="labelBuilderQrFormat">
                   <option value="qrcode" selected>QR Code</option>
                   <option value="code128">Code 128</option>
+                  <option value="code39">Code 39</option>
+                  <option value="datamatrix">Data Matrix</option>
+                  <option value="pdf417">PDF417</option>
+                  <option value="ean13">EAN-13</option>
+                  <option value="upca">UPC-A</option>
                 </select>
               </label>
               <label class="printify-builder__field printify-builder__field--stacked printify-builder__field--wide" for="labelBuilderQrText">

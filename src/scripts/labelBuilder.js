@@ -105,6 +105,37 @@
       return canvas;
     };
 
+    const applyCanvasViewportScale = () => {
+      const builderCanvas = ensureCanvas();
+      const container = builderCanvas.wrapperEl;
+      const lowerCanvas = builderCanvas.lowerCanvasEl;
+      const upperCanvas = builderCanvas.upperCanvasEl;
+
+      if (!canvasShell || !container || !lowerCanvas || !upperCanvas) return;
+
+      const logicalWidth = builderCanvas.getWidth();
+      const logicalHeight = builderCanvas.getHeight();
+      const shellStyles = window.getComputedStyle(canvasShell);
+      const horizontalPadding = (
+        Number.parseFloat(shellStyles.paddingLeft || '0')
+        + Number.parseFloat(shellStyles.paddingRight || '0')
+      );
+      const availableWidth = Math.max(240, canvasShell.clientWidth - horizontalPadding);
+      const viewportHeight = window.innerHeight || document.documentElement.clientHeight || logicalHeight;
+      const availableHeight = Math.max(180, Math.floor(viewportHeight * 0.46));
+      const displayScale = Math.min(1, availableWidth / logicalWidth, availableHeight / logicalHeight);
+      const displayWidth = Math.max(1, Math.round(logicalWidth * displayScale));
+      const displayHeight = Math.max(1, Math.round(logicalHeight * displayScale));
+
+      [container, lowerCanvas, upperCanvas].forEach(element => {
+        element.style.width = `${displayWidth}px`;
+        element.style.height = `${displayHeight}px`;
+      });
+
+      builderCanvas.calcOffset();
+      builderCanvas.requestRenderAll();
+    };
+
     const isCodeObject = object => object?.printifyObjectType === 'code';
 
     const resolveBuilderVersionLabel = () => {
@@ -546,6 +577,7 @@
       builderCanvas.add(defaultTextbox);
       focusTextbox(defaultTextbox);
       builderCanvas.requestRenderAll();
+      applyCanvasViewportScale();
 
       if (size) size.textContent = `${width} x ${height} px`;
       if (copy) copy.textContent = `Build a label sized for ${printer.displayName}, then send it through the standard image print flow.`;
@@ -564,8 +596,11 @@
       if (title) title.textContent = `${printer.displayName} Builder`;
       if (copiesInput) copiesInput.value = '1';
 
-      resetCanvas(printer);
       root.classList.add('is-open');
+      resetCanvas(printer);
+      window.requestAnimationFrame(() => {
+        applyCanvasViewportScale();
+      });
     };
 
     const print = async () => {
@@ -787,6 +822,10 @@
     printButton?.addEventListener('click', print);
     root.addEventListener('click', event => {
       if (event.target === root) close();
+    });
+    window.addEventListener('resize', () => {
+      if (!root.classList.contains('is-open')) return;
+      applyCanvasViewportScale();
     });
     document.addEventListener('keydown', event => {
       if (!root.classList.contains('is-open')) return;

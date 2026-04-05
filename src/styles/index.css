@@ -497,6 +497,11 @@ img {
   margin-top: 8px;
 }
 
+.printify-builder__text-card-controls--code {
+  flex-direction: column;
+  align-items: stretch;
+}
+
 .printify-builder__text-card-column {
   display: flex;
   flex-direction: column;
@@ -545,6 +550,41 @@ img {
 .printify-builder__controls--tools {
   justify-content: flex-start;
   margin-top: 14px;
+}
+
+.printify-builder__tooltip-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.printify-builder__tooltip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translate(-50%, 6px);
+  min-width: 220px;
+  max-width: 260px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--printify-line) 88%, transparent);
+  background: color-mix(in srgb, var(--printify-card) 96%, var(--printify-page));
+  color: var(--printify-ink);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.35;
+  text-transform: none;
+  box-shadow: 0 8px 24px rgba(17, 24, 39, 0.22);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 90ms ease, transform 90ms ease;
+  z-index: 3;
+}
+
+.printify-builder__tooltip-wrap:hover .printify-builder__tooltip,
+.printify-builder__tooltip-wrap:focus-within .printify-builder__tooltip {
+  opacity: 1;
+  transform: translate(-50%, 0);
 }
 
 .printify-builder__actions {
@@ -656,6 +696,11 @@ img {
 
 .printify-builder__field--stacked select {
   width: min(240px, 100%);
+}
+
+.printify-builder__text-card-controls--code .printify-builder__field--stacked select {
+  width: 100%;
+  min-width: 0;
 }
 
 .printify-builder__text-card-column .printify-builder__field--stacked select {

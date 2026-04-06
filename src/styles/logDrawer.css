@@ -485,28 +485,47 @@
 
 .printify-log-drawer__checksum {
   margin-top: 12px;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.printify-log-drawer__footer {
+  display: flex;
+  justify-content: flex-start;
 }
 
 .printify-log-drawer__checksum-button {
-  width: 100%;
+  max-width: 100%;
   border: 1px solid var(--pld-code-border);
-  border-radius: 14px;
-  padding: 10px 12px;
+  border-radius: 999px;
+  padding: 7px 10px;
   background: var(--pld-code-bg);
   color: var(--pld-muted);
   cursor: pointer;
   font-family: "SFMono-Regular", "Menlo", monospace;
   font-size: 10px;
-  line-height: 1.35;
-  text-align: center;
+  line-height: 1.2;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   user-select: text;
   transition: background 180ms ease, border-color 180ms ease;
 }
 
-.printify-log-drawer__checksum-line {
-  display: block;
-  width: 32ch;
-  margin: 0 auto;
+.printify-log-drawer__checksum-label {
+  display: inline-block;
+  margin-right: 8px;
+  color: var(--pld-muted);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.printify-log-drawer__checksum-text {
+  display: inline-block;
+  max-width: 100%;
+  color: var(--pld-ink);
 }
 
 .printify-log-drawer__details {

@@ -61,6 +61,26 @@
 
     if (Number.isNaN(date.getTime())) return 'Unknown time';
 
+    const now = new Date();
+    const isToday = date.getFullYear() === now.getFullYear()
+      && date.getMonth() === now.getMonth()
+      && date.getDate() === now.getDate();
+
+    if (!isToday) {
+      const sameYear = date.getFullYear() === now.getFullYear();
+
+      return date.toLocaleDateString([], sameYear
+        ? {
+            month: 'short',
+            day: 'numeric',
+          }
+        : {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+          });
+    }
+
     return date.toLocaleTimeString([], {
       hour: 'numeric',
       minute: '2-digit',
@@ -76,12 +96,12 @@
   const formatChecksumMarkup = checksum => {
     const safeChecksum = escapeHtml(checksum || 'Checksum unavailable');
 
-    if (!checksum || checksum.length !== 64) return safeChecksum;
+    if (!checksum || checksum.length !== 64) return `<span class="printify-log-drawer__checksum-text">${safeChecksum}</span>`;
 
-    return [
-      `<span class="printify-log-drawer__checksum-line">${safeChecksum.slice(0, 32)}</span>`,
-      `<span class="printify-log-drawer__checksum-line">${safeChecksum.slice(32, 64)}</span>`,
-    ].join('');
+    return `
+      <span class="printify-log-drawer__checksum-label">CHKSUM</span>
+      <span class="printify-log-drawer__checksum-text">${safeChecksum.slice(0, 8)}...${safeChecksum.slice(-8)}</span>
+    `;
   };
 
   // ╭──────────────────────────╮
@@ -259,12 +279,14 @@
               </div>
               ${job.previewUrl ? `<button class="printify-log-drawer__preview-trigger" type="button" data-role="preview-trigger"><img class="printify-log-drawer__preview" src="${escapeHtml(job.previewUrl)}" alt="Preview for ${escapeHtml(job.originalFilename || 'print job')}" loading="lazy"></button>` : ''}
             </div>
-            <div class="printify-log-drawer__checksum">
-              <button class="printify-log-drawer__checksum-button" type="button" data-role="checksum-select">
-                ${formatChecksumMarkup(job.chksum)}
-              </button>
-            </div>
             <div class="printify-log-drawer__details">${renderDetailsMarkup(job)}</div>
+            <div class="printify-log-drawer__footer">
+              <div class="printify-log-drawer__checksum">
+                <button class="printify-log-drawer__checksum-button" type="button" data-role="checksum-select" title="${escapeHtml(job.chksum || 'Checksum unavailable')}">
+                  ${formatChecksumMarkup(job.chksum)}
+                </button>
+              </div>
+            </div>
           </article>
         `;
       }).join('');

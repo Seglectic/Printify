@@ -10,6 +10,8 @@
 # │      bundleImageCopies: false             │
 # │      pxSize: "800x1200"                   │
 # │      density: "300"                       │
+# │      linuxPrintMode: "lp"                 │
+# │      linuxDriverName: "My Linux Queue"    │
 # │      cliCommand: "python"                 │
 # │      cliArgs: ["printChan.py", "{file}"]  │
 # ╰───────────────────────────────────────────╯
@@ -22,6 +24,7 @@ printers:
     displayName: "Zebra Label Printer"
     driverName: "Zebra450"
     printMode: "pdfToPrinter"
+    linuxPrintMode: "lp"
     acceptedKinds: ["pdf", "image", "zip"]
     labelBuilder: true
     bundleImageCopies: false
@@ -31,7 +34,7 @@ printers:
   brotherLaser:
     displayName: "Brother Laser Printer"
     driverName: "Brother2360DUSB"
-    printMode: "unixPrint"
+    printMode: "lp"
     acceptedKinds: ["pdf", "image"]
     labelBuilder: false
     bundleImageCopies: false
@@ -42,6 +45,7 @@ printers:
     displayName: "Dymo Label Maker"
     driverName: "DYMO4XLUSB"
     printMode: "pdfToPrinter"
+    linuxPrintMode: "lp"
     acceptedKinds: ["image"]
     labelBuilder: true
     bundleImageCopies: true

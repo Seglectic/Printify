@@ -13,7 +13,10 @@
         </div>
         <div class="printify-log-drawer__toolbar">
           <p class="printify-log-drawer__subhead" data-role="subhead">Recent print logs from the last 60 minutes.</p>
-          <button class="printify-log-drawer__window-button" type="button" data-role="window-button">60 minutes</button>
+          <div class="printify-log-drawer__window-picker">
+            <button class="printify-log-drawer__window-button" type="button" data-role="window-button">60 minutes</button>
+            <div class="printify-log-drawer__window-menu" data-role="window-menu" hidden></div>
+          </div>
         </div>
       </div>
       <div class="printify-log-drawer__list" data-role="list">
@@ -112,6 +115,7 @@
     const WINDOW_STORAGE_KEY = 'printify-log-window';
     const settings = Object.assign({
       recentLogsUrl: '/logs/recent',
+      originalLogUrl: '/logs/original',
       printersUrl: '/printers',
       reprintUrl: '/logs/reprint',
       websocketPath: '/ws/logs',
@@ -130,6 +134,7 @@
     const close = root.querySelector('[data-role="close"]');
     const subhead = root.querySelector('[data-role="subhead"]');
     const windowButton = root.querySelector('[data-role="window-button"]');
+    const windowMenu = root.querySelector('[data-role="window-menu"]');
     const previewPane = root.querySelector('[data-role="preview-pane"]');
     const previewTitle = root.querySelector('[data-role="preview-title"]');
     const previewImage = root.querySelector('[data-role="preview-image"]');
@@ -168,11 +173,60 @@
       if (windowMinutes % 60 === 0) return `${windowMinutes / 60} hours`;
       return `${windowMinutes} minutes`;
     };
+    const closeWindowMenu = () => {
+      if (!windowMenu) return;
+      windowMenu.hidden = true;
+      windowButton?.setAttribute('aria-expanded', 'false');
+    };
+    const openWindowMenu = () => {
+      if (!windowMenu) return;
+      renderWindowMenu();
+      windowMenu.hidden = false;
+      windowButton?.setAttribute('aria-expanded', 'true');
+    };
+    const toggleWindowMenu = () => {
+      if (!windowMenu) return;
+
+      if (windowMenu.hidden) {
+        openWindowMenu();
+      } else {
+        closeWindowMenu();
+      }
+    };
+    const setCurrentWindowMinutes = windowMinutes => {
+      const nextIndex = LOOKBACK_OPTIONS.indexOf(windowMinutes);
+
+      if (nextIndex === -1) return;
+
+      currentWindowIndex = nextIndex;
+      window.localStorage.setItem(WINDOW_STORAGE_KEY, String(getCurrentWindowMinutes()));
+      syncWindowUi();
+      queueRecentLogReload();
+    };
+    const renderWindowMenu = () => {
+      if (!windowMenu) return;
+
+      windowMenu.innerHTML = LOOKBACK_OPTIONS.map(windowMinutes => {
+        const isActive = getCurrentWindowMinutes() === windowMinutes;
+
+        return `
+          <button
+            class="printify-log-drawer__window-option${isActive ? ' is-active' : ''}"
+            type="button"
+            data-role="window-option"
+            data-window-minutes="${windowMinutes}"
+          >
+            ${escapeHtml(formatWindowLabel(windowMinutes))}
+          </button>
+        `;
+      }).join('');
+    };
 
     const syncWindowUi = () => {
       const windowMinutes = getCurrentWindowMinutes();
       if (subhead) subhead.textContent = `Recent print logs from the last ${formatWindowLabel(windowMinutes)}.`;
       if (windowButton) windowButton.textContent = formatWindowLabel(windowMinutes);
+      renderWindowMenu();
     };
 
     const getJobKey = job => [
@@ -181,6 +235,83 @@
       job.originalFilename || '',
       job.chksum || '',
     ].join('|');
+    const sortJobsNewestFirst = jobs => jobs
+      .slice()
+      .sort((leftJob, rightJob) => Date.parse(rightJob.timestamp) - Date.parse(leftJob.timestamp));
+    const isReprintJob = job => Boolean(job && (job.isReprint || job.sourceType === 'log-reprint'));
+    const renderReprintStampMarkup = job => (
+      isReprintJob(job)
+        ? '<span class="printify-log-drawer__reprint-stamp">REPRINT</span>'
+        : ''
+    );
+    const buildOriginalLookupUrl = job => {
+      const url = new URL(settings.originalLogUrl, window.location.origin);
+      url.searchParams.set('chksum', String(job.chksum || ''));
+
+      if (job.timestamp) {
+        url.searchParams.set('beforeTimestamp', String(job.timestamp));
+      }
+
+      return url.toString();
+    };
+    const findOriginalJobInCurrentList = job => sortJobsNewestFirst(currentJobs)
+      .find(candidateJob => (
+        candidateJob
+        && !isReprintJob(candidateJob)
+        && candidateJob.chksum
+        && candidateJob.chksum === job.chksum
+        && (!job.timestamp || Date.parse(candidateJob.timestamp) < Date.parse(job.timestamp))
+      )) || null;
+    const upsertCurrentJob = job => {
+      const jobsByKey = new Map(currentJobs.map(currentJob => [getJobKey(currentJob), currentJob]));
+      jobsByKey.set(getJobKey(job), job);
+      renderLogs(sortJobsNewestFirst(Array.from(jobsByKey.values())));
+      syncPreviewPane();
+    };
+    const scrollToJobKey = jobKey => {
+      highlightedJobKeys.set(jobKey, Date.now() + highlightDurationMs);
+      expandedJobKeys.add(jobKey);
+      renderLogs(currentJobs);
+
+      window.requestAnimationFrame(() => {
+        const selectorValue = window.CSS?.escape
+          ? window.CSS.escape(jobKey)
+          : jobKey.replace(/["\\]/g, '\\$&');
+        const targetCard = list.querySelector(`[data-job-key="${selectorValue}"]`);
+
+        if (!targetCard) return;
+
+        targetCard.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+        });
+      });
+    };
+    const jumpToOriginalLog = job => {
+      if (!isReprintJob(job) || !job.chksum) return Promise.resolve();
+
+      const localOriginalJob = findOriginalJobInCurrentList(job);
+
+      if (localOriginalJob) {
+        scrollToJobKey(getJobKey(localOriginalJob));
+        return Promise.resolve();
+      }
+
+      return fetch(buildOriginalLookupUrl(job))
+        .then(async response => {
+          if (!response.ok) {
+            throw new Error(await response.text() || 'Original log entry not found');
+          }
+
+          return response.json();
+        })
+        .then(payload => {
+          if (!payload.job) return;
+          upsertCurrentJob(payload.job);
+          scrollToJobKey(getJobKey(payload.job));
+        })
+        .catch(() => {});
+    };
 
     const renderDetailsMarkup = job => {
       const details = [
@@ -279,21 +410,33 @@
         return `
           <article class="printify-log-drawer__card${isNew ? ' is-new' : ''}${isOpen ? ' is-open' : ''}" data-role="log-card" data-job-key="${escapeHtml(jobKey)}">
             <div class="printify-log-drawer__row">
-              <img class="printify-log-drawer__icon" src="${iconPath}" alt="${printerLabel}">
+              <div class="printify-log-drawer__icon-stack">
+                ${isReprintJob(job)
+                  ? `<button class="printify-log-drawer__icon-button" type="button" data-role="original-jump" title="Jump to original print"><img class="printify-log-drawer__icon" src="${iconPath}" alt="${printerLabel}"></button>`
+                  : `<img class="printify-log-drawer__icon" src="${iconPath}" alt="${printerLabel}">`}
+                <div class="printify-log-drawer__time">${escapeHtml(formatTimestamp(job.timestamp))}</div>
+              </div>
               <div class="printify-log-drawer__main">
                 <h3 class="printify-log-drawer__filename">${escapeHtml(job.originalFilename || 'Unnamed file')}</h3>
-                <div class="printify-log-drawer__meta">${printerLabel} | ${escapeHtml(formatTimestamp(job.timestamp))}</div>
+                <div class="printify-log-drawer__summary">
+                  <div class="printify-log-drawer__summary-main">
+                    <div class="printify-log-drawer__printer">${printerLabel}</div>
+                    <div class="printify-log-drawer__checksum">
+                      <button class="printify-log-drawer__checksum-button" type="button" data-role="checksum-select" title="${escapeHtml(job.chksum || 'Checksum unavailable')}">
+                        ${formatChecksumMarkup(job.chksum)}
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
-              ${job.previewUrl ? `<button class="printify-log-drawer__preview-trigger" type="button" data-role="preview-trigger"><img class="printify-log-drawer__preview" src="${escapeHtml(job.previewUrl)}" alt="Preview for ${escapeHtml(job.originalFilename || 'print job')}" loading="lazy"></button>` : ''}
+              ${job.previewUrl ? `
+                <div class="printify-log-drawer__preview-stack">
+                  <button class="printify-log-drawer__preview-trigger" type="button" data-role="preview-trigger"><img class="printify-log-drawer__preview" src="${escapeHtml(job.previewUrl)}" alt="Preview for ${escapeHtml(job.originalFilename || 'print job')}" loading="lazy"></button>
+                  ${renderReprintStampMarkup(job)}
+                </div>
+              ` : ''}
             </div>
             <div class="printify-log-drawer__details">${renderDetailsMarkup(job)}</div>
-            <div class="printify-log-drawer__footer">
-              <div class="printify-log-drawer__checksum">
-                <button class="printify-log-drawer__checksum-button" type="button" data-role="checksum-select" title="${escapeHtml(job.chksum || 'Checksum unavailable')}">
-                  ${formatChecksumMarkup(job.chksum)}
-                </button>
-              </div>
-            </div>
           </article>
         `;
       }).join('');
@@ -343,6 +486,7 @@
     };
 
     const openDrawer = () => {
+      closeWindowMenu();
       setOpenState(true);
       return loadPrinters().finally(loadRecentLogs);
     };
@@ -400,11 +544,35 @@
       queueRecentLogReload();
     });
 
+    windowButton.addEventListener('contextmenu', event => {
+      event.preventDefault();
+      toggleWindowMenu();
+    });
+
+    windowMenu?.addEventListener('click', event => {
+      const windowOption = event.target.closest('[data-role="window-option"]');
+
+      if (!windowOption) return;
+
+      setCurrentWindowMinutes(Number.parseInt(windowOption.getAttribute('data-window-minutes'), 10));
+      closeWindowMenu();
+    });
+
     scrim.addEventListener('click', () => {
       setOpenState(false);
     });
 
     list.addEventListener('click', event => {
+      const originalJump = event.target.closest('[data-role="original-jump"]');
+
+      if (originalJump) {
+        event.stopPropagation();
+        const card = originalJump.closest('[data-role="log-card"]');
+        const job = card ? findJobByKey(card.getAttribute('data-job-key')) : null;
+        void jumpToOriginalLog(job);
+        return;
+      }
+
       const previewTrigger = event.target.closest('[data-role="preview-trigger"]');
 
       if (previewTrigger) {
@@ -497,6 +665,13 @@
     });
 
     document.addEventListener('click', event => {
+      const clickedWindowButton = event.target.closest('[data-role="window-button"]');
+      const clickedWindowMenu = event.target.closest('[data-role="window-menu"]');
+
+      if (!clickedWindowButton && !clickedWindowMenu) {
+        closeWindowMenu();
+      }
+
       if (previewPane?.hidden) return;
 
       const clickedInsidePreview = event.target.closest('[data-role="preview-pane"]');
@@ -538,6 +713,11 @@
       }
 
       if (event.key === 'Escape') {
+        if (!windowMenu?.hidden) {
+          closeWindowMenu();
+          return;
+        }
+
         if (!previewPane?.hidden) {
           closePreviewPane();
           return;
@@ -548,6 +728,7 @@
     });
 
     syncWindowUi();
+    closeWindowMenu();
     loadRecentLogs();
     connectLogSocket();
 

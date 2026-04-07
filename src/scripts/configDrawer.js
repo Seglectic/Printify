@@ -7,10 +7,10 @@
     <aside class="printify-config-drawer__panel" data-role="panel">
       <div class="printify-config-drawer__header">
         <div class="printify-config-drawer__header-top">
-          <h2 class="printify-config-drawer__title">Config Drawer</h2>
+          <h2 class="printify-config-drawer__title">Printify Config</h2>
           <button class="printify-config-drawer__close" type="button" data-role="close">Close</button>
         </div>
-        <p class="printify-config-drawer__subhead">Direct access to the live config file. Save writes back to <code>config.yaml</code>; Printify must be restarted for changes to apply.</p>
+        <p class="printify-config-drawer__subhead">Direct access to the live config. Save writes back to <code>config.yaml</code>.<br> Printify must be restarted for changes to apply.</p>
       </div>
       <div class="printify-config-drawer__body">
         <div class="printify-config-drawer__toolbar">

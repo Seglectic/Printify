@@ -22,6 +22,17 @@
       <div class="printify-log-drawer__list" data-role="list">
         <div class="printify-log-drawer__empty">Loading recent print jobs...</div>
       </div>
+      <div class="printify-log-drawer__batch" data-role="batch" hidden>
+        <button class="printify-log-drawer__batch-button" type="button" data-role="batch-button">
+          <span>REPRINT</span>
+          <span>[BATCH]</span>
+        </button>
+        <label class="printify-log-drawer__batch-field" for="printifyLogDrawerBatchCopies">
+          Copies
+          <input class="printify-log-drawer__batch-input" id="printifyLogDrawerBatchCopies" data-role="batch-copies" type="number" min="1" max="50" value="1">
+        </label>
+        <p class="printify-log-drawer__batch-status" data-role="batch-status"></p>
+      </div>
     </aside>
     <div class="printify-log-drawer__preview-pane" data-role="preview-pane" hidden>
       <div class="printify-log-drawer__preview-card">
@@ -45,6 +56,17 @@
           <button class="printify-log-drawer__preview-button printify-log-drawer__preview-button--primary" type="button" data-role="preview-print">Reprint</button>
         </div>
         <p class="printify-log-drawer__preview-status" data-role="preview-status"></p>
+      </div>
+    </div>
+    <div class="printify-log-drawer__confirm-pane" data-role="confirm-pane" hidden>
+      <div class="printify-log-drawer__confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="printifyLogDrawerConfirmTitle" aria-describedby="printifyLogDrawerConfirmMessage">
+        <p class="printify-log-drawer__confirm-eyebrow">Batch Reprint</p>
+        <h3 class="printify-log-drawer__confirm-title" id="printifyLogDrawerConfirmTitle">Confirm batch reprint</h3>
+        <p class="printify-log-drawer__confirm-message" id="printifyLogDrawerConfirmMessage" data-role="confirm-message"></p>
+        <div class="printify-log-drawer__confirm-actions">
+          <button class="printify-log-drawer__confirm-button printify-log-drawer__confirm-button--secondary" type="button" data-role="confirm-cancel">Cancel</button>
+          <button class="printify-log-drawer__confirm-button printify-log-drawer__confirm-button--primary" type="button" data-role="confirm-submit">Reprint</button>
+        </div>
       </div>
     </div>
   `;
@@ -136,6 +158,10 @@
     const windowButton = root.querySelector('[data-role="window-button"]');
     const windowMenu = root.querySelector('[data-role="window-menu"]');
     const previewPane = root.querySelector('[data-role="preview-pane"]');
+    const batch = root.querySelector('[data-role="batch"]');
+    const batchButton = root.querySelector('[data-role="batch-button"]');
+    const batchCopies = root.querySelector('[data-role="batch-copies"]');
+    const batchStatus = root.querySelector('[data-role="batch-status"]');
     const previewTitle = root.querySelector('[data-role="preview-title"]');
     const previewImage = root.querySelector('[data-role="preview-image"]');
     const previewMeta = root.querySelector('[data-role="preview-meta"]');
@@ -144,6 +170,10 @@
     const previewClose = root.querySelector('[data-role="preview-close"]');
     const previewOpen = root.querySelector('[data-role="preview-open"]');
     const previewPrint = root.querySelector('[data-role="preview-print"]');
+    const confirmPane = root.querySelector('[data-role="confirm-pane"]');
+    const confirmMessage = root.querySelector('[data-role="confirm-message"]');
+    const confirmCancel = root.querySelector('[data-role="confirm-cancel"]');
+    const confirmSubmit = root.querySelector('[data-role="confirm-submit"]');
 
     let logSocket = null;
     let reconnectTimer = null;
@@ -157,8 +187,10 @@
     let selectedPreviewJobKey = null;
     let previousJobKeys = new Set();
     const expandedJobKeys = new Set();
+    const selectedJobKeys = new Set();
     const highlightedJobKeys = new Map();
     const highlightDurationMs = 1800;
+    let pendingBatchReprint = null;
     const getCurrentWindowMinutes = () => LOOKBACK_OPTIONS[currentWindowIndex] || 60;
     const formatWindowLabel = windowMinutes => {
       if (windowMinutes < 60) return `${windowMinutes} minutes`;
@@ -239,11 +271,6 @@
       .slice()
       .sort((leftJob, rightJob) => Date.parse(rightJob.timestamp) - Date.parse(leftJob.timestamp));
     const isReprintJob = job => Boolean(job && (job.isReprint || job.sourceType === 'log-reprint'));
-    const renderReprintStampMarkup = job => (
-      isReprintJob(job)
-        ? '<span class="printify-log-drawer__reprint-stamp">REPRINT</span>'
-        : ''
-    );
     const buildOriginalLookupUrl = job => {
       const url = new URL(settings.originalLogUrl, window.location.origin);
       url.searchParams.set('chksum', String(job.chksum || ''));
@@ -342,6 +369,126 @@
     };
 
     const findJobByKey = jobKey => currentJobs.find(job => getJobKey(job) === jobKey) || null;
+    const getSelectedJobs = () => currentJobs.filter(job => selectedJobKeys.has(getJobKey(job)));
+    const getSelectedReprintJobs = () => getSelectedJobs()
+      .filter(job => job && job.filePath && job.printerId && job.chksum && job.timestamp);
+    const normalizeCopyCount = rawValue => {
+      const copyCount = Number.parseInt(rawValue, 10);
+
+      return Number.isFinite(copyCount)
+        ? Math.min(Math.max(copyCount, 1), 50)
+        : 1;
+    };
+    const formatPlural = (count, singular, plural = `${singular}s`) => (
+      count === 1 ? singular : plural
+    );
+    const closeConfirmPane = () => {
+      pendingBatchReprint = null;
+      if (confirmPane) confirmPane.hidden = true;
+    };
+    const syncBatchUi = () => {
+      const selectedCount = getSelectedJobs().length;
+
+      if (batch) batch.hidden = selectedCount < 2;
+      if (batchButton) batchButton.disabled = selectedCount < 2;
+
+      if (selectedCount < 2 && batchStatus) {
+        batchStatus.textContent = '';
+      }
+    };
+    const submitBatchReprint = jobs => {
+      const normalizedCopyCount = normalizeCopyCount(batchCopies?.value);
+      const reprintableJobs = jobs.filter(job => job && job.filePath && job.printerId && job.chksum && job.timestamp);
+
+      if (!reprintableJobs.length) {
+        if (batchStatus) batchStatus.textContent = 'No selected jobs can be reprinted.';
+        closeConfirmPane();
+        return Promise.resolve();
+      }
+
+      if (batchCopies) batchCopies.value = String(normalizedCopyCount);
+      if (batchButton) batchButton.disabled = true;
+      if (confirmSubmit) confirmSubmit.disabled = true;
+      if (batchStatus) {
+        batchStatus.textContent = `Sending ${reprintableJobs.length} ${formatPlural(reprintableJobs.length, 'document')} for ${normalizedCopyCount} ${formatPlural(normalizedCopyCount, 'time')}...`;
+      }
+
+      return Promise.all(reprintableJobs.map(job => (
+        fetch(settings.reprintUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            timestamp: job.timestamp,
+            printerId: job.printerId,
+            chksum: job.chksum,
+            copyCount: normalizedCopyCount,
+          }),
+        }).then(async response => {
+          if (!response.ok) {
+            throw new Error(await response.text() || 'Reprint failed');
+          }
+
+          return response.json();
+        })
+      )))
+        .then(() => {
+          if (batchStatus) {
+            batchStatus.textContent = `Queued ${reprintableJobs.length} ${formatPlural(reprintableJobs.length, 'document')} for ${normalizedCopyCount} ${formatPlural(normalizedCopyCount, 'time')}.`;
+          }
+          queueRecentLogReload();
+          closeConfirmPane();
+        })
+        .catch(error => {
+          if (batchStatus) batchStatus.textContent = error.message;
+        })
+        .finally(() => {
+          if (batchButton) batchButton.disabled = getSelectedJobs().length < 2;
+          if (confirmSubmit) confirmSubmit.disabled = false;
+        });
+    };
+    const openBatchConfirm = jobs => {
+      const normalizedCopyCount = normalizeCopyCount(batchCopies?.value);
+      const selectedCount = jobs.length;
+
+      pendingBatchReprint = jobs;
+      if (confirmMessage) {
+        confirmMessage.textContent = `${selectedCount} ${formatPlural(selectedCount, 'Document')} will be reprinted ${normalizedCopyCount} ${formatPlural(normalizedCopyCount, 'time')}.`;
+      }
+      if (confirmPane) confirmPane.hidden = false;
+    };
+    const toggleCardSelection = jobKey => {
+      if (!jobKey) return;
+
+      if (selectedJobKeys.has(jobKey)) {
+        selectedJobKeys.delete(jobKey);
+      } else {
+        selectedJobKeys.add(jobKey);
+      }
+
+      renderLogs(currentJobs);
+      syncBatchUi();
+    };
+    const toggleCardDetails = jobKey => {
+      if (!jobKey) return;
+
+      if (expandedJobKeys.has(jobKey)) {
+        expandedJobKeys.delete(jobKey);
+      } else {
+        expandedJobKeys.add(jobKey);
+      }
+
+      renderLogs(currentJobs);
+    };
+    const openPreviewForJobKey = jobKey => {
+      const job = findJobByKey(jobKey);
+
+      if (!job?.previewUrl) return;
+
+      selectedPreviewJobKey = jobKey;
+      syncPreviewPane();
+    };
 
     const formatPreviewMeta = job => [
       job.displayName || job.printerName || job.printerId,
@@ -390,6 +537,7 @@
         previousJobKeys = new Set();
         highlightedJobKeys.clear();
         list.innerHTML = `<div class="printify-log-drawer__empty">No print jobs were logged in the last ${formatWindowLabel(getCurrentWindowMinutes())}.</div>`;
+        syncBatchUi();
         return;
       }
 
@@ -404,16 +552,17 @@
 
         const isNew = highlightedJobKeys.has(jobKey);
         const isOpen = expandedJobKeys.has(jobKey);
+        const isSelected = selectedJobKeys.has(jobKey);
         const iconPath = job.iconUrl || printerIconsById[job.printerId] || '/favicon.ico';
         const printerLabel = escapeHtml(job.displayName || job.printerName || job.printerId || 'Unknown printer');
 
         return `
-          <article class="printify-log-drawer__card${isNew ? ' is-new' : ''}${isOpen ? ' is-open' : ''}" data-role="log-card" data-job-key="${escapeHtml(jobKey)}">
+          <article class="printify-log-drawer__card${isNew ? ' is-new' : ''}${isOpen ? ' is-open' : ''}${isSelected ? ' is-selected' : ''}" data-role="log-card" data-job-key="${escapeHtml(jobKey)}">
             <div class="printify-log-drawer__row">
               <div class="printify-log-drawer__icon-stack">
-                ${isReprintJob(job)
-                  ? `<button class="printify-log-drawer__icon-button" type="button" data-role="original-jump" title="Jump to original print"><img class="printify-log-drawer__icon" src="${iconPath}" alt="${printerLabel}"></button>`
-                  : `<img class="printify-log-drawer__icon" src="${iconPath}" alt="${printerLabel}">`}
+                <button class="printify-log-drawer__icon-button" type="button" data-role="details-toggle" title="Toggle print details">
+                  <img class="printify-log-drawer__icon" src="${iconPath}" alt="${printerLabel}">
+                </button>
                 <div class="printify-log-drawer__time">${escapeHtml(formatTimestamp(job.timestamp))}</div>
               </div>
               <div class="printify-log-drawer__main">
@@ -432,7 +581,9 @@
               ${job.previewUrl ? `
                 <div class="printify-log-drawer__preview-stack">
                   <button class="printify-log-drawer__preview-trigger" type="button" data-role="preview-trigger"><img class="printify-log-drawer__preview" src="${escapeHtml(job.previewUrl)}" alt="Preview for ${escapeHtml(job.originalFilename || 'print job')}" loading="lazy"></button>
-                  ${renderReprintStampMarkup(job)}
+                  ${isReprintJob(job)
+                    ? '<button class="printify-log-drawer__reprint-stamp" type="button" data-role="original-jump" title="Jump to original print">REPRINT</button>'
+                    : ''}
                 </div>
               ` : ''}
             </div>
@@ -442,6 +593,7 @@
       }).join('');
 
       previousJobKeys = nextJobKeys;
+      syncBatchUi();
     };
 
     const loadPrinters = () => fetch(settings.printersUrl)
@@ -483,6 +635,10 @@
       panel.classList.toggle('is-open', isOpen);
       scrim.classList.toggle('is-open', isOpen);
       toggle.classList.toggle('is-hidden', isOpen);
+
+      if (!isOpen) {
+        closeConfirmPane();
+      }
     };
 
     const openDrawer = () => {
@@ -573,14 +729,23 @@
         return;
       }
 
+      const detailsToggle = event.target.closest('[data-role="details-toggle"]');
+
+      if (detailsToggle) {
+        event.stopPropagation();
+        const card = detailsToggle.closest('[data-role="log-card"]');
+        if (!card) return;
+        toggleCardDetails(card.getAttribute('data-job-key'));
+        return;
+      }
+
       const previewTrigger = event.target.closest('[data-role="preview-trigger"]');
 
       if (previewTrigger) {
         event.stopPropagation();
         const card = previewTrigger.closest('[data-role="log-card"]');
         if (!card) return;
-        selectedPreviewJobKey = card.getAttribute('data-job-key');
-        syncPreviewPane();
+        openPreviewForJobKey(card.getAttribute('data-job-key'));
         return;
       }
 
@@ -597,13 +762,9 @@
 
       const jobKey = card.getAttribute('data-job-key');
 
-      if (expandedJobKeys.has(jobKey)) {
-        expandedJobKeys.delete(jobKey);
-      } else {
-        expandedJobKeys.add(jobKey);
-      }
+      if (event.detail !== 1) return;
 
-      renderLogs(currentJobs);
+      toggleCardSelection(jobKey);
     });
 
     previewClose?.addEventListener('click', () => {
@@ -664,6 +825,39 @@
         });
     });
 
+    batchButton?.addEventListener('click', () => {
+      const selectedJobs = getSelectedReprintJobs();
+
+      if (selectedJobs.length < 2) {
+        if (batchStatus) batchStatus.textContent = 'Select at least two reprintable jobs.';
+        return;
+      }
+
+      if (selectedJobs.length > 2) {
+        openBatchConfirm(selectedJobs);
+        return;
+      }
+
+      void submitBatchReprint(selectedJobs);
+    });
+
+    batchCopies?.addEventListener('change', () => {
+      batchCopies.value = String(normalizeCopyCount(batchCopies.value));
+    });
+
+    confirmCancel?.addEventListener('click', () => {
+      closeConfirmPane();
+    });
+
+    confirmSubmit?.addEventListener('click', () => {
+      if (!pendingBatchReprint?.length) {
+        closeConfirmPane();
+        return;
+      }
+
+      void submitBatchReprint(pendingBatchReprint);
+    });
+
     document.addEventListener('click', event => {
       const clickedWindowButton = event.target.closest('[data-role="window-button"]');
       const clickedWindowMenu = event.target.closest('[data-role="window-menu"]');
@@ -676,8 +870,9 @@
 
       const clickedInsidePreview = event.target.closest('[data-role="preview-pane"]');
       const clickedPreviewTrigger = event.target.closest('[data-role="preview-trigger"]');
+      const clickedInsideConfirm = event.target.closest('[data-role="confirm-pane"]');
 
-      if (clickedInsidePreview || clickedPreviewTrigger) return;
+      if (clickedInsidePreview || clickedPreviewTrigger || clickedInsideConfirm) return;
 
       closePreviewPane();
     });
@@ -685,14 +880,24 @@
     list.addEventListener('dblclick', event => {
       const checksumButton = event.target.closest('[data-role="checksum-select"]');
 
-      if (!checksumButton) return;
+      if (checksumButton) {
+        event.stopPropagation();
+        const selection = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(checksumButton);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        return;
+      }
 
+      const card = event.target.closest('[data-role="log-card"]');
+
+      if (!card) return;
+      if (event.target.closest('[data-role="preview-trigger"], [data-role="details-toggle"], [data-role="original-jump"]')) return;
+
+      const jobKey = card.getAttribute('data-job-key');
       event.stopPropagation();
-      const selection = window.getSelection();
-      const range = document.createRange();
-      range.selectNodeContents(checksumButton);
-      selection.removeAllRanges();
-      selection.addRange(range);
+      openPreviewForJobKey(jobKey);
     });
 
     document.addEventListener('keydown', event => {
@@ -723,12 +928,18 @@
           return;
         }
 
+        if (!confirmPane?.hidden) {
+          closeConfirmPane();
+          return;
+        }
+
         setOpenState(false);
       }
     });
 
     syncWindowUi();
     closeWindowMenu();
+    syncBatchUi();
     loadRecentLogs();
     connectLogSocket();
 

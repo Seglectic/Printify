@@ -2,7 +2,7 @@
   // ╭──────────────────────────╮
   // │  Shared constants        │
   // ╰──────────────────────────╯
-  const APP_VERSION = '2.4.0';
+  const APP_VERSION = '2.5.0';
   window.PRINTIFY_CLIENT_VERSION = APP_VERSION;
   const PRINTIFY_LOG_ROUTE = '#printifyLogDrawer';
   const PRINTIFY_FILE_KINDS = {
@@ -34,11 +34,11 @@
   const DUPLICATE_WHITELIST_DURATION_MS = 24 * 60 * 60 * 1000;
   const DUPLICATE_PROMPTS = [
     'This file has been printed recently, send it?',
-    'File printed within the last 24h, print again?',
-    'This one already went through today. Send it again?',
-    'Recent match found for this file. Run another print?',
+    'File printed within the last 24 hours, print again?',
+    'This one already went through today. Send it?',
+    'Recent match found for this file. Run another?',
     'This document was already printed not long ago. Send it anyway?',
-    'Looks like this file has been used recently. Print one more time?',
+    'Looks like this file has been used recently. Print once more?',
     'Duplicate in the last day detected. Send it through?',
     'This print job shows up in the last 24 hours. Print again?',
     'A recent copy of this file was already sent. Queue another one?',
@@ -54,6 +54,7 @@
     feedbackTimer: null,
     clippyAgent: null,
     labelBuilder: null,
+    logDrawer: null,
     openPrinterId: null,
   };
 
@@ -626,6 +627,34 @@
     return duplicateChecks;
   };
 
+  const getRequestedReprintCopyCount = (fileKind, extraFields = {}) => {
+    if (fileKind !== 'image') return 1;
+
+    const requestedCopies = Number.parseInt(extraFields.printCount || extraFields.copyCount, 10);
+    return Number.isFinite(requestedCopies)
+      ? Math.min(Math.max(requestedCopies, 1), 50)
+      : 1;
+  };
+
+  const tryDirectReprint = async (duplicateCheck, fileKind, extraFields = {}) => {
+    if (!duplicateCheck?.recentMatch) return false;
+
+    const response = await fetch('/logs/reprint', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        timestamp: duplicateCheck.recentMatch.timestamp,
+        printerId: duplicateCheck.recentMatch.printerId,
+        chksum: duplicateCheck.recentMatch.chksum,
+        copyCount: getRequestedReprintCopyCount(fileKind, extraFields),
+      }),
+    });
+
+    return response.ok;
+  };
+
   const uploadGroupedFiles = async (printer, groupedFiles, extraFields = {}, duplicateChecks = new Map()) => {
     const groupEntries = Object.entries(groupedFiles);
 
@@ -634,16 +663,39 @@
     }
 
     for (const [fileKind, files] of groupEntries) {
-      const routePath = files.length > 1
+      const filesNeedingUpload = [];
+
+      for (const file of files) {
+        const duplicateCheck = duplicateChecks.get(file);
+        const canReuseExistingFile = duplicateCheck?.recentMatch
+          && duplicateCheck.recentMatch.printerId === printer.id;
+
+        if (!canReuseExistingFile) {
+          filesNeedingUpload.push(file);
+          continue;
+        }
+
+        const reusedExistingFile = await tryDirectReprint(duplicateCheck, fileKind, extraFields);
+
+        if (!reusedExistingFile) {
+          filesNeedingUpload.push(file);
+        }
+      }
+
+      if (!filesNeedingUpload.length) {
+        continue;
+      }
+
+      const routePath = filesNeedingUpload.length > 1
         ? `/${printer.id}/${fileKind}/multi`
         : `/${printer.id}/${fileKind}`;
       const formData = new FormData();
 
-      files.forEach(file => {
+      filesNeedingUpload.forEach(file => {
         formData.append(PRINTIFY_FILE_KINDS[fileKind].fieldName, file, file.name);
       });
 
-      const jobMetaList = files.map(file => {
+      const jobMetaList = filesNeedingUpload.map(file => {
         const duplicateCheck = duplicateChecks.get(file);
 
         if (!duplicateCheck) {
@@ -724,7 +776,23 @@
     });
   };
 
+  const isFileDragEvent = event => {
+    const transferTypes = event.dataTransfer?.types;
+
+    if (!transferTypes) return false;
+
+    return Array.from(transferTypes).includes('Files');
+  };
+
+  const closeLogDrawerForFileDrag = event => {
+    if (!isFileDragEvent(event)) return;
+    if (!appState.logDrawer || typeof appState.logDrawer.close !== 'function') return;
+    appState.logDrawer.close();
+  };
+
   const bindPrinterEvents = () => {
+    document.addEventListener('dragenter', closeLogDrawerForFileDrag);
+
     printerGrid.addEventListener('click', event => {
       const chooseFilesButton = event.target.closest('[data-role="choose-files"]');
       if (chooseFilesButton) {
@@ -810,6 +878,7 @@
       if (!card) return;
 
       event.preventDefault();
+      closeLogDrawerForFileDrag(event);
       resetCardDragState(card);
 
       try {
@@ -828,7 +897,7 @@
   // ╰──────────────────────────╯
   const bootLogDrawer = () => {
     if (typeof window.createPrintifyLogDrawer === 'function') {
-      window.createPrintifyLogDrawer(PRINTIFY_LOG_ROUTE);
+      appState.logDrawer = window.createPrintifyLogDrawer(PRINTIFY_LOG_ROUTE);
     }
   };
 

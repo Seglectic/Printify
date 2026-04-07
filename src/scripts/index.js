@@ -47,6 +47,13 @@
   const feedback = document.getElementById('feedback');
   const confirmLayer = document.getElementById('confirmLayer');
   const confirmVideo = document.getElementById('confirmVideo');
+  const promptLayer = document.getElementById('promptLayer');
+  const promptCard = document.getElementById('promptCard');
+  const promptEyebrow = document.getElementById('promptEyebrow');
+  const promptTitle = document.getElementById('promptTitle');
+  const promptMessage = document.getElementById('promptMessage');
+  const promptCancel = document.getElementById('promptCancel');
+  const promptConfirm = document.getElementById('promptConfirm');
   const themeToggle = document.getElementById('themeToggle');
 
   // ╭──────────────────────────╮
@@ -98,6 +105,12 @@
 
   const formatPixels = ({ width, height }) => `${Math.round(width)}x${Math.round(height)}px`;
 
+  const formatPercent = value => {
+    if (!Number.isFinite(value)) return '0';
+    const rounded = value >= 100 ? Math.round(value) : Math.round(value * 10) / 10;
+    return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+  };
+
   const showFeedback = message => {
     feedback.textContent = message;
     feedback.classList.add('is-visible');
@@ -126,6 +139,78 @@
       appState.clippyAgent.speak(message);
     }
   };
+
+  const showPromptCard = ({
+    tone = 'warning',
+    eyebrow = 'Warning',
+    title = 'Heads up',
+    message = '',
+    confirmLabel = 'OK',
+    cancelLabel = 'Cancel',
+  }) => new Promise(resolve => {
+    if (!promptLayer || !promptCard || !promptEyebrow || !promptTitle || !promptMessage || !promptCancel || !promptConfirm) {
+      resolve(window.confirm(message || title));
+      return;
+    }
+
+    let settled = false;
+    let previousFocus = document.activeElement;
+
+    const finish = accepted => {
+      if (settled) return;
+      settled = true;
+
+      promptLayer.hidden = true;
+      promptCard.classList.remove('printify-prompt__card--warning');
+      document.removeEventListener('keydown', handleKeyDown);
+      promptCancel.removeEventListener('click', cancel);
+      promptConfirm.removeEventListener('click', confirm);
+      promptLayer.removeEventListener('click', handleBackdropClick);
+
+      if (previousFocus && typeof previousFocus.focus === 'function') {
+        previousFocus.focus();
+      }
+
+      resolve(accepted);
+    };
+
+    const cancel = () => finish(false);
+    const confirm = () => finish(true);
+    const handleBackdropClick = event => {
+      if (event.target === promptLayer) {
+        cancel();
+      }
+    };
+    const handleKeyDown = event => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        cancel();
+        return;
+      }
+
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        confirm();
+      }
+    };
+
+    promptCard.classList.toggle('printify-prompt__card--warning', tone === 'warning');
+    promptEyebrow.textContent = eyebrow;
+    promptTitle.textContent = title;
+    promptMessage.textContent = message;
+    promptCancel.textContent = cancelLabel;
+    promptConfirm.textContent = confirmLabel;
+    promptLayer.hidden = false;
+
+    document.addEventListener('keydown', handleKeyDown);
+    promptCancel.addEventListener('click', cancel);
+    promptConfirm.addEventListener('click', confirm);
+    promptLayer.addEventListener('click', handleBackdropClick);
+
+    window.setTimeout(() => {
+      promptConfirm.focus();
+    }, 0);
+  });
 
   const applyTheme = theme => {
     const nextTheme = theme === 'light' ? 'light' : 'dark';
@@ -320,7 +405,12 @@
         const oversizeRatio = getBestOversizeRatio(dimensions, targetSize);
 
         if (oversizeRatio >= OVERSIZE_WARNING_RATIO) {
-          warnings.push(`${file.name}: ${formatPixels(dimensions)} vs target ${formatPixels(targetSize)}`);
+          warnings.push({
+            fileName: file.name,
+            dimensions,
+            targetSize,
+            oversizeRatio,
+          });
         }
       } catch (error) {
         console.warn(error);
@@ -334,18 +424,29 @@
     const warnings = await buildOversizeWarnings(printer, files);
     if (!warnings.length) return true;
 
-    const previewLines = warnings.slice(0, 3);
-    const remainingCount = warnings.length - previewLines.length;
+    const largestWarning = warnings.reduce((currentLargest, warning) => (
+      !currentLargest || warning.oversizeRatio > currentLargest.oversizeRatio
+        ? warning
+        : currentLargest
+    ), null);
+
+    const extraWarningCount = warnings.length - 1;
+    const oversizePercent = formatPercent((largestWarning.oversizeRatio - 1) * 100);
     const warningMessage = [
-      `${printer.displayName} is configured for ${printer.pxSize}.`,
-      'Some files look much larger than that target size:',
-      ...previewLines.map(line => `- ${line}`),
-      remainingCount > 0 ? `- and ${remainingCount} more` : null,
+      `File resolution is ${oversizePercent}% larger than the configured pixel area for the ${printer.displayName} (${formatPixels(largestWarning.dimensions)} vs ${formatPixels(largestWarning.targetSize)})`,
+      extraWarningCount > 0 ? `${extraWarningCount} more file${extraWarningCount === 1 ? '' : 's'} also exceed that target.` : null,
       '',
-      'Continue anyway?',
+      'Print anyway?',
     ].filter(Boolean).join('\n');
 
-    return window.confirm(warningMessage);
+    return showPromptCard({
+      tone: 'warning',
+      eyebrow: '🚨 Warning',
+      title: 'Print Size Mismatch',
+      message: warningMessage,
+      confirmLabel: 'Send It',
+      cancelLabel: 'Cancel',
+    });
   };
 
   const groupFilesByKind = (printer, files) => {

@@ -363,7 +363,7 @@ img {
 .printify-confirm {
   position: fixed;
   inset: 0;
-  z-index: 45;
+  z-index: 1100;
   display: none;
   place-items: center;
   background: rgba(31, 32, 36, 0.14);
@@ -379,10 +379,87 @@ img {
   box-shadow: 0 34px 70px rgba(24, 33, 43, 0.18);
 }
 
+.printify-prompt {
+  position: fixed;
+  inset: 0;
+  z-index: 1110;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(20, 20, 16, 0.18);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.printify-prompt[hidden] {
+  display: none;
+}
+
+.printify-prompt__card {
+  width: min(520px, calc(100vw - 32px));
+  padding: 24px 24px 22px;
+  border-radius: 26px;
+  border: 1px solid rgba(139, 118, 18, 0.22);
+  box-shadow: 0 26px 60px rgba(30, 24, 12, 0.18);
+  color: #3f3511;
+}
+
+.printify-prompt__card--warning {
+  background: linear-gradient(180deg, rgb(255, 244, 186) 0%, rgb(252, 235, 147) 100%);
+}
+
+.printify-prompt__header {
+  display: grid;
+  gap: 8px;
+}
+
+.printify-prompt__eyebrow {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(113, 87, 0, 0.84);
+}
+
+.printify-prompt__title {
+  margin: 0;
+  font-size: 30px;
+  line-height: 0.98;
+  letter-spacing: -0.04em;
+  color: #44390d;
+}
+
+.printify-prompt__message {
+  margin: 14px 0 0;
+  font-size: 15px;
+  line-height: 1.55;
+  color: rgba(68, 57, 13, 0.92);
+  white-space: pre-line;
+}
+
+.printify-prompt__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.printify-prompt__actions .printer-card__button--secondary {
+  background: rgba(88, 88, 88, 0.16);
+  color: #3a3a3a;
+  box-shadow: inset 0 0 0 1px rgba(88, 88, 88, 0.1);
+}
+
+.printify-prompt__actions .printer-card__button--secondary:hover,
+.printify-prompt__actions .printer-card__button--secondary:focus-visible {
+  background: rgba(88, 88, 88, 0.24);
+}
+
 .printify-builder {
   position: fixed;
   inset: 0;
-  z-index: 40;
+  z-index: 1090;
   display: none;
   place-items: center;
   padding: 24px;

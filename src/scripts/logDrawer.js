@@ -108,7 +108,7 @@
   // │  Drawer factory          │
   // ╰──────────────────────────╯
   function createPrintifyLogDrawer(rootSelector, options) {
-    const LOOKBACK_OPTIONS = [30, 60, 360, 720, 1440];
+    const LOOKBACK_OPTIONS = [30, 60, 360, 720, 1440, 2880, 10080];
     const WINDOW_STORAGE_KEY = 'printify-log-window';
     const settings = Object.assign({
       recentLogsUrl: '/logs/recent',
@@ -158,6 +158,13 @@
     const formatWindowLabel = windowMinutes => {
       if (windowMinutes < 60) return `${windowMinutes} minutes`;
       if (windowMinutes === 60) return 'hour';
+      if (windowMinutes === 1440) return 'day';
+      if (windowMinutes === 2880) return '2 days';
+      if (windowMinutes === 10080) return 'week';
+      if (windowMinutes % 1440 === 0) {
+        const days = windowMinutes / 1440;
+        return days === 1 ? 'day' : `${days} days`;
+      }
       if (windowMinutes % 60 === 0) return `${windowMinutes / 60} hours`;
       return `${windowMinutes} minutes`;
     };

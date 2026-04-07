@@ -26,6 +26,7 @@ const {
   rootDir,
   staticDir,
   iconsDir,
+  logsDir,
   previewCacheDir,
   serverDataPath,
   version,
@@ -45,6 +46,7 @@ const {
 } = require('./lib/logger');
 const { createUpload }            = require('./lib/upload');
 const { createServerSave }        = require('./lib/serverSave');
+const { createLogStore }          = require('./lib/logStore');
 const { createPrintingService }   = require('./lib/printing');
 const { registerRoutes }          = require('./lib/routes');
 
@@ -59,6 +61,10 @@ const serverSave = createServerSave({
   serverDataPath,
   onPrintJobSaved: () => {},
 }); // Persist lightweight server stats across restarts.
+const logStore = createLogStore({
+  logsDir,
+  errorLogStamp,
+});
 const converter = createConverter({
   imPath,
   logStamp,
@@ -67,7 +73,6 @@ const converter = createConverter({
 const previewer = createPreviewer({
   imPath,
   previewCacheDir,
-  serverSave,
   logStamp,
   errorLogStamp,
 });
@@ -76,6 +81,7 @@ const previewer = createPreviewer({
 const printingService = createPrintingService({
   testing,
   serverSave,
+  logStore,
   createFileChecksum,
   createJobLogEntry,
   logStamp,
@@ -125,6 +131,7 @@ registerRoutes({
   printingService,
   previewer,
   serverSave,
+  logStore,
   version,
   clippy,
   errorLogStamp,

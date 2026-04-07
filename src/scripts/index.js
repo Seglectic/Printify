@@ -35,6 +35,7 @@
     pageHits: 0,
     printCounter: 0,
     serverVersion: 'Unknown',
+    clippyEnabled: true,
     feedbackTimer: null,
     clippyAgent: null,
     labelBuilder: null,
@@ -112,6 +113,11 @@
   };
 
   const showFeedback = message => {
+    if (appState.clippyEnabled && appState.clippyAgent && typeof appState.clippyAgent.speak === 'function') {
+      appState.clippyAgent.speak(message);
+      return;
+    }
+
     feedback.textContent = message;
     feedback.classList.add('is-visible');
 
@@ -135,9 +141,6 @@
       confirmLayer.classList.remove('is-visible');
     }, 700);
 
-    if (appState.clippyAgent && typeof appState.clippyAgent.speak === 'function') {
-      appState.clippyAgent.speak(message);
-    }
   };
 
   const showPromptCard = ({
@@ -251,6 +254,7 @@
       appState.serverVersion = serverData.version;
       appState.pageHits = serverData.pageHits;
       appState.printCounter = serverData.printCounter;
+      appState.clippyEnabled = serverData.clippy !== false;
       footer.textContent = '';
       typeWrite(footer, `Client v${APP_VERSION}`, 40);
       window.setTimeout(() => {
@@ -665,6 +669,7 @@
   };
 
   const bootClippy = () => {
+    if (!appState.clippyEnabled) return;
     if (!window.clippy) return;
 
     window.clippy.load('Clippy', agent => {

@@ -31,6 +31,7 @@ const {
   version,
   port,
   testing,
+  clippy,
   imPath,
   printers,
 } = require('./lib/configurator');
@@ -125,6 +126,7 @@ registerRoutes({
   previewer,
   serverSave,
   version,
+  clippy,
   errorLogStamp,
   logStamp,
 });

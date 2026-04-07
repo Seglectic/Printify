@@ -8,8 +8,10 @@
 # ╭──────────────────╮
 # │  Global Options  │
 # ╰──────────────────╯
+# Clippy: enable the assistant mascot and route status text to him
 port: 8020
 testing: true
+clippy: true
 # imPath: ""
 
 # ╭───────────────────────────────────────────────────────────╮

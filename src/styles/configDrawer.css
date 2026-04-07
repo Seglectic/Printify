@@ -1,0 +1,234 @@
+.printify-config-drawer {
+  --pkc-panel: rgba(18, 22, 25, 0.97);
+  --pkc-ink: #eaf0ec;
+  --pkc-muted: rgba(234, 240, 236, 0.6);
+  --pkc-line: rgba(234, 240, 236, 0.12);
+  --pkc-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+  --pkc-button: rgba(234, 240, 236, 0.08);
+  --pkc-button-hover: rgba(234, 240, 236, 0.14);
+  --pkc-close: rgba(234, 240, 236, 0.1);
+  --pkc-close-hover: rgba(234, 240, 236, 0.16);
+  --pkc-editor: rgba(255, 255, 255, 0.04);
+  --pkc-editor-border: rgba(234, 240, 236, 0.08);
+  --pkc-save: #2f6f44;
+  --pkc-save-hover: #3a8352;
+}
+
+:root[data-theme='light'] .printify-config-drawer {
+  --pkc-panel: rgba(243, 247, 251, 0.96);
+  --pkc-ink: #18212b;
+  --pkc-muted: #5e6b79;
+  --pkc-line: rgba(24, 33, 43, 0.12);
+  --pkc-shadow: 0 24px 60px rgba(23, 36, 53, 0.18);
+  --pkc-button: rgba(244, 248, 252, 0.9);
+  --pkc-button-hover: #f8fbfd;
+  --pkc-close: #dbe5ee;
+  --pkc-close-hover: #cfdae5;
+  --pkc-editor: rgba(228, 236, 243, 0.92);
+  --pkc-editor-border: rgba(24, 33, 43, 0.08);
+  --pkc-save: #2f6f44;
+  --pkc-save-hover: #3a8352;
+}
+
+.printify-config-drawer__scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 1095;
+  background: rgba(20, 30, 43, 0.18);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 280ms ease;
+}
+
+.printify-config-drawer__scrim.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.printify-config-drawer__panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 1100;
+  width: min(560px, 94vw);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--pkc-panel);
+  box-shadow: var(--pkc-shadow);
+  border-left: 1px solid var(--pkc-line);
+  transform: translateX(calc(100% + 24px));
+  transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+  backdrop-filter: blur(12px);
+}
+
+.printify-config-drawer__panel.is-open {
+  transform: translateX(0);
+}
+
+.printify-config-drawer__header {
+  padding: 28px 24px 18px;
+  border-bottom: 1px solid var(--pkc-line);
+}
+
+.printify-config-drawer__header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.printify-config-drawer__title {
+  margin: 0;
+  font-size: 30px;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--pkc-ink);
+}
+
+.printify-config-drawer__close,
+.printify-config-drawer__button {
+  min-height: 40px;
+  border-radius: 999px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.printify-config-drawer__close {
+  flex-shrink: 0;
+  width: 118px;
+  min-width: 118px;
+  border: 0;
+  padding: 0 14px;
+  background: var(--pkc-close);
+  color: var(--pkc-ink);
+}
+
+.printify-config-drawer__close:hover,
+.printify-config-drawer__close:focus-visible,
+.printify-config-drawer__button:hover,
+.printify-config-drawer__button:focus-visible {
+  transform: translateY(-1px);
+}
+
+.printify-config-drawer__close:hover,
+.printify-config-drawer__close:focus-visible {
+  background: var(--pkc-close-hover);
+}
+
+.printify-config-drawer__close:active,
+.printify-config-drawer__button:active {
+  transform: translateY(0) scale(0.97);
+}
+
+.printify-config-drawer__subhead {
+  margin: 10px 0 0;
+  color: var(--pkc-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.printify-config-drawer__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 14px;
+  padding: 22px 24px 24px;
+  min-height: 0;
+}
+
+.printify-config-drawer__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.printify-config-drawer__meta {
+  color: var(--pkc-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.printify-config-drawer__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.printify-config-drawer__button {
+  border: 1px solid var(--pkc-line);
+  padding: 0 14px;
+}
+
+.printify-config-drawer__button--secondary {
+  background: var(--pkc-button);
+  color: var(--pkc-ink);
+}
+
+.printify-config-drawer__button--secondary:hover,
+.printify-config-drawer__button--secondary:focus-visible {
+  background: var(--pkc-button-hover);
+}
+
+.printify-config-drawer__button--primary {
+  border-color: transparent;
+  background: var(--pkc-save);
+  color: #f7fbf8;
+}
+
+.printify-config-drawer__button--primary:hover,
+.printify-config-drawer__button--primary:focus-visible {
+  background: var(--pkc-save-hover);
+}
+
+.printify-config-drawer__editor {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  border: 1px solid var(--pkc-editor-border);
+  border-radius: 20px;
+  padding: 18px;
+  resize: none;
+  background: var(--pkc-editor);
+  color: var(--pkc-ink);
+  box-shadow: inset 0 0 0 1px rgba(24, 33, 43, 0.04);
+  font-family: "Droid Sans Mono", "Lucida Console", Courier, monospace;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.printify-config-drawer__editor:focus-visible {
+  outline: 2px solid rgba(100, 212, 123, 0.35);
+  outline-offset: 0;
+}
+
+.printify-config-drawer__status {
+  min-height: 18px;
+  margin: 0;
+  color: var(--pkc-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+@media (max-width: 800px) {
+  .printify-config-drawer__panel {
+    width: 100vw;
+  }
+
+  .printify-config-drawer__toolbar {
+    align-items: stretch;
+  }
+
+  .printify-config-drawer__actions {
+    width: 100%;
+  }
+}

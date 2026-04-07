@@ -29,21 +29,6 @@
   const ZIP_EXTENSIONS = new Set(['zip']);
   const OVERSIZE_WARNING_RATIO = 1.5;
   const THEME_STORAGE_KEY = 'printify-theme';
-  const DUPLICATE_LOOKBACK_MINUTES = 24 * 60;
-  const DUPLICATE_WHITELIST_STORAGE_KEY = 'printify-duplicate-whitelist';
-  const DUPLICATE_WHITELIST_DURATION_MS = 24 * 60 * 60 * 1000;
-  const DUPLICATE_PROMPTS = [
-    'This file has been printed recently, send it?',
-    'File printed within the last 24 hours, print again?',
-    'This one already went through today. Send it?',
-    'Recent match found for this file. Run another?',
-    'This document was already printed not long ago. Send it anyway?',
-    'Looks like this file has been used recently. Print once more?',
-    'Duplicate in the last day detected. Send it through?',
-    'This print job shows up in the last 24 hours. Print again?',
-    'A recent copy of this file was already sent. Queue another one?',
-    'This document has a fresh print history. Send it again?',
-  ];
 
   const appState = {
     printers: [],
@@ -120,7 +105,6 @@
   };
 
   const getPrinterById = printerId => appState.printers.find(printer => printer.id === printerId);
-  const pickRandomPrompt = () => DUPLICATE_PROMPTS[Math.floor(Math.random() * DUPLICATE_PROMPTS.length)];
 
   const formatPixels = ({ width, height }) => `${Math.round(width)}x${Math.round(height)}px`;
 
@@ -504,359 +488,22 @@
     );
   };
 
-  const readDuplicateWhitelist = () => {
-    try {
-      const rawValue = window.localStorage.getItem(DUPLICATE_WHITELIST_STORAGE_KEY);
-      const now = Date.now();
-      const parsedValue = JSON.parse(rawValue || '[]');
-      const parsedEntries = Array.isArray(parsedValue)
-        ? parsedValue
-        : [];
-      const activeEntries = parsedEntries.filter(entry => (
-        entry
-        && typeof entry.checksum === 'string'
-        && Number.isFinite(entry.expiresAt)
-        && entry.expiresAt > now
-      ));
-
-      if (activeEntries.length !== parsedEntries.length) {
-        window.localStorage.setItem(DUPLICATE_WHITELIST_STORAGE_KEY, JSON.stringify(activeEntries));
-      }
-
-      return activeEntries;
-    } catch (error) {
-      window.localStorage.removeItem(DUPLICATE_WHITELIST_STORAGE_KEY);
-      return [];
-    }
-  };
-
-  const writeDuplicateWhitelist = entries => {
-    window.localStorage.setItem(DUPLICATE_WHITELIST_STORAGE_KEY, JSON.stringify(entries));
-  };
-
-  const whitelistDuplicateChecksum = checksum => {
-    const now = Date.now();
-    const nextEntries = readDuplicateWhitelist()
-      .filter(entry => entry.checksum !== checksum);
-
-    nextEntries.push({
-      checksum,
-      expiresAt: now + DUPLICATE_WHITELIST_DURATION_MS,
-    });
-
-    writeDuplicateWhitelist(nextEntries);
-  };
-
-  const isDuplicateChecksumWhitelisted = checksum => (
-    readDuplicateWhitelist().some(entry => entry.checksum === checksum)
-  );
-
-  const createSha256Hex = bytes => {
-    const bitLength = bytes.length * 8;
-    const paddedLength = ((bytes.length + 9 + 63) >> 6) << 6;
-    const padded = new Uint8Array(paddedLength);
-    const words = new Uint32Array(64);
-    const hash = new Uint32Array([
-      0x6a09e667,
-      0xbb67ae85,
-      0x3c6ef372,
-      0xa54ff53a,
-      0x510e527f,
-      0x9b05688c,
-      0x1f83d9ab,
-      0x5be0cd19,
-    ]);
-    const roundConstants = new Uint32Array([
-      0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5,
-      0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
-      0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3,
-      0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
-      0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc,
-      0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
-      0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7,
-      0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
-      0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13,
-      0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
-      0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3,
-      0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
-      0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5,
-      0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
-      0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
-      0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
-    ]);
-
-    padded.set(bytes);
-    padded[bytes.length] = 0x80;
-
-    const highBits = Math.floor(bitLength / 0x100000000);
-    const lowBits = bitLength >>> 0;
-    padded[padded.length - 8] = (highBits >>> 24) & 0xff;
-    padded[padded.length - 7] = (highBits >>> 16) & 0xff;
-    padded[padded.length - 6] = (highBits >>> 8) & 0xff;
-    padded[padded.length - 5] = highBits & 0xff;
-    padded[padded.length - 4] = (lowBits >>> 24) & 0xff;
-    padded[padded.length - 3] = (lowBits >>> 16) & 0xff;
-    padded[padded.length - 2] = (lowBits >>> 8) & 0xff;
-    padded[padded.length - 1] = lowBits & 0xff;
-
-    const rightRotate = (value, amount) => (
-      (value >>> amount) | (value << (32 - amount))
-    );
-
-    for (let offset = 0; offset < padded.length; offset += 64) {
-      for (let index = 0; index < 16; index += 1) {
-        const wordOffset = offset + (index * 4);
-        words[index] = (
-          (padded[wordOffset] << 24)
-          | (padded[wordOffset + 1] << 16)
-          | (padded[wordOffset + 2] << 8)
-          | padded[wordOffset + 3]
-        ) >>> 0;
-      }
-
-      for (let index = 16; index < 64; index += 1) {
-        const sigma0 = (
-          rightRotate(words[index - 15], 7)
-          ^ rightRotate(words[index - 15], 18)
-          ^ (words[index - 15] >>> 3)
-        ) >>> 0;
-        const sigma1 = (
-          rightRotate(words[index - 2], 17)
-          ^ rightRotate(words[index - 2], 19)
-          ^ (words[index - 2] >>> 10)
-        ) >>> 0;
-
-        words[index] = (
-          words[index - 16]
-          + sigma0
-          + words[index - 7]
-          + sigma1
-        ) >>> 0;
-      }
-
-      let a = hash[0];
-      let b = hash[1];
-      let c = hash[2];
-      let d = hash[3];
-      let e = hash[4];
-      let f = hash[5];
-      let g = hash[6];
-      let h = hash[7];
-
-      for (let index = 0; index < 64; index += 1) {
-        const sigma1 = (
-          rightRotate(e, 6)
-          ^ rightRotate(e, 11)
-          ^ rightRotate(e, 25)
-        ) >>> 0;
-        const choice = ((e & f) ^ (~e & g)) >>> 0;
-        const temp1 = (h + sigma1 + choice + roundConstants[index] + words[index]) >>> 0;
-        const sigma0 = (
-          rightRotate(a, 2)
-          ^ rightRotate(a, 13)
-          ^ rightRotate(a, 22)
-        ) >>> 0;
-        const majority = ((a & b) ^ (a & c) ^ (b & c)) >>> 0;
-        const temp2 = (sigma0 + majority) >>> 0;
-
-        h = g;
-        g = f;
-        f = e;
-        e = (d + temp1) >>> 0;
-        d = c;
-        c = b;
-        b = a;
-        a = (temp1 + temp2) >>> 0;
-      }
-
-      hash[0] = (hash[0] + a) >>> 0;
-      hash[1] = (hash[1] + b) >>> 0;
-      hash[2] = (hash[2] + c) >>> 0;
-      hash[3] = (hash[3] + d) >>> 0;
-      hash[4] = (hash[4] + e) >>> 0;
-      hash[5] = (hash[5] + f) >>> 0;
-      hash[6] = (hash[6] + g) >>> 0;
-      hash[7] = (hash[7] + h) >>> 0;
-    }
-
-    return Array.from(hash)
-      .map(word => word.toString(16).padStart(8, '0'))
-      .join('');
-  };
-
-  const createFileChecksum = async file => {
-    const fileBytes = new Uint8Array(await file.arrayBuffer());
-    const subtleCrypto = window.crypto?.subtle;
-
-    // Local-network HTTP sessions often do not expose SubtleCrypto outside
-    // localhost, so fall back to a local JS hash instead of disabling
-    // duplicate detection and reprint lookup.
-    if (subtleCrypto && typeof subtleCrypto.digest === 'function') {
-      const hashBuffer = await subtleCrypto.digest('SHA-256', fileBytes);
-      return Array.from(new Uint8Array(hashBuffer))
-        .map(byte => byte.toString(16).padStart(2, '0'))
-        .join('');
-    }
-
-    return createSha256Hex(fileBytes);
-  };
-
-  const loadRecentLogJobs = () => {
-    const url = new URL('/logs/recent', window.location.origin);
-    url.searchParams.set('lookBack', String(DUPLICATE_LOOKBACK_MINUTES));
-
-    return fetch(url.toString())
-      .then(response => response.json())
-      .then(payload => Array.isArray(payload.jobs) ? payload.jobs : []);
-  };
-
-  const buildDuplicateChecksByFile = async files => {
-    const recentJobs = await loadRecentLogJobs();
-    const recentJobsByChecksum = new Map();
-
-    recentJobs.forEach(job => {
-      if (!job?.chksum) return;
-      if (!recentJobsByChecksum.has(job.chksum)) {
-        recentJobsByChecksum.set(job.chksum, job);
-      }
-    });
-
-    const duplicateChecks = new Map();
-
-    for (const file of files) {
-      const fileKind = detectFileKind(file);
-
-      if (!fileKind || fileKind === 'zip') continue;
-
-      const checksum = await createFileChecksum(file);
-      const recentMatch = checksum
-        ? recentJobsByChecksum.get(checksum) || null
-        : null;
-
-      duplicateChecks.set(file, {
-        checksum,
-        recentMatch,
-      });
-    }
-
-    return duplicateChecks;
-  };
-
-  const confirmDuplicateFiles = async files => {
-    const duplicateChecks = await buildDuplicateChecksByFile(files);
-
-    for (const file of files) {
-      const duplicateCheck = duplicateChecks.get(file);
-
-      if (!duplicateCheck?.recentMatch) continue;
-      if (isDuplicateChecksumWhitelisted(duplicateCheck.checksum)) continue;
-
-      const accepted = await showPromptCard({
-        tone: 'warning',
-        eyebrow: 'Recent Match',
-        title: 'Duplicate Detected',
-        message: pickRandomPrompt(),
-        subtext: 'You will not be warned again for this file.',
-        confirmLabel: 'Send It',
-        cancelLabel: 'Cancel',
-      });
-
-      if (!accepted) {
-        return null;
-      }
-
-      whitelistDuplicateChecksum(duplicateCheck.checksum);
-    }
-
-    return duplicateChecks;
-  };
-
-  const getRequestedReprintCopyCount = (fileKind, extraFields = {}) => {
-    if (fileKind !== 'image') return 1;
-
-    const requestedCopies = Number.parseInt(extraFields.printCount || extraFields.copyCount, 10);
-    return Number.isFinite(requestedCopies)
-      ? Math.min(Math.max(requestedCopies, 1), 50)
-      : 1;
-  };
-
-  const tryDirectReprint = async (duplicateCheck, fileKind, extraFields = {}) => {
-    if (!duplicateCheck?.recentMatch) return false;
-
-    const response = await fetch('/logs/reprint', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        timestamp: duplicateCheck.recentMatch.timestamp,
-        printerId: duplicateCheck.recentMatch.printerId,
-        chksum: duplicateCheck.recentMatch.chksum,
-        copyCount: getRequestedReprintCopyCount(fileKind, extraFields),
-      }),
-    });
-
-    return response.ok;
-  };
-
-  const uploadGroupedFiles = async (printer, groupedFiles, extraFields = {}, duplicateChecks = new Map()) => {
+  const uploadGroupedFiles = async (printer, groupedFiles, extraFields = {}) => {
     const groupEntries = Object.entries(groupedFiles);
+    const uploadResults = [];
 
     if (!groupEntries.length) {
       throw new Error('No valid files were supplied.');
     }
 
     for (const [fileKind, files] of groupEntries) {
-      const filesNeedingUpload = [];
-
-      for (const file of files) {
-        const duplicateCheck = duplicateChecks.get(file);
-        const canReuseExistingFile = duplicateCheck?.recentMatch
-          && duplicateCheck.recentMatch.printerId === printer.id;
-
-        if (!canReuseExistingFile) {
-          filesNeedingUpload.push(file);
-          continue;
-        }
-
-        const reusedExistingFile = await tryDirectReprint(duplicateCheck, fileKind, extraFields);
-
-        if (!reusedExistingFile) {
-          filesNeedingUpload.push(file);
-        }
-      }
-
-      if (!filesNeedingUpload.length) {
-        continue;
-      }
-
-      const routePath = filesNeedingUpload.length > 1
+      const routePath = files.length > 1
         ? `/${printer.id}/${fileKind}/multi`
         : `/${printer.id}/${fileKind}`;
       const formData = new FormData();
 
-      filesNeedingUpload.forEach(file => {
+      files.forEach(file => {
         formData.append(PRINTIFY_FILE_KINDS[fileKind].fieldName, file, file.name);
-      });
-
-      const jobMetaList = filesNeedingUpload.map(file => {
-        const duplicateCheck = duplicateChecks.get(file);
-
-        if (!duplicateCheck) {
-          return {};
-        }
-
-        if (!duplicateCheck.recentMatch) {
-        return duplicateCheck.checksum
-          ? { chksum: duplicateCheck.checksum }
-          : {};
-      }
-
-      return {
-        chksum: duplicateCheck.checksum,
-          isReprint: true,
-          reprintSourceTimestamp: duplicateCheck.recentMatch.timestamp || null,
-        };
       });
 
       Object.entries(extraFields).forEach(([fieldName, fieldValue]) => {
@@ -864,8 +511,6 @@
           formData.append(fieldName, fieldValue);
         }
       });
-
-      formData.append('jobMetaList', JSON.stringify(jobMetaList));
 
       const response = await fetch(routePath, {
         method: 'POST',
@@ -875,7 +520,11 @@
       if (!response.ok) {
         throw new Error(`Upload failed for ${printer.displayName} (${fileKind})`);
       }
+
+      uploadResults.push(await response.json());
     }
+
+    return uploadResults;
   };
 
   const handlePrinterFiles = async (printerId, files, extraFields = {}) => {
@@ -887,14 +536,30 @@
     if (!shouldContinue) return;
 
     const groupedFiles = groupFilesByKind(printer, files);
-    const duplicateChecks = await confirmDuplicateFiles(Array.from(files));
+    const uploadResults = await uploadGroupedFiles(printer, groupedFiles, extraFields);
+    const skippedCount = uploadResults.reduce((total, result) => (
+      total + Number(result?.skippedCount || 0)
+    ), 0);
+    const printedCount = uploadResults.reduce((total, result) => (
+      total + Number(result?.printedCount || 0)
+    ), 0);
 
-    if (duplicateChecks === null) {
+    if (printedCount && skippedCount) {
+      showConfirm(`${printer.displayName}: ${printedCount} sent, ${skippedCount} duplicate skipped`);
       return;
     }
 
-    await uploadGroupedFiles(printer, groupedFiles, extraFields, duplicateChecks);
-    showConfirm(`${printer.displayName} job sent`);
+    if (printedCount) {
+      showConfirm(`${printer.displayName} job sent`);
+      return;
+    }
+
+    if (skippedCount) {
+      showFeedback(`${printer.displayName}: duplicate skipped`);
+      return;
+    }
+
+    showFeedback(`${printer.displayName}: no files sent`);
   };
 
   // ╭──────────────────────────╮

@@ -198,12 +198,13 @@ img {
   display: grid;
   place-items: center;
   flex: 1;
-  gap: 18px;
+  gap: 12px;
   text-align: center;
 }
 
 .printer-card__icon {
-  width: min(148px, 48%);
+  width: min(188px, 64%);
+  max-height: 168px;
   aspect-ratio: 1;
   object-fit: contain;
   transition: transform 160ms ease;
@@ -988,7 +989,8 @@ img {
   }
 
   .printer-card__icon {
-    width: min(132px, 42vw);
+    width: min(164px, 56vw);
+    max-height: 148px;
   }
 
   .printify-builder__panel {

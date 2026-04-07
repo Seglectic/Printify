@@ -461,6 +461,8 @@ img {
 
 .printify-builder__canvas-shell .canvas-container {
   margin: 0 auto;
+  overflow: hidden;
+  border-radius: 12px;
   border: 2px solid var(--printify-line);
   box-shadow: inset 0 0 0 1px rgba(24, 33, 43, 0.04);
 }
@@ -554,10 +556,12 @@ img {
 .printify-builder__canvas.lower-canvas {
   display: block;
   background: #ffffff;
+  border-radius: 12px;
 }
 
 .printify-builder__canvas.upper-canvas {
   background: transparent;
+  border-radius: 12px;
 }
 
 .printify-builder__control-stack {

@@ -438,6 +438,13 @@ img {
   white-space: pre-line;
 }
 
+.printify-prompt__subtext {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: rgba(68, 57, 13, 0.62);
+}
+
 .printify-prompt__actions {
   display: flex;
   justify-content: flex-end;

@@ -2,7 +2,7 @@
   // ╭──────────────────────────╮
   // │  Shared constants        │
   // ╰──────────────────────────╯
-  const APP_VERSION = '2.3.0';
+  const APP_VERSION = '2.4.0';
   window.PRINTIFY_CLIENT_VERSION = APP_VERSION;
   const PRINTIFY_LOG_ROUTE = '#printifyLogDrawer';
   const PRINTIFY_FILE_KINDS = {
@@ -29,6 +29,21 @@
   const ZIP_EXTENSIONS = new Set(['zip']);
   const OVERSIZE_WARNING_RATIO = 1.5;
   const THEME_STORAGE_KEY = 'printify-theme';
+  const DUPLICATE_LOOKBACK_MINUTES = 24 * 60;
+  const DUPLICATE_WHITELIST_STORAGE_KEY = 'printify-duplicate-whitelist';
+  const DUPLICATE_WHITELIST_DURATION_MS = 24 * 60 * 60 * 1000;
+  const DUPLICATE_PROMPTS = [
+    'This file has been printed recently, send it?',
+    'File printed within the last 24h, print again?',
+    'This one already went through today. Send it again?',
+    'Recent match found for this file. Run another print?',
+    'This document was already printed not long ago. Send it anyway?',
+    'Looks like this file has been used recently. Print one more time?',
+    'Duplicate in the last day detected. Send it through?',
+    'This print job shows up in the last 24 hours. Print again?',
+    'A recent copy of this file was already sent. Queue another one?',
+    'This document has a fresh print history. Send it again?',
+  ];
 
   const appState = {
     printers: [],
@@ -53,6 +68,7 @@
   const promptEyebrow = document.getElementById('promptEyebrow');
   const promptTitle = document.getElementById('promptTitle');
   const promptMessage = document.getElementById('promptMessage');
+  const promptSubtext = document.getElementById('promptSubtext');
   const promptCancel = document.getElementById('promptCancel');
   const promptConfirm = document.getElementById('promptConfirm');
   const themeToggle = document.getElementById('themeToggle');
@@ -103,6 +119,7 @@
   };
 
   const getPrinterById = printerId => appState.printers.find(printer => printer.id === printerId);
+  const pickRandomPrompt = () => DUPLICATE_PROMPTS[Math.floor(Math.random() * DUPLICATE_PROMPTS.length)];
 
   const formatPixels = ({ width, height }) => `${Math.round(width)}x${Math.round(height)}px`;
 
@@ -148,6 +165,7 @@
     eyebrow = 'Warning',
     title = 'Heads up',
     message = '',
+    subtext = '',
     confirmLabel = 'OK',
     cancelLabel = 'Cancel',
   }) => new Promise(resolve => {
@@ -201,6 +219,10 @@
     promptEyebrow.textContent = eyebrow;
     promptTitle.textContent = title;
     promptMessage.textContent = message;
+    if (promptSubtext) {
+      promptSubtext.textContent = subtext;
+      promptSubtext.hidden = !subtext;
+    }
     promptCancel.textContent = cancelLabel;
     promptConfirm.textContent = confirmLabel;
     promptLayer.hidden = false;
@@ -481,7 +503,130 @@
     );
   };
 
-  const uploadGroupedFiles = async (printer, groupedFiles, extraFields = {}) => {
+  const readDuplicateWhitelist = () => {
+    try {
+      const rawValue = window.localStorage.getItem(DUPLICATE_WHITELIST_STORAGE_KEY);
+      const now = Date.now();
+      const parsedValue = JSON.parse(rawValue || '[]');
+      const parsedEntries = Array.isArray(parsedValue)
+        ? parsedValue
+        : [];
+      const activeEntries = parsedEntries.filter(entry => (
+        entry
+        && typeof entry.checksum === 'string'
+        && Number.isFinite(entry.expiresAt)
+        && entry.expiresAt > now
+      ));
+
+      if (activeEntries.length !== parsedEntries.length) {
+        window.localStorage.setItem(DUPLICATE_WHITELIST_STORAGE_KEY, JSON.stringify(activeEntries));
+      }
+
+      return activeEntries;
+    } catch (error) {
+      window.localStorage.removeItem(DUPLICATE_WHITELIST_STORAGE_KEY);
+      return [];
+    }
+  };
+
+  const writeDuplicateWhitelist = entries => {
+    window.localStorage.setItem(DUPLICATE_WHITELIST_STORAGE_KEY, JSON.stringify(entries));
+  };
+
+  const whitelistDuplicateChecksum = checksum => {
+    const now = Date.now();
+    const nextEntries = readDuplicateWhitelist()
+      .filter(entry => entry.checksum !== checksum);
+
+    nextEntries.push({
+      checksum,
+      expiresAt: now + DUPLICATE_WHITELIST_DURATION_MS,
+    });
+
+    writeDuplicateWhitelist(nextEntries);
+  };
+
+  const isDuplicateChecksumWhitelisted = checksum => (
+    readDuplicateWhitelist().some(entry => entry.checksum === checksum)
+  );
+
+  const createFileChecksum = async file => {
+    const fileBytes = await file.arrayBuffer();
+    const hashBuffer = await window.crypto.subtle.digest('SHA-256', fileBytes);
+    return Array.from(new Uint8Array(hashBuffer))
+      .map(byte => byte.toString(16).padStart(2, '0'))
+      .join('');
+  };
+
+  const loadRecentLogJobs = () => {
+    const url = new URL('/logs/recent', window.location.origin);
+    url.searchParams.set('lookBack', String(DUPLICATE_LOOKBACK_MINUTES));
+
+    return fetch(url.toString())
+      .then(response => response.json())
+      .then(payload => Array.isArray(payload.jobs) ? payload.jobs : []);
+  };
+
+  const buildDuplicateChecksByFile = async files => {
+    const recentJobs = await loadRecentLogJobs();
+    const recentJobsByChecksum = new Map();
+
+    recentJobs.forEach(job => {
+      if (!job?.chksum) return;
+      if (!recentJobsByChecksum.has(job.chksum)) {
+        recentJobsByChecksum.set(job.chksum, job);
+      }
+    });
+
+    const duplicateChecks = new Map();
+
+    for (const file of files) {
+      const fileKind = detectFileKind(file);
+
+      if (!fileKind || fileKind === 'zip') continue;
+
+      const checksum = await createFileChecksum(file);
+      const recentMatch = recentJobsByChecksum.get(checksum) || null;
+
+      duplicateChecks.set(file, {
+        checksum,
+        recentMatch,
+      });
+    }
+
+    return duplicateChecks;
+  };
+
+  const confirmDuplicateFiles = async files => {
+    const duplicateChecks = await buildDuplicateChecksByFile(files);
+
+    for (const file of files) {
+      const duplicateCheck = duplicateChecks.get(file);
+
+      if (!duplicateCheck?.recentMatch) continue;
+      if (isDuplicateChecksumWhitelisted(duplicateCheck.checksum)) continue;
+
+      const accepted = await showPromptCard({
+        tone: 'warning',
+        eyebrow: 'Recent Match',
+        title: 'Duplicate Detected',
+        message: pickRandomPrompt(),
+        subtext: 'You will not be warned again for this file.',
+        confirmLabel: 'Send It',
+        cancelLabel: 'Cancel',
+      });
+
+      if (!accepted) {
+        return null;
+      }
+
+      whitelistDuplicateChecksum(duplicateCheck.checksum);
+    }
+
+    return duplicateChecks;
+  };
+
+  const uploadGroupedFiles = async (printer, groupedFiles, extraFields = {}, duplicateChecks = new Map()) => {
     const groupEntries = Object.entries(groupedFiles);
 
     if (!groupEntries.length) {
@@ -498,11 +643,33 @@
         formData.append(PRINTIFY_FILE_KINDS[fileKind].fieldName, file, file.name);
       });
 
+      const jobMetaList = files.map(file => {
+        const duplicateCheck = duplicateChecks.get(file);
+
+        if (!duplicateCheck) {
+          return {};
+        }
+
+        if (!duplicateCheck.recentMatch) {
+          return {
+            chksum: duplicateCheck.checksum,
+          };
+        }
+
+        return {
+          chksum: duplicateCheck.checksum,
+          isReprint: true,
+          reprintSourceTimestamp: duplicateCheck.recentMatch.timestamp || null,
+        };
+      });
+
       Object.entries(extraFields).forEach(([fieldName, fieldValue]) => {
         if (fieldValue !== null && fieldValue !== undefined && fieldValue !== '') {
           formData.append(fieldName, fieldValue);
         }
       });
+
+      formData.append('jobMetaList', JSON.stringify(jobMetaList));
 
       const response = await fetch(routePath, {
         method: 'POST',
@@ -524,7 +691,13 @@
     if (!shouldContinue) return;
 
     const groupedFiles = groupFilesByKind(printer, files);
-    await uploadGroupedFiles(printer, groupedFiles, extraFields);
+    const duplicateChecks = await confirmDuplicateFiles(Array.from(files));
+
+    if (duplicateChecks === null) {
+      return;
+    }
+
+    await uploadGroupedFiles(printer, groupedFiles, extraFields, duplicateChecks);
     showConfirm(`${printer.displayName} job sent`);
   };
 

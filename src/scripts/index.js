@@ -2,7 +2,7 @@
   // ╭──────────────────────────╮
   // │  Shared constants        │
   // ╰──────────────────────────╯
-  const APP_VERSION = '2.2.7';
+  const APP_VERSION = '2.3.0';
   window.PRINTIFY_CLIENT_VERSION = APP_VERSION;
   const PRINTIFY_LOG_ROUTE = '#printifyLogDrawer';
   const PRINTIFY_FILE_KINDS = {

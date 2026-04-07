@@ -51,6 +51,8 @@ Primary responsibilities:
 
 - When sub-agents are available, prefer a dedicated worker for git commit creation instead of having the main worker make commits directly.
 - When version numbers need to change, prefer a dedicated `version-audit` worker first. Base the bump on the actual change set since the last relevant version, not on guesswork or a generic patch bump.
+- Treat `version-roll` as the full versioning workflow: run a `version-audit`, bump the affected version surfaces, and commit the result.
+- During a `version-audit`, use patch bumps for fixes, polish, and small behavior tweaks. Use minor bumps when the change adds a meaningful new feature, new capability, new config surface, new endpoint, or another clearly user-facing workflow.
 - When `AGENTS.md` is part of the task, prefer assigning a dedicated worker to maintain or revise this file so repo guidance stays intentional and isolated.
 - Commit messages from the git worker should read naturally and a bit casual rather than overly formal.
 
@@ -119,7 +121,7 @@ Current server endpoints in `Printify.js` include:
 
 1. Read `package.json` and `Printify.js` first.
 2. Confirm whether the task affects server routes, frontend pages, printer availability rendering, or print pipeline behavior.
-3. If version numbers need to change, run a `version-audit` step to identify the correct server and client bumps from the real change history before editing version files.
+3. If version numbers need to change, run a `version-audit` step to identify the correct server and client bumps from the real change history before editing version files. If the user asks for a `version-roll`, treat that as the full audit, bump, and commit flow.
 4. If `AGENTS.md` is in scope, use a dedicated worker to update it.
 5. If editing print behavior, verify which printer object and endpoint are involved.
 6. If the task touches previews or log thumbnails, keep `lib/previewer.js` as the owner of ImageMagick preview generation and cache lookup instead of scattering preview logic across routes or UI code.

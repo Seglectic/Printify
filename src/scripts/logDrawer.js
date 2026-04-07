@@ -22,7 +22,7 @@
       <div class="printify-log-drawer__list" data-role="list">
         <div class="printify-log-drawer__empty">Loading recent print jobs...</div>
       </div>
-      <div class="printify-log-drawer__batch" data-role="batch" hidden>
+      <div class="printify-log-drawer__batch" data-role="batch">
         <button class="printify-log-drawer__batch-button" type="button" data-role="batch-button">
           <span>REPRINT</span>
           <span>[BATCH]</span>
@@ -388,8 +388,9 @@
     };
     const syncBatchUi = () => {
       const selectedCount = getSelectedJobs().length;
+      const shouldShowBatch = selectedCount >= 2;
 
-      if (batch) batch.hidden = selectedCount < 2;
+      if (batch) batch.classList.toggle('is-visible', shouldShowBatch);
       if (batchButton) batchButton.disabled = selectedCount < 2;
 
       if (selectedCount < 2 && batchStatus) {
@@ -745,7 +746,14 @@
         event.stopPropagation();
         const card = previewTrigger.closest('[data-role="log-card"]');
         if (!card) return;
-        openPreviewForJobKey(card.getAttribute('data-job-key'));
+        const jobKey = card.getAttribute('data-job-key');
+
+        if (selectedPreviewJobKey === jobKey && !previewPane?.hidden) {
+          closePreviewPane();
+          return;
+        }
+
+        openPreviewForJobKey(jobKey);
         return;
       }
 

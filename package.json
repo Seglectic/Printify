@@ -1,6 +1,6 @@
 {
 	"name": "printify",
-	"version": "2.2.4",
+	"version": "2.2.5",
 	"description": "Printify allows you to print PDF files from a remote web browser to a printer on the local machine.",
 	"dependencies": {
 		"bwip-js": "^4.7.0",

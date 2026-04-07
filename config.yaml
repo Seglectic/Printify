@@ -1,53 +1,81 @@
-# ╭───────────────────────────────────────────╮
-# │  Example printer config                   │
-# │  printers:                                │
-# │    examplePrinter:                        │
-# │      displayName: "Shipping Labels"       │
-# │      driverName: "My Printer Driver"      │
-# │      printMode: "cli"                     │
-# │      acceptedKinds: ["pdf", "image"]      │
-# │      labelBuilder: false                  │
-# │      bundleImageCopies: false             │
-# │      pxSize: "800x1200"                   │
-# │      density: "300"                       │
-# │      linuxPrintMode: "lp"                 │
-# │      linuxDriverName: "My Linux Queue"    │
-# │      cliCommand: "python"                 │
-# │      cliArgs: ["printChan.py", "{file}"]  │
-# ╰───────────────────────────────────────────╯
+# ╭─────────────────────────────────────────╮
+# │  config.yaml                            │
+# │  Each key under "printers" defines one  │
+# │  printer object and its upload/print    │
+# │  capabilities.                          │
+# ╰─────────────────────────────────────────╯
 
+# ╭──────────────────╮
+# │  Global Options  │
+# ╰──────────────────╯
 port: 8020
 testing: true
+# imPath: ""
+
+# ╭───────────────────────────────────────────────────────────╮
+# │  Printer options                                          │
+# │  - displayName: UI label shown in the app                 │
+# │  - driverName: printer / queue name                       │
+# │  - printMode: "driver" or "cli"                           │
+# │      "driver" uses "lp" on linux and pdf-to-printer       │
+# │       elsewhere                                           │
+# │  - acceptedKinds: any of pdf, image, zip                  │
+# │  - labelBuilder: enables the label builder                │
+# │  - bundleCopies: bundle image copies into                 │
+# │    one PDF before printing                                │
+# │  - pxSize: ImageMagick canvas size for                    │
+# │    image conversion, or null                              │
+# │  - density: ImageMagick density for image                 │
+# │    conversion, or null                                    │
+# │  - cliCommand: command used for cli mode                  │
+# │  - cliArgs: args for cli mode; supports                   │
+# │    {file} and {driverName} placeholders                   │
+# ╰───────────────────────────────────────────────────────────╯
+
+#  Example printer object with every supported key.         
+#  Uncomment and adapt as needed.                           
+#                                                           
+#  printers:                                                
+#    examplePrinter:                                        
+#      displayName: "Shipping Labels"                       
+#      driverName: "My Printer Driver"                      
+#      printMode: "driver"                                  
+#      acceptedKinds: ["pdf", "image", "zip"]               
+#      labelBuilder: true                                   
+#      bundleCopies: false                                  
+#      pxSize: "800x1200"                                   
+#      density: "300"                                       
+#      cliCommand: "python"                                 
+#      cliArgs: ["printChan.py", "{file}", "{driverName}"]  
+
 
 printers:
   zebra:
     displayName: "Zebra Label Printer"
     driverName: "Zebra450"
-    printMode: "pdfToPrinter"
-    linuxPrintMode: "lp"
+    printMode: "driver"
     acceptedKinds: ["pdf", "image", "zip"]
     labelBuilder: true
-    bundleImageCopies: false
+    bundleCopies: false
     pxSize: "800x1200"
     density: "300"
 
   brotherLaser:
     displayName: "Brother Laser Printer"
     driverName: "Brother2360DUSB"
-    printMode: "lp"
+    printMode: "driver"
     acceptedKinds: ["pdf", "image"]
     labelBuilder: false
-    bundleImageCopies: false
+    bundleCopies: false
     pxSize: null
     density: null
 
   dymoLabel:
     displayName: "Dymo Label Maker"
     driverName: "DYMO4XLUSB"
-    printMode: "pdfToPrinter"
-    linuxPrintMode: "lp"
+    printMode: "driver"
     acceptedKinds: ["image"]
     labelBuilder: true
-    bundleImageCopies: true
+    bundleCopies: true
     pxSize: "425x200"
     density: "200"

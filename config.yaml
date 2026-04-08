@@ -58,7 +58,7 @@ printers:
     printMode: "driver"
     acceptedKinds: ["pdf", "image", "zip"]
     labelBuilder: true
-    bundleCopies: false
+    bundleCopies: true
     pxSize: "800x1200"
     density: "300"
 

@@ -45,7 +45,6 @@ const {
   logStamp,
   errorLogStamp,
 } = require('./lib/logger');
-const { createUpload }            = require('./lib/upload');
 const { createServerSave }        = require('./lib/serverSave');
 const { createLogStore }          = require('./lib/logStore');
 const { createDeduplicator }      = require('./lib/deduplicator');
@@ -58,7 +57,6 @@ const { registerRoutes }          = require('./lib/routes');
 // │  Boot   │
 // └─────────┘
 const app = express();                                   // Main Express app instance
-const upload = createUpload({ uploadsDir });             // Shared Multer uploader for file endpoints
 const httpServer = http.createServer(app);
 const serverSave = createServerSave({
   serverDataPath,
@@ -142,7 +140,6 @@ app.get('/favicon.ico', (req, res) => {
 registerRoutes({
   app,
   rootDir,
-  upload,
   printers,
   printingService,
   ingestService,

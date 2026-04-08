@@ -271,6 +271,28 @@
       .slice()
       .sort((leftJob, rightJob) => Date.parse(rightJob.timestamp) - Date.parse(leftJob.timestamp));
     const isReprintJob = job => Boolean(job && (job.isReprint || job.sourceType === 'log-reprint'));
+    const formatJobFilename = job => {
+      const originalFilename = String(job?.originalFilename || 'Unnamed file');
+      const totalCopies = Number.parseInt(job?.totalCopies, 10);
+
+      if (!isReprintJob(job) || !Number.isFinite(totalCopies) || totalCopies <= 1) {
+        return originalFilename;
+      }
+
+      if (/\sx\d+(\.[^./\\]+)?$/i.test(originalFilename)) {
+        return originalFilename;
+      }
+
+      const extensionMatch = originalFilename.match(/(\.[^./\\]+)$/);
+
+      if (!extensionMatch) {
+        return `${originalFilename} x${totalCopies}`;
+      }
+
+      const extension = extensionMatch[1];
+      const baseName = originalFilename.slice(0, -extension.length);
+      return `${baseName} x${totalCopies}${extension}`;
+    };
     const buildOriginalLookupUrl = job => {
       const url = new URL(settings.originalLogUrl, window.location.origin);
       url.searchParams.set('chksum', String(job.chksum || ''));
@@ -514,9 +536,9 @@
       }
 
       previewPane.hidden = false;
-      previewTitle.textContent = job.originalFilename || 'Print Preview';
+      previewTitle.textContent = formatJobFilename(job);
       previewImage.src = job.previewUrl;
-      previewImage.alt = `Preview for ${job.originalFilename || 'print job'}`;
+      previewImage.alt = `Preview for ${formatJobFilename(job) || 'print job'}`;
       previewMeta.textContent = formatPreviewMeta(job);
       previewOpen.disabled = false;
       previewPrint.disabled = !job.filePath || !job.printerId || !job.chksum;
@@ -567,7 +589,7 @@
                 <div class="printify-log-drawer__time">${escapeHtml(formatTimestamp(job.timestamp))}</div>
               </div>
               <div class="printify-log-drawer__main">
-                <h3 class="printify-log-drawer__filename">${escapeHtml(job.originalFilename || 'Unnamed file')}</h3>
+                <h3 class="printify-log-drawer__filename">${escapeHtml(formatJobFilename(job))}</h3>
                 <div class="printify-log-drawer__summary">
                   <div class="printify-log-drawer__summary-main">
                     <div class="printify-log-drawer__printer">${printerLabel}</div>
@@ -581,7 +603,7 @@
               </div>
               ${job.previewUrl ? `
                 <div class="printify-log-drawer__preview-stack">
-                  <button class="printify-log-drawer__preview-trigger" type="button" data-role="preview-trigger"><img class="printify-log-drawer__preview" src="${escapeHtml(job.previewUrl)}" alt="Preview for ${escapeHtml(job.originalFilename || 'print job')}" loading="lazy"></button>
+                  <button class="printify-log-drawer__preview-trigger" type="button" data-role="preview-trigger"><img class="printify-log-drawer__preview" src="${escapeHtml(job.previewUrl)}" alt="Preview for ${escapeHtml(formatJobFilename(job) || 'print job')}" loading="lazy"></button>
                   ${isReprintJob(job)
                     ? '<button class="printify-log-drawer__reprint-stamp" type="button" data-role="original-jump" title="Jump to original print">REPRINT</button>'
                     : ''}

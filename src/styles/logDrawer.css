@@ -368,6 +368,10 @@
   gap: 16px;
 }
 
+.printify-log-drawer__preview-header > div {
+  min-width: 0;
+}
+
 .printify-log-drawer__preview-eyebrow {
   margin: 0 0 6px;
   color: var(--pld-muted);
@@ -381,6 +385,9 @@
   margin: 0;
   font-size: 20px;
   line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .printify-log-drawer__preview-close,

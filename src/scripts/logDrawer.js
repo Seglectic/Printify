@@ -112,6 +112,20 @@
     });
   };
 
+  const formatDetailedTimestamp = timestamp => {
+    const date = new Date(timestamp);
+
+    if (Number.isNaN(date.getTime())) return null;
+
+    return date.toLocaleString([], {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+  };
+
   const formatDetailValue = value => {
     if (value === null || value === undefined || value === '') return null;
     if (typeof value === 'boolean') return value ? 'Yes' : 'No';
@@ -124,9 +138,68 @@
     if (!checksum || checksum.length !== 64) return `<span class="printify-log-drawer__checksum-text">${safeChecksum}</span>`;
 
     return `
-      <span class="printify-log-drawer__checksum-label">CHKSUM</span>
+      <span class="printify-log-drawer__checksum-label">HASH</span>
       <span class="printify-log-drawer__checksum-text">${safeChecksum.slice(0, 8)}...${safeChecksum.slice(-8)}</span>
     `;
+  };
+
+  const formatJobKind = job => {
+    switch (job?.sourceType) {
+      case 'log-reprint':
+      case 'log-reprint-bundled':
+        return 'Reprint';
+      case 'upload-pdf':
+        return 'Uploaded PDF';
+      case 'upload-pdf-bundled':
+        return 'Bundled PDF';
+      case 'upload-image':
+        return 'Uploaded Image';
+      case 'upload-image-bundled':
+        return 'Bundled Image';
+      case 'upload-zip-pdf':
+        return 'ZIP PDF';
+      default:
+        return job?.sourceType || 'Unknown';
+    }
+  };
+
+  const formatCopiesValue = job => {
+    const totalCopies = Number.parseInt(job?.totalCopies, 10);
+    const copyIndex = Number.parseInt(job?.copyIndex, 10);
+
+    if (Number.isFinite(copyIndex) && Number.isFinite(totalCopies) && totalCopies > 1) {
+      return `${copyIndex} of ${totalCopies}`;
+    }
+
+    if (Number.isFinite(totalCopies) && totalCopies > 0) {
+      return String(totalCopies);
+    }
+
+    return '1';
+  };
+
+  const formatRelativeFilePath = filePath => {
+    const normalizedPath = String(filePath || '').replace(/\\/g, '/');
+
+    if (!normalizedPath) return null;
+
+    const uploadsIndex = normalizedPath.toLowerCase().lastIndexOf('/uploads/');
+
+    if (uploadsIndex !== -1) {
+      return normalizedPath.slice(uploadsIndex + '/uploads/'.length);
+    }
+
+    return normalizedPath.replace(/^\/+/, '');
+  };
+
+  const formatFileSize = fileSizeBytes => {
+    const size = Number(fileSizeBytes);
+
+    if (!Number.isFinite(size) || size < 0) return null;
+    if (size < 1024) return `${size} B`;
+    if (size < 1024 ** 2) return `${(size / 1024).toFixed(1)} KB`;
+    if (size < 1024 ** 3) return `${(size / (1024 ** 2)).toFixed(1)} MB`;
+    return `${(size / (1024 ** 3)).toFixed(1)} GB`;
   };
 
   // ╭──────────────────────────╮
@@ -364,19 +437,15 @@
 
     const renderDetailsMarkup = job => {
       const details = [
-        ['Printer', job.displayName || job.printerName],
-        ['Result', job.result],
-        ['Testing', job.testing],
-        ['Print Mode', job.printMode],
-        ['Source Type', job.sourceType],
-        ['Source Route', job.sourceRoute],
-        ['Stored Name', job.storedFilename],
-        ['Archive', job.sourceArchiveName],
-        ['Bundled Pages', job.bundledSourceCount],
-        ['Copy', job.copyIndex],
-        ['Total Copies', job.totalCopies],
-        ['File Path', job.filePath],
-        ['Transport', job.transportResponse],
+        ['Status', job.result],
+        ['Job Kind', formatJobKind(job)],
+        ['Reprint', isReprintJob(job)],
+        ...(isReprintJob(job) && job.reprintSourceTimestamp
+          ? [['Original Print Time', formatDetailedTimestamp(job.reprintSourceTimestamp)]]
+          : []),
+        ['Copies', formatCopiesValue(job)],
+        ['File Size', formatFileSize(job.fileSizeBytes)],
+        ['File Path', formatRelativeFilePath(job.filePath)],
         ['Error', job.error],
       ].filter(([, value]) => formatDetailValue(value) !== null);
 
@@ -537,6 +606,7 @@
 
       previewPane.hidden = false;
       previewTitle.textContent = formatJobFilename(job);
+      previewTitle.title = formatJobFilename(job);
       previewImage.src = job.previewUrl;
       previewImage.alt = `Preview for ${formatJobFilename(job) || 'print job'}`;
       previewMeta.textContent = formatPreviewMeta(job);
@@ -605,7 +675,7 @@
                 <div class="printify-log-drawer__preview-stack">
                   <button class="printify-log-drawer__preview-trigger" type="button" data-role="preview-trigger"><img class="printify-log-drawer__preview" src="${escapeHtml(job.previewUrl)}" alt="Preview for ${escapeHtml(formatJobFilename(job) || 'print job')}" loading="lazy"></button>
                   ${isReprintJob(job)
-                    ? '<button class="printify-log-drawer__reprint-stamp" type="button" data-role="original-jump" title="Jump to original print">REPRINT</button>'
+                    ? '<button class="printify-log-drawer__reprint-stamp" type="button" data-role="original-jump" title="Jump to original print">REPRINTED</button>'
                     : ''}
                 </div>
               ` : ''}

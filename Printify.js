@@ -27,6 +27,7 @@ const {
   staticDir,
   iconsDir,
   logsDir,
+  uploadsDir,
   previewCacheDir,
   serverDataPath,
   version,
@@ -47,7 +48,9 @@ const {
 const { createUpload }            = require('./lib/upload');
 const { createServerSave }        = require('./lib/serverSave');
 const { createLogStore }          = require('./lib/logStore');
+const { createDeduplicator }      = require('./lib/deduplicator');
 const { createPrintingService }   = require('./lib/printing');
+const { createIngestService }     = require('./lib/ingest');
 const { registerRoutes }          = require('./lib/routes');
 
 
@@ -55,7 +58,7 @@ const { registerRoutes }          = require('./lib/routes');
 // │  Boot   │
 // └─────────┘
 const app = express();                                   // Main Express app instance
-const upload = createUpload();                           // Shared Multer uploader for file endpoints
+const upload = createUpload({ uploadsDir });             // Shared Multer uploader for file endpoints
 const httpServer = http.createServer(app);
 const serverSave = createServerSave({
   serverDataPath,
@@ -63,6 +66,11 @@ const serverSave = createServerSave({
 }); // Persist lightweight server stats across restarts.
 const logStore = createLogStore({
   logsDir,
+  errorLogStamp,
+});
+const deduplicator = createDeduplicator({
+  logsDir,
+  logStamp,
   errorLogStamp,
 });
 const converter = createConverter({
@@ -82,12 +90,20 @@ const printingService = createPrintingService({
   testing,
   serverSave,
   logStore,
+  deduplicator,
   createFileChecksum,
   createJobLogEntry,
   logStamp,
   errorLogStamp,
   converter,
   previewer,
+});
+const ingestService = createIngestService({
+  uploadsDir,
+  printingService,
+  deduplicator,
+  logStamp,
+  errorLogStamp,
 });
 
 
@@ -129,6 +145,7 @@ registerRoutes({
   upload,
   printers,
   printingService,
+  ingestService,
   previewer,
   serverSave,
   logStore,
@@ -161,6 +178,16 @@ if (WebSocketServer) {
 }
 
 // Start the HTTP server after middleware and routes are in place.
-httpServer.listen(port, () => {
-  logStamp(`Server is running on port ${port}`);
-});
+const startServer = async () => {
+  try {
+    await deduplicator.initialize();
+  } catch (error) {
+    errorLogStamp('Checksum cache initialization failed:', error.message);
+  }
+
+  httpServer.listen(port, () => {
+    logStamp(`Server is running on port ${port}`);
+  });
+};
+
+startServer();

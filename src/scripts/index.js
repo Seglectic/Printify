@@ -29,6 +29,17 @@
   const ZIP_EXTENSIONS = new Set(['zip']);
   const OVERSIZE_WARNING_RATIO = 1.5;
   const THEME_STORAGE_KEY = 'printify-theme';
+  const DUPLICATE_WHITELIST_STORAGE_KEY = 'printify-duplicate-whitelist';
+  const DUPLICATE_WHITELIST_DURATION_MS = 24 * 60 * 60 * 1000;
+  const DUPLICATE_PROMPTS = [
+    'This file has been printed recently, send it?',
+    'File printed within the last 31 days, print again?',
+    'Recent match found for this file. Run another print?',
+    'This document was already printed not long ago. Send it anyway?',
+    'Looks like this file has been used recently. Print one more time?',
+    'A recent copy of this file was already sent to this printer. Queue another one?',
+    'This document has a fresh print history for this printer. Send it again?',
+  ];
 
   const appState = {
     printers: [],
@@ -106,6 +117,7 @@
 
   const getPrinterById = printerId => appState.printers.find(printer => printer.id === printerId);
 
+  const pickRandomPrompt = () => DUPLICATE_PROMPTS[Math.floor(Math.random() * DUPLICATE_PROMPTS.length)];
   const formatPixels = ({ width, height }) => `${Math.round(width)}x${Math.round(height)}px`;
 
   const formatPercent = value => {
@@ -488,6 +500,131 @@
     );
   };
 
+  const readDuplicateWhitelist = () => {
+    try {
+      const rawValue = window.localStorage.getItem(DUPLICATE_WHITELIST_STORAGE_KEY);
+      const now = Date.now();
+      const parsedValue = JSON.parse(rawValue || '[]');
+      const parsedEntries = Array.isArray(parsedValue) ? parsedValue : [];
+      const activeEntries = parsedEntries.filter(entry => (
+        entry
+        && typeof entry.checksum === 'string'
+        && Number.isFinite(entry.expiresAt)
+        && entry.expiresAt > now
+      ));
+
+      if (activeEntries.length !== parsedEntries.length) {
+        window.localStorage.setItem(DUPLICATE_WHITELIST_STORAGE_KEY, JSON.stringify(activeEntries));
+      }
+
+      return activeEntries;
+    } catch (error) {
+      window.localStorage.removeItem(DUPLICATE_WHITELIST_STORAGE_KEY);
+      return [];
+    }
+  };
+
+  const writeDuplicateWhitelist = entries => {
+    window.localStorage.setItem(DUPLICATE_WHITELIST_STORAGE_KEY, JSON.stringify(entries));
+  };
+
+  const whitelistDuplicateChecksum = checksum => {
+    if (!checksum) return;
+
+    const now = Date.now();
+    const nextEntries = readDuplicateWhitelist()
+      .filter(entry => entry.checksum !== checksum);
+
+    nextEntries.push({
+      checksum,
+      expiresAt: now + DUPLICATE_WHITELIST_DURATION_MS,
+    });
+
+    writeDuplicateWhitelist(nextEntries);
+  };
+
+  const isDuplicateChecksumWhitelisted = checksum => (
+    readDuplicateWhitelist().some(entry => entry.checksum === checksum)
+  );
+
+  const resolvePendingDuplicates = async (printer, uploadResult) => {
+    if (!uploadResult?.needsConfirmation || !uploadResult.sessionId) {
+      return uploadResult;
+    }
+
+    const duplicates = Array.isArray(uploadResult.duplicates) ? uploadResult.duplicates : [];
+    const duplicatesByChecksum = new Map();
+    const approvedItemIds = [];
+
+    duplicates.forEach(duplicate => {
+      const checksumKey = duplicate.checksum || duplicate.id;
+      const groupedDuplicates = duplicatesByChecksum.get(checksumKey) || [];
+      groupedDuplicates.push(duplicate);
+      duplicatesByChecksum.set(checksumKey, groupedDuplicates);
+    });
+
+    for (const groupedDuplicates of duplicatesByChecksum.values()) {
+      const sampleDuplicate = groupedDuplicates[0];
+
+      if (sampleDuplicate.checksum && isDuplicateChecksumWhitelisted(sampleDuplicate.checksum)) {
+        groupedDuplicates.forEach(duplicate => {
+          approvedItemIds.push(duplicate.id);
+        });
+        continue;
+      }
+
+      const accepted = await showPromptCard({
+        tone: 'warning',
+        eyebrow: 'Recent Match',
+        title: 'Duplicate Detected',
+        message: pickRandomPrompt(),
+        subtext: `Matched ${sampleDuplicate.originalFilename} on ${printer.displayName}. Approving it suppresses repeat warnings for 24 hours in this browser.`,
+        confirmLabel: 'Send It',
+        cancelLabel: 'Cancel',
+      });
+
+      if (!accepted) {
+        continue;
+      }
+
+      if (sampleDuplicate.checksum) {
+        whitelistDuplicateChecksum(sampleDuplicate.checksum);
+      }
+
+      groupedDuplicates.forEach(duplicate => {
+        approvedItemIds.push(duplicate.id);
+      });
+    }
+
+    const response = await fetch(`/ingest/${encodeURIComponent(uploadResult.sessionId)}/confirm`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        approvedItemIds,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Duplicate confirmation failed for ${printer.displayName}`);
+    }
+
+    const confirmedResult = await response.json();
+
+    return {
+      ...uploadResult,
+      printedCount: Number(uploadResult.printedCount || 0) + Number(confirmedResult.printedCount || 0),
+      skippedCount: Number(uploadResult.skippedCount || 0) + Number(confirmedResult.skippedCount || 0),
+      skippedDuplicates: [
+        ...(Array.isArray(uploadResult.skippedDuplicates) ? uploadResult.skippedDuplicates : []),
+        ...(Array.isArray(confirmedResult.skippedDuplicates) ? confirmedResult.skippedDuplicates : []),
+      ],
+      needsConfirmation: false,
+      duplicates: [],
+    };
+  };
+
   const uploadGroupedFiles = async (printer, groupedFiles, extraFields = {}) => {
     const groupEntries = Object.entries(groupedFiles);
     const uploadResults = [];
@@ -521,7 +658,7 @@
         throw new Error(`Upload failed for ${printer.displayName} (${fileKind})`);
       }
 
-      uploadResults.push(await response.json());
+      uploadResults.push(await resolvePendingDuplicates(printer, await response.json()));
     }
 
     return uploadResults;

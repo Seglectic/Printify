@@ -17,21 +17,23 @@ clippy: true
 # ╭───────────────────────────────────────────────────────────╮
 # │  Printer options                                          │
 # │  - displayName: UI label shown in the app                 │
-# │  - driverName: printer / queue name                       │
 # │  - printMode: "driver" or "cli"                           │
 # │      "driver" uses "lp" on linux and pdf-to-printer       │
 # │       elsewhere                                           │
+# │  - driverName: printer / queue name for                   │
+# │    driver mode                                            │
+# │  - size: print target size in decimal form,               │
+# │    such as "4x6" or "3.8x5.8"                             │
+# │  - units: inch, mm, cm, or px                             │
+# │  - density: ImageMagick density used to convert           │
+# │    physical size to effective pixels                      │
 # │  - acceptedKinds: any of pdf, image, zip                  │
 # │  - labelBuilder: enables the label builder                │
 # │  - bundleCopies: bundle image copies into                 │
 # │    one PDF before printing                                │
-# │  - pxSize: ImageMagick canvas size for                    │
-# │    image conversion, or null                              │
-# │  - density: ImageMagick density for image                 │
-# │    conversion, or null                                    │
 # │  - cliCommand: command used for cli mode                  │
 # │  - cliArgs: args for cli mode; supports                   │
-# │    {file} and {driverName} placeholders                   │
+# │    the {file} placeholder                                 │
 # ╰───────────────────────────────────────────────────────────╯
 
 #  Example printer object with every supported key.         
@@ -40,44 +42,48 @@ clippy: true
 #  printers:                                                
 #    examplePrinter:                                        
 #      displayName: "Shipping Labels"                       
-#      driverName: "My Printer Driver"                      
 #      printMode: "driver"                                  
+#      driverName: "My Printer Driver"                      
+#      size: "4x6"                                          
+#      units: "inch"                                        
+#      density: "300"                                       
 #      acceptedKinds: ["pdf", "image", "zip"]               
 #      labelBuilder: true                                   
 #      bundleCopies: false                                  
-#      pxSize: "800x1200"                                   
-#      density: "300"                                       
 #      cliCommand: "python"                                 
-#      cliArgs: ["printChan.py", "{file}", "{driverName}"]  
+#      cliArgs: ["printChan.py", "{file}"]                  
 
 
 printers:
   zebra:
     displayName: "Zebra Label Printer"
-    driverName: "Zebra450"
     printMode: "driver"
+    driverName: "Zebra450"
+    size: "4x6"
+    units: "inch"
+    density: "300"
     acceptedKinds: ["pdf", "image", "zip"]
     labelBuilder: true
     bundleCopies: true
-    pxSize: "800x1200"
-    density: "300"
 
   brotherLaser:
     displayName: "Brother Laser Printer"
-    driverName: "Brother2360DUSB"
     printMode: "driver"
+    driverName: "Brother2360DUSB"
+    size: null
+    units: null
+    density: null
     acceptedKinds: ["pdf", "image"]
     labelBuilder: false
     bundleCopies: false
-    pxSize: null
-    density: null
 
   dymoLabel:
     displayName: "Dymo Label Maker"
-    driverName: "DYMO4XLUSB"
     printMode: "driver"
+    driverName: "DYMO4XLUSB"
+    size: "2.125x1"
+    units: "inch"
+    density: "200"
     acceptedKinds: ["image"]
     labelBuilder: true
     bundleCopies: true
-    pxSize: "425x200"
-    density: "200"

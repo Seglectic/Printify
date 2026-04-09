@@ -14,6 +14,21 @@
     },
   };
 
+  const describePrinterSize = printer => {
+    const physicalSize = printer?.size && printer?.units
+      ? `${printer.size} ${printer.units}`
+      : null;
+    const pixelSize = printer?.sizePx
+      ? `${printer.sizePx}px`
+      : null;
+
+    if (physicalSize && pixelSize) {
+      return `${physicalSize} (${pixelSize})`;
+    }
+
+    return physicalSize || pixelSize || null;
+  };
+
   const humanJoin = values => {
     const cleanValues = values.filter(Boolean);
 
@@ -34,7 +49,8 @@
           ))
         );
         const builderStatus = printer.labelBuilder ? 'It even has a label builder.' : 'No label builder though.';
-        const sizeNote = printer.pxSize ? `Its target size is ${printer.pxSize}.` : 'It has chosen not to discuss dimensions.';
+        const printerSize = describePrinterSize(printer);
+        const sizeNote = printerSize ? `Its target size is ${printerSize}.` : 'It has chosen not to discuss dimensions.';
 
         return [
           `Did you know the ${printer.displayName} can take ${fileKinds}?`,

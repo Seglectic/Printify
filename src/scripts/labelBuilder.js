@@ -9,8 +9,15 @@
   const DEFAULT_CODE_FALLBACK_LABEL = 'Printify';
   const DEFAULT_TEXTBOX_PLACEHOLDER = 'Click to Edit';
 
-  const parsePxSize = pxSize => {
-    const match = String(pxSize || '').match(/^(\d+)x(\d+)$/i);
+  const getPrinterCanvasSize = printer => {
+    if (Number.isFinite(printer?.sizePxWidth) && Number.isFinite(printer?.sizePxHeight)) {
+      return {
+        width: printer.sizePxWidth,
+        height: printer.sizePxHeight,
+      };
+    }
+
+    const match = String(printer?.sizePx || '').match(/^(\d+)x(\d+)$/i);
 
     if (!match) return DEFAULT_CANVAS_SIZE;
 
@@ -948,7 +955,7 @@
 
     const resetCanvas = printer => {
       const builderCanvas = ensureCanvas();
-      const { width, height } = parsePxSize(printer?.pxSize);
+      const { width, height } = getPrinterCanvasSize(printer);
 
       builderCanvas.clear();
       builderCanvas.setDimensions({ width, height });

@@ -40,6 +40,7 @@ const {
 const { createConverter }        = require('./lib/converter');
 const { createPreviewer }        = require('./lib/previewer');
 const {
+  compactObject,
   createFileChecksum,
   createJobLogEntry,
   logStamp,
@@ -126,6 +127,21 @@ const notifyRecentLogUpdate = () => {
 serverSave.addPrintJobListener(notifyRecentLogUpdate);
 
 logStamp(`Printify.js v${version}`);
+
+Object.entries(printers).forEach(([printerId, printerConfig]) => {
+  logStamp(`Configured printer "${printerId}":`, compactObject({
+    displayName: printerConfig.displayName,
+    printMode: printerConfig.printMode,
+    driverName: printerConfig.driverName,
+    size: printerConfig.size,
+    units: printerConfig.units,
+    density: printerConfig.density,
+    sizePx: printerConfig.sizePx,
+    acceptedKinds: printerConfig.acceptedKinds,
+    labelBuilder: Boolean(printerConfig.labelBuilder),
+    bundleCopies: Boolean(printerConfig.bundleCopies),
+  }));
+});
 
 // Shared request middleware for JSON, form bodies, and static UI assets.
 app.use(express.json({ limit: '1mb' }));

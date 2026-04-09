@@ -190,6 +190,18 @@
         let printers = [];
         let previewUrl = null;
 
+        const describePrinterSize = printer => {
+          const physicalSize = printer?.size && printer?.units
+            ? `${printer.size} ${printer.units}`
+            : null;
+          const pixelSize = printer?.sizePx
+            ? `${printer.sizePx}px`
+            : null;
+
+          if (physicalSize && pixelSize) return `${physicalSize} • ${pixelSize}`;
+          return physicalSize || pixelSize || 'default';
+        };
+
         const showFeedback = message => {
           feedback.textContent = message;
           feedback.classList.add('is-visible');
@@ -203,7 +215,7 @@
             if (previewUrl) URL.revokeObjectURL(previewUrl);
             previewUrl = URL.createObjectURL(files[0]);
             previewImage.src = previewUrl;
-            previewMeta.textContent = `${printer.displayName} • ${printer.pxSize || 'default'} • ${extraFields.printCount || 1} copy`;
+            previewMeta.textContent = `${printer.displayName} • ${describePrinterSize(printer)} • ${extraFields.printCount || 1} copy`;
             preview.hidden = false;
             showFeedback(`Rendered ${files[0].name} for ${printer.displayName}`);
           },
@@ -224,7 +236,7 @@
           }
 
           select.innerHTML = printers.map(printer => (
-            `<option value="${printer.id}">${printer.displayName} (${printer.pxSize || 'default'})</option>`
+            `<option value="${printer.id}">${printer.displayName} (${describePrinterSize(printer)})</option>`
           )).join('');
         };
 

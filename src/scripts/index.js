@@ -93,8 +93,15 @@
     return segments.length > 1 ? segments.pop() : '';
   };
 
-  const parsePxSize = pxSize => {
-    const match = String(pxSize || '').match(/^(\d+)x(\d+)$/i);
+  const getPrinterTargetSize = printer => {
+    if (Number.isFinite(printer?.sizePxWidth) && Number.isFinite(printer?.sizePxHeight)) {
+      return {
+        width: printer.sizePxWidth,
+        height: printer.sizePxHeight,
+      };
+    }
+
+    const match = String(printer?.sizePx || '').match(/^(\d+)x(\d+)$/i);
 
     if (!match) return null;
 
@@ -403,7 +410,7 @@
   };
 
   const buildOversizeWarnings = async (printer, files) => {
-    const targetSize = parsePxSize(printer?.pxSize);
+    const targetSize = getPrinterTargetSize(printer);
     if (!targetSize) return [];
 
     const warnings = [];

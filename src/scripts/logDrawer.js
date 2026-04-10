@@ -132,6 +132,17 @@
     return String(value);
   };
 
+  const formatChecksumExpandedMarkup = checksum => {
+    const safeChecksum = escapeHtml(checksum || 'Checksum unavailable');
+
+    if (!checksum || checksum.length !== 64) {
+      return `<div class="printify-log-drawer__checksum-expanded-text">${safeChecksum}</div>`;
+    }
+
+    const checksumLines = safeChecksum.match(/.{1,16}/g) || [safeChecksum];
+    return checksumLines.map(line => `<div class="printify-log-drawer__checksum-expanded-line">${line}</div>`).join('');
+  };
+
   const formatChecksumMarkup = checksum => {
     const safeChecksum = escapeHtml(checksum || 'Checksum unavailable');
 
@@ -139,7 +150,7 @@
 
     return `
       <span class="printify-log-drawer__checksum-label">HASH</span>
-      <span class="printify-log-drawer__checksum-text">${safeChecksum.slice(0, 8)}...${safeChecksum.slice(-8)}</span>
+      <span class="printify-log-drawer__checksum-text">${safeChecksum.slice(0, 4)}...${safeChecksum.slice(-4)}</span>
     `;
   };
 
@@ -258,8 +269,11 @@
     );
     let printerIconsById = {};
     let selectedPreviewJobKey = null;
+    let previewCloseTimer = null;
     let previousJobKeys = new Set();
     const expandedJobKeys = new Set();
+    const expandedChecksumJobKeys = new Set();
+    const selectedChecksumJobKeys = new Set();
     const selectedJobKeys = new Set();
     const highlightedJobKeys = new Map();
     const highlightDurationMs = 1800;
@@ -623,7 +637,26 @@
       renderLogs(currentJobs);
       syncBatchUi();
     };
-    const toggleCardDetails = jobKey => {
+    const syncPreviewTriggerState = () => {
+      const activeJobKey = !previewPane?.hidden ? selectedPreviewJobKey : null;
+
+      list.querySelectorAll('[data-role="log-card"]').forEach(card => {
+        const previewTrigger = card.querySelector('[data-role="preview-trigger"]');
+        if (!previewTrigger) return;
+
+        const isActive = card.getAttribute('data-job-key') === activeJobKey;
+        previewTrigger.classList.toggle('is-active', isActive);
+        previewTrigger.setAttribute('aria-expanded', isActive ? 'true' : 'false');
+      });
+    };
+    const setCardDetailsState = (card, isOpen) => {
+      if (!card) return;
+
+      card.classList.toggle('is-open', isOpen);
+      const detailsToggle = card.querySelector('[data-role="details-toggle"]');
+      detailsToggle?.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    };
+    const toggleCardDetails = (jobKey, card) => {
       if (!jobKey) return;
 
       if (expandedJobKeys.has(jobKey)) {
@@ -632,7 +665,56 @@
         expandedJobKeys.add(jobKey);
       }
 
+      setCardDetailsState(card, expandedJobKeys.has(jobKey));
+    };
+    const setChecksumExpandedState = (card, isOpen) => {
+      if (!card) return;
+
+      const checksumButton = card.querySelector('[data-role="checksum-select"]');
+      const checksumExpanded = card.querySelector('[data-role="checksum-expanded"]');
+      const jobKey = card.getAttribute('data-job-key');
+
+      checksumButton?.classList.toggle('is-open', isOpen);
+      checksumExpanded?.classList.toggle('is-open', isOpen);
+      checksumExpanded?.classList.toggle('is-selected', Boolean(jobKey && selectedChecksumJobKeys.has(jobKey) && isOpen));
+    };
+    const highlightChecksumExpandedText = card => {
+      const checksumExpanded = card?.querySelector('[data-role="checksum-expanded"]');
+
+      if (!checksumExpanded) return;
+
+      const selection = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(checksumExpanded);
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+    };
+    const closeChecksumExpanded = jobKey => {
+      if (!jobKey) return;
+
+      expandedChecksumJobKeys.delete(jobKey);
+      selectedChecksumJobKeys.delete(jobKey);
       renderLogs(currentJobs);
+    };
+    const toggleChecksumExpanded = (jobKey, card) => {
+      if (!jobKey) return;
+
+      if (!expandedChecksumJobKeys.has(jobKey)) {
+        expandedChecksumJobKeys.clear();
+        selectedChecksumJobKeys.clear();
+        expandedChecksumJobKeys.add(jobKey);
+        renderLogs(currentJobs);
+        return;
+      }
+
+      if (!selectedChecksumJobKeys.has(jobKey)) {
+        selectedChecksumJobKeys.add(jobKey);
+        setChecksumExpandedState(card, true);
+        highlightChecksumExpandedText(card);
+        return;
+      }
+
+      closeChecksumExpanded(jobKey);
     };
     const openPreviewForJobKey = jobKey => {
       const job = findJobByKey(jobKey);
@@ -651,9 +733,20 @@
 
     const closePreviewPane = () => {
       selectedPreviewJobKey = null;
-      if (previewPane) previewPane.hidden = true;
       if (previewStatus) previewStatus.textContent = '';
       resetPreviewCopies();
+      if (!previewPane) return;
+
+      previewPane.classList.remove('is-visible');
+      previewPane.classList.add('is-closing');
+      syncPreviewTriggerState();
+
+      if (previewCloseTimer) window.clearTimeout(previewCloseTimer);
+      previewCloseTimer = window.setTimeout(() => {
+        previewPane.hidden = true;
+        previewPane.classList.remove('is-closing');
+        previewCloseTimer = null;
+      }, 220);
     };
 
     const syncPreviewPane = () => {
@@ -666,7 +759,13 @@
         return;
       }
 
+      if (previewCloseTimer) {
+        window.clearTimeout(previewCloseTimer);
+        previewCloseTimer = null;
+      }
+
       previewPane.hidden = false;
+      previewPane.classList.remove('is-closing');
       previewTitle.textContent = formatJobFilename(job);
       previewTitle.title = formatJobFilename(job);
       previewImage.src = job.previewUrl;
@@ -675,6 +774,14 @@
       previewOpen.disabled = false;
       previewPrint.disabled = !job.filePath || !job.printerId || !job.chksum;
       previewStatus.textContent = previewPrint.disabled ? 'This preview can be inspected, but the original file is no longer available for reprint.' : '';
+
+      // Force the hidden->visible state to commit before starting the entrance transition.
+      void previewPane.offsetHeight;
+
+      window.requestAnimationFrame(() => {
+        previewPane.classList.add('is-visible');
+        syncPreviewTriggerState();
+      });
     };
 
     const pruneHighlightedJobKeys = () => {
@@ -707,42 +814,47 @@
 
         const isNew = highlightedJobKeys.has(jobKey);
         const isOpen = expandedJobKeys.has(jobKey);
+        const isChecksumOpen = expandedChecksumJobKeys.has(jobKey);
         const isSelected = selectedJobKeys.has(jobKey);
+        const isPreviewSelected = selectedPreviewJobKey === jobKey && !previewPane?.hidden;
         const iconPath = job.iconUrl || printerIconsById[job.printerId] || '/favicon.ico';
         const printerLabel = escapeHtml(job.displayName || job.printerName || job.printerId || 'Unknown printer');
 
         return `
           <article class="printify-log-drawer__card${isNew ? ' is-new' : ''}${isOpen ? ' is-open' : ''}${isSelected ? ' is-selected' : ''}" data-role="log-card" data-job-key="${escapeHtml(jobKey)}">
+            <div class="printify-log-drawer__checksum-expanded${isChecksumOpen ? ' is-open' : ''}${selectedChecksumJobKeys.has(jobKey) ? ' is-selected' : ''}" data-role="checksum-expanded">
+              ${formatChecksumExpandedMarkup(job.chksum)}
+            </div>
             <div class="printify-log-drawer__row">
               <div class="printify-log-drawer__icon-stack">
-                <button class="printify-log-drawer__icon-button" type="button" data-role="details-toggle" title="Toggle print details">
+                <button class="printify-log-drawer__icon-button" type="button" data-role="details-toggle" title="Toggle print details" aria-expanded="${isOpen ? 'true' : 'false'}">
                   <img class="printify-log-drawer__icon" src="${iconPath}" alt="${printerLabel}">
                 </button>
-                <div class="printify-log-drawer__time">${escapeHtml(formatTimestamp(job.timestamp))}</div>
               </div>
               <div class="printify-log-drawer__main">
                 <h3 class="printify-log-drawer__filename">${escapeHtml(formatJobFilename(job))}</h3>
-                <div class="printify-log-drawer__summary">
-                  <div class="printify-log-drawer__summary-main">
-                    <div class="printify-log-drawer__printer">${printerLabel}</div>
-                    <div class="printify-log-drawer__checksum">
-                      <button class="printify-log-drawer__checksum-button" type="button" data-role="checksum-select" title="${escapeHtml(job.chksum || 'Checksum unavailable')}">
-                        ${formatChecksumMarkup(job.chksum)}
-                      </button>
-                    </div>
+                <div class="printify-log-drawer__printer">${printerLabel}</div>
+                <div class="printify-log-drawer__meta-row">
+                  <div class="printify-log-drawer__time">${escapeHtml(formatTimestamp(job.timestamp))}</div>
+                  <div class="printify-log-drawer__checksum">
+                    <button class="printify-log-drawer__checksum-button${isChecksumOpen ? ' is-open' : ''}" type="button" data-role="checksum-select" title="${escapeHtml(job.chksum || 'Checksum unavailable')}">
+                      ${formatChecksumMarkup(job.chksum)}
+                    </button>
                   </div>
                 </div>
               </div>
               ${job.previewUrl ? `
                 <div class="printify-log-drawer__preview-stack">
-                  <button class="printify-log-drawer__preview-trigger" type="button" data-role="preview-trigger"><img class="printify-log-drawer__preview" src="${escapeHtml(job.previewUrl)}" alt="Preview for ${escapeHtml(formatJobFilename(job) || 'print job')}" loading="lazy"></button>
+                  <button class="printify-log-drawer__preview-trigger${isPreviewSelected ? ' is-active' : ''}" type="button" data-role="preview-trigger" aria-expanded="${isPreviewSelected ? 'true' : 'false'}"><img class="printify-log-drawer__preview" src="${escapeHtml(job.previewUrl)}" alt="Preview for ${escapeHtml(formatJobFilename(job) || 'print job')}" loading="lazy"></button>
                   ${isReprintJob(job)
                     ? '<button class="printify-log-drawer__reprint-stamp" type="button" data-role="original-jump" title="Jump to original print">REPRINTED</button>'
                     : ''}
                 </div>
               ` : ''}
             </div>
-            <div class="printify-log-drawer__details">${renderDetailsMarkup(job)}</div>
+            <div class="printify-log-drawer__details">
+              <div class="printify-log-drawer__details-inner">${renderDetailsMarkup(job)}</div>
+            </div>
           </article>
         `;
       }).join('');
@@ -792,6 +904,9 @@
       toggle.classList.toggle('is-hidden', isOpen);
 
       if (!isOpen) {
+        expandedChecksumJobKeys.clear();
+        selectedChecksumJobKeys.clear();
+        renderLogs(currentJobs);
         closeConfirmPane();
       }
     };
@@ -874,6 +989,14 @@
     });
 
     list.addEventListener('click', event => {
+      if (expandedChecksumJobKeys.size && !event.target.closest('[data-role="checksum-select"]') && !event.target.closest('[data-role="checksum-expanded"]')) {
+        event.stopPropagation();
+        expandedChecksumJobKeys.clear();
+        selectedChecksumJobKeys.clear();
+        renderLogs(currentJobs);
+        return;
+      }
+
       const originalJump = event.target.closest('[data-role="original-jump"]');
 
       if (originalJump) {
@@ -884,13 +1007,13 @@
         return;
       }
 
-      const detailsToggle = event.target.closest('[data-role="details-toggle"]');
+        const detailsToggle = event.target.closest('[data-role="details-toggle"]');
 
       if (detailsToggle) {
         event.stopPropagation();
         const card = detailsToggle.closest('[data-role="log-card"]');
         if (!card) return;
-        toggleCardDetails(card.getAttribute('data-job-key'));
+        toggleCardDetails(card.getAttribute('data-job-key'), card);
         return;
       }
 
@@ -915,6 +1038,28 @@
 
       if (checksumButton) {
         event.stopPropagation();
+        const card = checksumButton.closest('[data-role="log-card"]');
+        toggleChecksumExpanded(card?.getAttribute('data-job-key'), card);
+        return;
+      }
+
+      const checksumExpanded = event.target.closest('[data-role="checksum-expanded"]');
+
+      if (checksumExpanded) {
+        event.stopPropagation();
+        const card = checksumExpanded.closest('[data-role="log-card"]');
+        const jobKey = card?.getAttribute('data-job-key');
+
+        if (!jobKey) return;
+
+        if (!selectedChecksumJobKeys.has(jobKey)) {
+          selectedChecksumJobKeys.add(jobKey);
+          setChecksumExpandedState(card, true);
+          highlightChecksumExpandedText(card);
+          return;
+        }
+
+        closeChecksumExpanded(jobKey);
         return;
       }
 
@@ -1028,6 +1173,12 @@
         closeWindowMenu();
       }
 
+      if (expandedChecksumJobKeys.size && panel.contains(event.target) && !event.target.closest('[data-role="checksum-select"]') && !event.target.closest('[data-role="checksum-expanded"]')) {
+        expandedChecksumJobKeys.clear();
+        selectedChecksumJobKeys.clear();
+        renderLogs(currentJobs);
+      }
+
       if (previewPane?.hidden) return;
 
       const clickedInsidePreview = event.target.closest('[data-role="preview-pane"]');
@@ -1044,18 +1195,13 @@
 
       if (checksumButton) {
         event.stopPropagation();
-        const selection = window.getSelection();
-        const range = document.createRange();
-        range.selectNodeContents(checksumButton);
-        selection.removeAllRanges();
-        selection.addRange(range);
         return;
       }
 
       const card = event.target.closest('[data-role="log-card"]');
 
       if (!card) return;
-      if (event.target.closest('[data-role="preview-trigger"], [data-role="details-toggle"], [data-role="original-jump"]')) return;
+      if (event.target.closest('[data-role="preview-trigger"], [data-role="details-toggle"], [data-role="original-jump"], [data-role="checksum-select"], [data-role="checksum-expanded"]')) return;
 
       const jobKey = card.getAttribute('data-job-key');
       event.stopPropagation();
@@ -1067,7 +1213,8 @@
 
       if (isTypingTarget && event.key !== 'Escape') return;
 
-      if (event.key === 'ArrowLeft') {
+      if (event.key === 'ArrowLeft' || event.key === 'Tab') {
+        if (event.key === 'Tab') event.preventDefault();
         const shouldOpen = !panel.classList.contains('is-open');
 
         if (shouldOpen) {
@@ -1076,12 +1223,6 @@
           setOpenState(false);
         }
 
-        return;
-      }
-
-      if (event.key === 'Tab' && !panel.classList.contains('is-open')) {
-        event.preventDefault();
-        openDrawer();
         return;
       }
 

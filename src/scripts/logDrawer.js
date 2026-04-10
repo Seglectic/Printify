@@ -483,6 +483,48 @@
     const formatPlural = (count, singular, plural = `${singular}s`) => (
       count === 1 ? singular : plural
     );
+    const buildBatchReprintRequests = (jobs, requestedCopyCount) => {
+      const groupedRequests = new Map();
+
+      jobs
+        .filter(job => job && job.filePath && job.printerId && job.chksum && job.timestamp)
+        .forEach(job => {
+          const requestKey = `${job.printerId}::${job.chksum}`;
+          const currentRequest = groupedRequests.get(requestKey);
+          const jobTime = Date.parse(job.timestamp) || 0;
+
+          if (!currentRequest) {
+            groupedRequests.set(requestKey, {
+              timestamp: job.timestamp,
+              printerId: job.printerId,
+              chksum: job.chksum,
+              copyCount: requestedCopyCount,
+              selectedCount: 1,
+              sourceJob: job,
+            });
+            return;
+          }
+
+          currentRequest.copyCount += requestedCopyCount;
+          currentRequest.selectedCount += 1;
+
+          const currentSourceTime = Date.parse(currentRequest.timestamp) || 0;
+          const shouldPreferJob = (
+            (!isReprintJob(job) && isReprintJob(currentRequest.sourceJob))
+            || (
+              Boolean(!isReprintJob(job)) === Boolean(!isReprintJob(currentRequest.sourceJob))
+              && jobTime < currentSourceTime
+            )
+          );
+
+          if (shouldPreferJob) {
+            currentRequest.timestamp = job.timestamp;
+            currentRequest.sourceJob = job;
+          }
+        });
+
+      return Array.from(groupedRequests.values());
+    };
     const resetPreviewCopies = () => {
       if (previewCopies) previewCopies.value = '1';
     };
@@ -507,9 +549,10 @@
     };
     const submitBatchReprint = jobs => {
       const normalizedCopyCount = normalizeCopyCount(batchCopies?.value);
-      const reprintableJobs = jobs.filter(job => job && job.filePath && job.printerId && job.chksum && job.timestamp);
+      const batchRequests = buildBatchReprintRequests(jobs, normalizedCopyCount);
+      const selectedCount = jobs.filter(job => job && job.filePath && job.printerId && job.chksum && job.timestamp).length;
 
-      if (!reprintableJobs.length) {
+      if (!batchRequests.length) {
         if (batchStatus) batchStatus.textContent = 'No selected jobs can be reprinted.';
         closeConfirmPane();
         return Promise.resolve();
@@ -519,20 +562,20 @@
       if (batchButton) batchButton.disabled = true;
       if (confirmSubmit) confirmSubmit.disabled = true;
       if (batchStatus) {
-        batchStatus.textContent = `Sending ${reprintableJobs.length} ${formatPlural(reprintableJobs.length, 'document')} for ${normalizedCopyCount} ${formatPlural(normalizedCopyCount, 'time')}...`;
+        batchStatus.textContent = `Sending ${selectedCount} ${formatPlural(selectedCount, 'document')} as ${batchRequests.length} ${formatPlural(batchRequests.length, 'job')}...`;
       }
 
-      return Promise.all(reprintableJobs.map(job => (
+      return Promise.all(batchRequests.map(request => (
         fetch(settings.reprintUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            timestamp: job.timestamp,
-            printerId: job.printerId,
-            chksum: job.chksum,
-            copyCount: normalizedCopyCount,
+            timestamp: request.timestamp,
+            printerId: request.printerId,
+            chksum: request.chksum,
+            copyCount: request.copyCount,
           }),
         }).then(async response => {
           if (!response.ok) {
@@ -544,7 +587,7 @@
       )))
         .then(() => {
           if (batchStatus) {
-            batchStatus.textContent = `Queued ${reprintableJobs.length} ${formatPlural(reprintableJobs.length, 'document')} for ${normalizedCopyCount} ${formatPlural(normalizedCopyCount, 'time')}.`;
+            batchStatus.textContent = `Queued ${selectedCount} ${formatPlural(selectedCount, 'document')} as ${batchRequests.length} ${formatPlural(batchRequests.length, 'job')}.`;
           }
           queueRecentLogReload();
           closeConfirmPane();
@@ -560,10 +603,11 @@
     const openBatchConfirm = jobs => {
       const normalizedCopyCount = normalizeCopyCount(batchCopies?.value);
       const selectedCount = jobs.length;
+      const batchRequests = buildBatchReprintRequests(jobs, normalizedCopyCount);
 
       pendingBatchReprint = jobs;
       if (confirmMessage) {
-        confirmMessage.textContent = `${selectedCount} ${formatPlural(selectedCount, 'Document')} will be reprinted ${normalizedCopyCount} ${formatPlural(normalizedCopyCount, 'time')}.`;
+        confirmMessage.textContent = `${selectedCount} ${formatPlural(selectedCount, 'Document')} will be reprinted as ${batchRequests.length} ${formatPlural(batchRequests.length, 'job')} for up to ${normalizedCopyCount} ${formatPlural(normalizedCopyCount, 'time')} each.`;
       }
       if (confirmPane) confirmPane.hidden = false;
     };

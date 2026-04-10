@@ -25,7 +25,7 @@
       <div class="printify-log-drawer__batch" data-role="batch">
         <button class="printify-log-drawer__batch-button" type="button" data-role="batch-button">
           <span>REPRINT</span>
-          <span>[BATCH]</span>
+          <span>BATCH</span>
         </button>
         <label class="printify-log-drawer__batch-field" for="printifyLogDrawerBatchCopies">
           Copies
@@ -483,6 +483,12 @@
     const formatPlural = (count, singular, plural = `${singular}s`) => (
       count === 1 ? singular : plural
     );
+    const resetPreviewCopies = () => {
+      if (previewCopies) previewCopies.value = '1';
+    };
+    const resetBatchCopies = () => {
+      if (batchCopies) batchCopies.value = '1';
+    };
     const closeConfirmPane = () => {
       pendingBatchReprint = null;
       if (confirmPane) confirmPane.hidden = true;
@@ -494,8 +500,9 @@
       if (batch) batch.classList.toggle('is-visible', shouldShowBatch);
       if (batchButton) batchButton.disabled = selectedCount < 2;
 
-      if (selectedCount < 2 && batchStatus) {
-        batchStatus.textContent = '';
+      if (!shouldShowBatch) {
+        resetBatchCopies();
+        if (batchStatus) batchStatus.textContent = '';
       }
     };
     const submitBatchReprint = jobs => {
@@ -602,6 +609,7 @@
       selectedPreviewJobKey = null;
       if (previewPane) previewPane.hidden = true;
       if (previewStatus) previewStatus.textContent = '';
+      resetPreviewCopies();
     };
 
     const syncPreviewPane = () => {

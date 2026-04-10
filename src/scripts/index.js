@@ -46,9 +46,9 @@
     pageHits: 0,
     printCounter: 0,
     serverVersion: 'Unknown',
-    clippyEnabled: true,
+    assistant: 'Clippy',
     feedbackTimer: null,
-    clippyAgent: null,
+    assistantAgent: null,
     labelBuilder: null,
     logDrawer: null,
     openPrinterId: null,
@@ -134,8 +134,8 @@
   };
 
   const showFeedback = message => {
-    if (appState.clippyEnabled && appState.clippyAgent && typeof appState.clippyAgent.speak === 'function') {
-      appState.clippyAgent.speak(message);
+    if (appState.assistant !== 'none' && appState.assistantAgent && typeof appState.assistantAgent.speak === 'function') {
+      appState.assistantAgent.speak(message);
       return;
     }
 
@@ -280,7 +280,7 @@
       appState.serverVersion = serverData.version;
       appState.pageHits = serverData.pageHits;
       appState.printCounter = serverData.printCounter;
-      appState.clippyEnabled = serverData.clippy !== false;
+      appState.assistant = serverData.assistant || 'Clippy';
       footer.textContent = '';
       typeWrite(footer, `Client v${APP_VERSION}`, 40);
       window.setTimeout(() => {
@@ -864,11 +864,11 @@
   };
 
   const bootClippy = () => {
-    if (!appState.clippyEnabled) return;
+    if (appState.assistant === 'none') return;
     if (!window.clippy) return;
 
-    window.clippy.load('Clippy', agent => {
-      appState.clippyAgent = agent;
+    window.clippy.load(appState.assistant, agent => {
+      appState.assistantAgent = agent;
       if (typeof agent.pinToCorner === 'function') {
         agent.pinToCorner({
           right: 15,

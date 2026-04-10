@@ -8,10 +8,12 @@
 # ╭──────────────────╮
 # │  Global Options  │
 # ╰──────────────────╯
-# Clippy: enable the assistant mascot and route status text to him
+# assistant: choose the desktop mascot for status text and boot chatter
+# Available assistants: none, Bonzi, Clippy, F1, Genie, Genius, Links,
+# Merlin, Peedy, Rocky, Rover
 port: 8020
 testing: true
-clippy: true
+assistant: none
 # imPath: ""
 
 # ╭───────────────────────────────────────────────────────────╮

@@ -1,8 +1,7 @@
 # ╭─────────────────────────────────────────╮
-# │  config.yaml                            │
-# │  Each key under "printers" defines one  │
-# │  printer object and its upload/print    │
-# │  capabilities.                          │
+# │  _exampleConfig.yaml                    │
+# │  Copy to config.yaml on first boot      │
+# │  if no local machine config exists.     │
 # ╰─────────────────────────────────────────╯
 
 # ╭──────────────────╮
@@ -38,23 +37,22 @@ assistant: none
 # │    the {file} placeholder                                 │
 # ╰───────────────────────────────────────────────────────────╯
 
-#  Example printer object with every supported key.         
-#  Uncomment and adapt as needed.                           
-#                                                           
-#  printers:                                                
-#    examplePrinter:                                        
-#      displayName: "Shipping Labels"                       
-#      printMode: "driver"                                  
-#      driverName: "My Printer Driver"                      
-#      size: "4x6"                                          
-#      units: "inch"                                        
-#      density: "300"                                       
-#      acceptedKinds: ["pdf", "image", "zip"]               
-#      labelBuilder: true                                   
-#      bundleCopies: false                                  
-#      cliCommand: "python"                                 
-#      cliArgs: ["printChan.py", "{file}"]                  
-
+#  Example printer object with every supported key.
+#  Uncomment and adapt as needed.
+#
+#  printers:
+#    examplePrinter:
+#      displayName: "Shipping Labels"
+#      printMode: "driver"
+#      driverName: "My Printer Driver"
+#      size: "4x6"
+#      units: "inch"
+#      density: "300"
+#      acceptedKinds: ["pdf", "image", "zip"]
+#      labelBuilder: true
+#      bundleCopies: false
+#      cliCommand: "python"
+#      cliArgs: ["printChan.py", "{file}"]
 
 printers:
   zebra:
@@ -63,8 +61,8 @@ printers:
     driverName: "Zebra450"
     size: "4x6"
     units: "inch"
-    density: "300"
-    acceptedKinds: ["pdf", "image", "zip"]
+    density: "200"
+    acceptedKinds: [ "pdf", "image", "zip" ]
     labelBuilder: true
     bundleCopies: true
 
@@ -72,11 +70,11 @@ printers:
     displayName: "Brother Laser Printer"
     printMode: "driver"
     driverName: "Brother2360DUSB"
-    size: null
-    units: null
-    density: null
-    acceptedKinds: ["pdf", "image"]
-    labelBuilder: false
+    size: "8.5x11"
+    units: "inch"
+    density: "300"
+    acceptedKinds: [ "pdf", "image" ]
+    labelBuilder: true
     bundleCopies: false
 
   dymoLabel:
@@ -86,6 +84,6 @@ printers:
     size: "2.125x1"
     units: "inch"
     density: "200"
-    acceptedKinds: ["image"]
+    acceptedKinds: [ "image" ]
     labelBuilder: true
     bundleCopies: true

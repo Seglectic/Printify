@@ -24,8 +24,11 @@ try {
 // ╰───────────────╯
 const {
   rootDir,
+  configDir,
+  configPath,
   staticDir,
   iconsDir,
+  fontsDir,
   logsDir,
   uploadsDir,
   previewCacheDir,
@@ -139,6 +142,7 @@ app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use(express.static(staticDir));
 app.use('/icons', express.static(iconsDir));
+app.use('/fonts', express.static(fontsDir));
 app.get('/favicon.ico', (req, res) => {
   res.sendFile(path.join(iconsDir, 'favicon.ico'));
 });
@@ -147,6 +151,9 @@ app.get('/favicon.ico', (req, res) => {
 registerRoutes({
   app,
   rootDir,
+  configDir,
+  configPath,
+  iconsDir,
   printers,
   printingService,
   ingestService,
@@ -237,7 +244,7 @@ const startServer = async () => {
       });
 
       if (!nextPort) {
-        errorLogStamp('Server did not start. Update config.yaml or free the blocked port and try again.');
+        errorLogStamp('Server did not start. Update config/config.yaml or free the blocked port and try again.');
         process.exitCode = 1;
         return;
       }

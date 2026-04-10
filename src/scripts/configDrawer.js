@@ -10,17 +10,17 @@
           <h2 class="printify-config-drawer__title">Printify Config</h2>
           <button class="printify-config-drawer__close" type="button" data-role="close">Close</button>
         </div>
-        <p class="printify-config-drawer__subhead">Direct access to the live config. Save writes back to <code>config.yaml</code>.<br> Printify must be restarted for changes to apply.</p>
+        <p class="printify-config-drawer__subhead">Direct access to the live config. Save writes back to <code>config/config.yaml</code>.<br> Printify must be restarted for changes to apply.</p>
       </div>
       <div class="printify-config-drawer__body">
         <div class="printify-config-drawer__toolbar">
-          <div class="printify-config-drawer__meta" data-role="meta">config.yaml</div>
+          <div class="printify-config-drawer__meta" data-role="meta">config/config.yaml</div>
           <div class="printify-config-drawer__actions">
             <button class="printify-config-drawer__button printify-config-drawer__button--secondary" type="button" data-role="reload">Reload</button>
             <button class="printify-config-drawer__button printify-config-drawer__button--primary" type="button" data-role="save">Save</button>
           </div>
         </div>
-        <textarea class="printify-config-drawer__editor" data-role="editor" spellcheck="false" aria-label="config.yaml editor"></textarea>
+        <textarea class="printify-config-drawer__editor" data-role="editor" spellcheck="false" aria-label="config/config.yaml editor"></textarea>
         <p class="printify-config-drawer__status" data-role="status"></p>
       </div>
     </aside>
@@ -82,25 +82,25 @@
     };
 
     const loadConfig = async () => {
-      setStatus('Loading config.yaml...');
+      setStatus('Loading config/config.yaml...');
 
       try {
         const response = await fetch(settings.configUrl);
         const payload = await response.json();
 
         if (!response.ok) {
-          throw new Error(payload.error || 'Could not load config.yaml');
+          throw new Error(payload.error || 'Could not load config/config.yaml');
         }
 
         if (editor) editor.value = payload.rawConfig || '';
-        setStatus('Loaded config.yaml');
+        setStatus('Loaded config/config.yaml');
       } catch (error) {
         setStatus(error.message);
       }
     };
 
     const saveConfig = async () => {
-      setStatus('Saving config.yaml...');
+      setStatus('Saving config/config.yaml...');
       if (save) save.disabled = true;
 
       try {
@@ -119,7 +119,7 @@
           throw new Error(payload.error || 'Config save failed');
         }
 
-        setStatus('Saved config.yaml. Restart Printify to apply changes.');
+        setStatus('Saved config/config.yaml. Restart Printify to apply changes.');
       } catch (error) {
         setStatus(error.message);
       } finally {

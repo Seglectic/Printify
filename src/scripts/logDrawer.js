@@ -335,6 +335,7 @@
     };
 
     const getJobKey = job => [
+      job.jobId || '',
       job.timestamp || '',
       job.printerId || '',
       job.originalFilename || '',
@@ -342,7 +343,16 @@
     ].join('|');
     const sortJobsNewestFirst = jobs => jobs
       .slice()
-      .sort((leftJob, rightJob) => Date.parse(rightJob.timestamp) - Date.parse(leftJob.timestamp));
+      .sort((leftJob, rightJob) => {
+        const rightTime = Date.parse(rightJob.timestamp);
+        const leftTime = Date.parse(leftJob.timestamp);
+
+        if (rightTime !== leftTime) {
+          return rightTime - leftTime;
+        }
+
+        return String(rightJob.jobId || '').localeCompare(String(leftJob.jobId || ''));
+      });
     const isReprintJob = job => Boolean(job && (job.isReprint || job.sourceType === 'log-reprint'));
     const formatJobFilename = job => {
       const originalFilename = String(job?.originalFilename || 'Unnamed file');

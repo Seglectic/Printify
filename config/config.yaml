@@ -57,6 +57,17 @@ assistant: Links
 
 
 printers:
+  ptouch:
+    displayName: "P-Touch Cube"
+    # printMode: "driver"
+    driverName: "PTouchCube"
+    # size: "4x6"
+    # units: "inch"
+    # density: "200"
+    acceptedKinds: [ "pdf", "image", "zip" ]
+    labelBuilder: true
+    bundleCopies: true
+
   zebra:
     displayName: "Zebra Label Printer"
     printMode: "driver"
@@ -90,13 +101,13 @@ printers:
     labelBuilder: true
     bundleCopies: false
 
-  dymoLabel:
-    displayName: "Dymo Label Maker"
-    printMode: "driver"
-    driverName: "DYMO4XLUSB"
-    size: "2.125x1"
-    units: "inch"
-    density: "200"
-    acceptedKinds: [ "image" ]
-    labelBuilder: true
-    bundleCopies: true
+  # dymoLabel:
+  #   displayName: "Dymo Label Maker"
+  #   printMode: "driver"
+  #   driverName: "DYMO4XLUSB"
+  #   size: "2.125x1"
+  #   units: "inch"
+  #   density: "200"
+  #   acceptedKinds: [ "image" ]
+  #   labelBuilder: true
+  #   bundleCopies: true

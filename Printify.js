@@ -169,6 +169,12 @@ registerRoutes({
 
 const tui = createTui({
   runtimeConfig,
+  logsDir,
+  uploadsDir,
+  logStore,
+  deduplicator,
+  ingestService,
+  onLogsPurged: notifyRecentLogUpdate,
   logStamp,
   errorLogStamp,
 });

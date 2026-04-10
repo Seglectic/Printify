@@ -2,7 +2,7 @@
   // ╭──────────────────────────╮
   // │  Shared constants        │
   // ╰──────────────────────────╯
-  const APP_VERSION = '2.6.2';
+  const APP_VERSION = '2.6.3';
   window.PRINTIFY_CLIENT_VERSION = APP_VERSION;
   const PRINTIFY_LOG_ROUTE = '#printifyLogDrawer';
   const PRINTIFY_FILE_KINDS = {
@@ -109,6 +109,22 @@
       width: Number.parseInt(match[1], 10),
       height: Number.parseInt(match[2], 10),
     };
+  };
+
+  const getPrinterPaperRatio = printer => {
+    const targetSize = getPrinterTargetSize(printer);
+
+    if (targetSize?.width > 0 && targetSize?.height > 0) {
+      return `${targetSize.width} / ${targetSize.height}`;
+    }
+
+    const sizeMatch = String(printer?.size || '').match(/^(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)$/i);
+
+    if (sizeMatch) {
+      return `${sizeMatch[1]} / ${sizeMatch[2]}`;
+    }
+
+    return '4 / 6';
   };
 
   const prettyPrinterKinds = acceptedKinds => (
@@ -329,6 +345,11 @@
         aria-expanded="${appState.openPrinterId === printer.id ? 'true' : 'false'}"
       >
         <div class="printer-card__overlay" aria-hidden="true"></div>
+        <div class="printer-card__file-count" data-role="file-count" style="--printer-file-count-ratio:${getPrinterPaperRatio(printer)};" aria-hidden="true">
+          <span class="printer-card__file-count-text">
+            <span class="printer-card__file-count-number">1</span>
+          </span>
+        </div>
         <p class="printer-card__name">${escapeHtml(printer.displayName)}</p>
         <div class="printer-card__body">
           <img class="printer-card__icon" src="${printer.iconUrl || '/favicon.ico'}" alt="${escapeHtml(printer.displayName)}">
@@ -709,15 +730,60 @@
   // ╭──────────────────────────╮
   // │  UI events               │
   // ╰──────────────────────────╯
+  const clearCardDragReset = card => {
+    if (!card?._dragResetTimer) return;
+    window.clearTimeout(card._dragResetTimer);
+    card._dragResetTimer = null;
+  };
+
+  const setCardFileCount = (card, fileCount) => {
+    const badge = card?.querySelector('[data-role="file-count"]');
+    const label = badge?.querySelector('.printer-card__file-count-number');
+
+    if (!badge || !label || !Number.isFinite(fileCount) || fileCount <= 1) {
+      if (badge) {
+        badge.classList.remove('is-visible');
+        badge.setAttribute('aria-hidden', 'true');
+      }
+      return;
+    }
+
+    label.textContent = String(fileCount);
+    badge.classList.add('is-visible');
+    badge.setAttribute('aria-hidden', 'false');
+  };
+
   const setCardHighlight = (card, isHighlighted) => {
     if (!card) return;
-    card.classList.toggle('is-highlighted', isHighlighted);
+    clearCardDragReset(card);
+    const highlightMode = isHighlighted === true ? 'compatible' : isHighlighted;
+    card.classList.remove('is-drop-clearing');
+    card.classList.toggle('is-highlighted', Boolean(highlightMode));
+    card.classList.toggle('is-drop-invalid', highlightMode === 'invalid');
   };
 
   const resetCardDragState = card => {
     if (!card) return;
     dragDepth.delete(card);
-    setCardHighlight(card, false);
+    setCardFileCount(card, 0);
+    clearCardDragReset(card);
+
+    const wasInvalid = card.classList.contains('is-drop-invalid');
+
+    card.classList.remove('is-highlighted');
+
+    if (!wasInvalid) {
+      card.classList.remove('is-drop-invalid');
+      card.classList.remove('is-drop-clearing');
+      return;
+    }
+
+    card.classList.remove('is-drop-invalid');
+    card.classList.add('is-drop-clearing');
+    card._dragResetTimer = window.setTimeout(() => {
+      card.classList.remove('is-drop-clearing');
+      card._dragResetTimer = null;
+    }, 180);
   };
 
   const setOpenPrinter = printerId => {
@@ -735,6 +801,70 @@
     if (!transferTypes) return false;
 
     return Array.from(transferTypes).includes('Files');
+  };
+
+  const detectDraggedFileKinds = event => {
+    const dragItems = Array.from(event.dataTransfer?.items || []);
+    const draggedFiles = Array.from(event.dataTransfer?.files || []);
+    const detectedKinds = new Set();
+
+    dragItems.forEach(item => {
+      if (item.kind !== 'file') return;
+
+      const mimeType = String(item.type || '').trim().toLowerCase();
+
+      if (mimeType === 'application/pdf') {
+        detectedKinds.add('pdf');
+        return;
+      }
+
+      if (mimeType.startsWith('image/')) {
+        detectedKinds.add('image');
+        return;
+      }
+
+      if (ZIP_MIME_TYPES.has(mimeType)) {
+        detectedKinds.add('zip');
+      }
+    });
+
+    draggedFiles.forEach(file => {
+      const detectedKind = detectFileKind(file);
+      if (detectedKind) detectedKinds.add(detectedKind);
+    });
+
+    return detectedKinds;
+  };
+
+  const detectDraggedFileCount = event => {
+    const dragItems = Array.from(event.dataTransfer?.items || [])
+      .filter(item => item.kind === 'file');
+
+    if (dragItems.length) {
+      return dragItems.length;
+    }
+
+    const draggedFiles = Array.from(event.dataTransfer?.files || []);
+    return draggedFiles.length;
+  };
+
+  const getCardDragHighlightMode = (card, event) => {
+    if (!card || !isFileDragEvent(event)) {
+      return false;
+    }
+
+    const printer = getPrinterById(card.getAttribute('data-printer-id'));
+    const draggedKinds = detectDraggedFileKinds(event);
+
+    if (!printer || !draggedKinds.size) {
+      return true;
+    }
+
+    const acceptsAllDraggedKinds = Array.from(draggedKinds).every(fileKind => (
+      (printer.acceptedKinds || []).includes(fileKind)
+    ));
+
+    return acceptsAllDraggedKinds ? 'compatible' : 'invalid';
   };
 
   const closeLogDrawerForFileDrag = event => {
@@ -800,7 +930,8 @@
       event.preventDefault();
       const nextDepth = (dragDepth.get(card) || 0) + 1;
       dragDepth.set(card, nextDepth);
-      setCardHighlight(card, true);
+      setCardFileCount(card, detectDraggedFileCount(event));
+      setCardHighlight(card, getCardDragHighlightMode(card, event));
     });
 
     printerGrid.addEventListener('dragover', event => {
@@ -808,8 +939,12 @@
       if (!card) return;
 
       event.preventDefault();
-      if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
-      setCardHighlight(card, true);
+      const highlightMode = getCardDragHighlightMode(card, event);
+      setCardFileCount(card, detectDraggedFileCount(event));
+      if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = highlightMode === 'invalid' ? 'none' : 'copy';
+      }
+      setCardHighlight(card, highlightMode);
     });
 
     printerGrid.addEventListener('dragleave', event => {

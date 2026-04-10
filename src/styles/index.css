@@ -1,3 +1,11 @@
+@font-face {
+  font-family: "Roboto";
+  src: url("/fonts/roboto/Roboto-BoldItalic.ttf") format("truetype");
+  font-style: italic;
+  font-weight: 700;
+  font-display: swap;
+}
+
 :root {
   color-scheme: dark;
   --printify-ink: #ecf2ee;
@@ -6,6 +14,7 @@
   --printify-card: #161a18;
   --printify-card-hover: #1b231d;
   --printify-overlay: rgba(100, 212, 123, 0.16);
+  --printify-overlay-invalid: rgba(224, 79, 79, 0.18);
   --printify-shadow: 0 22px 54px rgba(0, 0, 0, 0.28);
   --printify-page: #0d100f;
   --printify-builder-surface: rgba(20, 24, 22, 0.97);
@@ -29,6 +38,7 @@
   --printify-card: #ffffff;
   --printify-card-hover: #f8fff6;
   --printify-overlay: rgba(159, 232, 173, 0.28);
+  --printify-overlay-invalid: rgba(244, 127, 127, 0.22);
   --printify-shadow: 0 22px 54px rgba(23, 23, 23, 0.08);
   --printify-page: #ffffff;
   --printify-builder-surface: rgba(255, 255, 255, 0.97);
@@ -111,7 +121,7 @@ img {
 
 .printify-shell {
   width: 100%;
-  max-width: 1240px;
+  max-width: 1720px;
   margin: 0 auto;
 }
 
@@ -180,6 +190,69 @@ img {
 
 .printer-card.is-highlighted .printer-card__overlay {
   opacity: 1;
+}
+
+.printer-card.is-drop-invalid {
+  border-color: rgba(224, 79, 79, 0.42);
+  box-shadow: 0 28px 64px rgba(122, 26, 26, 0.18);
+}
+
+.printer-card.is-drop-invalid .printer-card__overlay {
+  background: var(--printify-overlay-invalid);
+  opacity: 1;
+}
+
+.printer-card.is-drop-clearing .printer-card__overlay {
+  background: var(--printify-overlay-invalid);
+}
+
+.printer-card__file-count {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  z-index: 2;
+  width: 54px;
+  aspect-ratio: var(--printer-file-count-ratio, 4 / 6);
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(23, 23, 23, 0.12);
+  border-radius: 0 12px 0 0;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 10px 18px rgba(23, 23, 23, 0.12);
+  color: #18211d;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transform: translate3d(18px, -10px, 0) scale(0.86);
+  transition:
+    opacity 130ms ease,
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s linear 180ms;
+}
+
+.printer-card__file-count.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translate3d(0, 0, 0) scale(1);
+  transition:
+    opacity 110ms ease,
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s linear 0s;
+}
+
+.printer-card__file-count-text {
+  position: relative;
+  z-index: 1;
+  display: inline-block;
+  font-family: "Roboto", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-weight: 700;
+  font-style: italic;
+  letter-spacing: -0.04em;
+}
+
+.printer-card__file-count-number {
+  font-size: 30px;
+  line-height: 0.9;
 }
 
 .printer-card__name {

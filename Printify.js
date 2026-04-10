@@ -141,6 +141,7 @@ logStamp(`Printify.js v${version}`);
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use(express.static(staticDir));
+app.use('/fonts', express.static(path.join(staticDir, 'fonts')));
 app.use('/icons', express.static(iconsDir));
 app.use('/fonts', express.static(fontsDir));
 app.get('/favicon.ico', (req, res) => {

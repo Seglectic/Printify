@@ -55,6 +55,7 @@
   };
 
   const dragDepth = new Map();
+  const appShell = document.querySelector('.printify-app');
   const printerGrid = document.getElementById('printerGrid');
   const footer = document.getElementById('footer');
   const feedback = document.getElementById('feedback');
@@ -369,6 +370,24 @@
         <input class="printer-card__file-input" data-role="file-input" data-printer-id="${printer.id}" type="file" multiple accept="${buildAcceptValue(printer.acceptedKinds || [])}">
       </article>
     `).join('');
+    window.requestAnimationFrame(() => {
+      updatePrinterGridVerticalOffset();
+    });
+  };
+
+  const updatePrinterGridVerticalOffset = () => {
+    if (!appShell || !printerGrid) return;
+
+    const cards = Array.from(printerGrid.querySelectorAll('[data-role="printer-card"]'));
+    if (!cards.length) {
+      appShell.style.setProperty('--printify-app-top-pad', '88px');
+      return;
+    }
+
+    const gridHeight = Math.ceil(printerGrid.getBoundingClientRect().height);
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+    const nextTopPad = Math.max(88, Math.floor((viewportHeight - gridHeight) / 2));
+    appShell.style.setProperty('--printify-app-top-pad', `${nextTopPad}px`);
   };
 
   // ╭──────────────────────────╮
@@ -899,6 +918,12 @@
       setOpenPrinter(appState.openPrinterId === printerId ? null : printerId);
     });
 
+    document.addEventListener('click', event => {
+      if (!appState.openPrinterId) return;
+      if (event.target.closest('[data-role="printer-card"]')) return;
+      setOpenPrinter(null);
+    });
+
     printerGrid.addEventListener('keydown', event => {
       const card = event.target.closest('[data-role="printer-card"]');
       if (!card) return;
@@ -995,6 +1020,7 @@
     appState.labelBuilder = window.createPrintifyLabelBuilder({
       onPrint: (printer, files, extraFields) => handlePrinterFiles(printer.id, files, extraFields),
       onError: error => showFeedback(error.message),
+      closeOnPrint: false,
     });
   };
 
@@ -1036,6 +1062,7 @@
 
     try {
       await Promise.all([loadVersion(), loadPrinters()]);
+      window.addEventListener('resize', updatePrinterGridVerticalOffset);
       bootClippy();
     } catch (error) {
       showFeedback('Could not load printer configuration from the server.');

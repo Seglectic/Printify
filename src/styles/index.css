@@ -113,10 +113,9 @@ img {
 }
 
 .printify-app {
-  display: grid;
-  align-items: center;
+  display: block;
   min-height: 100vh;
-  padding: 88px 28px 88px;
+  padding: var(--printify-app-top-pad, 88px) 28px 88px;
 }
 
 .printify-shell {
@@ -136,7 +135,8 @@ img {
   position: relative;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: flex-start;
+  gap: 16px;
   min-height: 320px;
   padding: 22px;
   overflow: hidden;
@@ -351,19 +351,25 @@ img {
 
 .printer-card__actions {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 8px;
 }
 
 .printer-card__actions [data-role='label-builder'] {
   margin-left: auto;
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .printer-card__actions .printer-card__button {
   padding: 10px 14px;
   font-size: 13px;
   letter-spacing: 0.02em;
+}
+
+.printer-card__actions [data-role='choose-files'] {
+  flex: 1 1 auto;
 }
 
 .printer-card__button {
@@ -693,8 +699,28 @@ img {
   gap: 10px;
 }
 
+.printify-builder__serial-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  align-self: flex-start;
+}
+
 .printify-builder__serial-row[hidden] {
   display: none;
+}
+
+.printify-builder__serial-panel[hidden] {
+  display: none;
+}
+
+.printify-builder__serial-row--preview {
+  width: 100%;
+}
+
+.printify-builder__serial-panel .printify-builder__serial-row--preview {
+  width: auto;
 }
 
 .printify-builder__serial-current-input {
@@ -731,7 +757,7 @@ img {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 12px;
   margin-top: 18px;
 }
@@ -790,13 +816,21 @@ img {
   gap: 10px;
 }
 
+.printify-builder__preview-button.is-active {
+  transform: translateY(1px);
+  border-color: rgba(139, 118, 18, 0.32);
+  background: linear-gradient(180deg, rgb(255, 244, 186) 0%, rgb(252, 235, 147) 100%);
+  color: #44390d;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
 .printify-builder__meta {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 10px;
-  margin-left: auto;
+  margin-right: auto;
 }
 
 .printify-builder__field {
@@ -814,15 +848,25 @@ img {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  margin-top: -1px;
+  margin-top: 0;
   cursor: pointer;
   user-select: none;
+  align-self: flex-start;
 }
 
 .printify-builder__field--stacked {
   flex-direction: column;
   align-items: flex-start;
   gap: 5px;
+}
+
+.printify-builder__field--serial {
+  gap: 4px;
+}
+
+.printify-builder__field--serial .printify-builder__serial-current-input {
+  width: 76px;
+  min-width: 76px;
 }
 
 .printify-builder__field--copies {
@@ -954,6 +998,8 @@ img {
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 2px;
+  min-height: 42px;
+  align-items: center;
 }
 
 .printify-builder__segmented .printer-card__button.is-active {

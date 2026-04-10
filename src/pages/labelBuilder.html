@@ -71,10 +71,13 @@
             <div class="printify-builder__text-card-controls">
               <div class="printify-builder__text-card-column">
                 <div class="printify-builder__text-card-row">
-                  <div class="printify-builder__segmented" role="group" aria-label="Text alignment">
-                    <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAlignLeft" type="button">Left</button>
-                    <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAlignCenter" type="button">Center</button>
-                    <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAlignRight" type="button">Right</button>
+                  <div class="printify-builder__field printify-builder__field--stacked">
+                    <span>Justify</span>
+                    <div class="printify-builder__segmented" role="group" aria-label="Text alignment">
+                      <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAlignLeft" type="button">Left</button>
+                      <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAlignCenter" type="button">Center</button>
+                      <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAlignRight" type="button">Right</button>
+                    </div>
                   </div>
                   <label class="printify-builder__field printify-builder__field--stacked" for="labelBuilderFont">
                     Font
@@ -105,9 +108,19 @@
                     <span class="printify-builder__toggle" aria-hidden="true"></span>
                     <span>Serial</span>
                   </label>
-                </div>
-                <div class="printify-builder__serial-row" id="labelBuilderTextSerialValueField" hidden>
-                  <input class="printify-builder__serial-current-input" id="labelBuilderTextSerialValue" type="number" min="0" step="1" value="1" aria-label="Current serial value" title="Current serial value. Use placeholder {xxx}; each printed copy increments and each 'x' represents a digit.">
+                  <div class="printify-builder__serial-panel" id="labelBuilderTextSerialValueField" hidden>
+                    <div class="printify-builder__serial-row">
+                      <label class="printify-builder__field printify-builder__field--stacked printify-builder__field--serial" for="labelBuilderTextSerialValue">
+                        #
+                        <input class="printify-builder__serial-current-input" id="labelBuilderTextSerialValue" type="number" min="0" step="1" value="1" aria-label="Current serial value" title="Current serial value. Use placeholder {xxx}; each printed copy increments and each 'x' represents a digit.">
+                      </label>
+                      <label class="printify-builder__field printify-builder__field--stacked printify-builder__field--serial" for="labelBuilderTextSerialDigits">
+                        Digits
+                        <input class="printify-builder__serial-current-input" id="labelBuilderTextSerialDigits" type="number" min="1" step="1" value="2" aria-label="Serial digit count" title="Serial digit count. Updates all {x...} placeholders in this textbox to the selected width.">
+                      </label>
+                      <button class="printer-card__button printer-card__button--secondary printify-builder__preview-button" data-role="label-builder-preview" type="button">Hold To Preview</button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -147,8 +160,18 @@
                   <span class="printify-builder__toggle" aria-hidden="true"></span>
                   <span>Serial</span>
                 </label>
-                <span id="labelBuilderCodeSerialValueField" hidden>
-                  <input class="printify-builder__serial-current-input" id="labelBuilderCodeSerialValue" type="number" min="0" step="1" value="1" aria-label="Current serial value" title="Current serial value. Use placeholders like {xxxx}; each printed copy increments it.">
+                <span class="printify-builder__serial-panel" id="labelBuilderCodeSerialValueField" hidden>
+                  <span class="printify-builder__serial-row">
+                    <label class="printify-builder__field printify-builder__field--stacked printify-builder__field--serial" for="labelBuilderCodeSerialValue">
+                      #
+                      <input class="printify-builder__serial-current-input" id="labelBuilderCodeSerialValue" type="number" min="0" step="1" value="1" aria-label="Current serial value" title="Current serial value. Use placeholders like {xxxx}; each printed copy increments it.">
+                    </label>
+                    <label class="printify-builder__field printify-builder__field--stacked printify-builder__field--serial" for="labelBuilderCodeSerialDigits">
+                      Digits
+                      <input class="printify-builder__serial-current-input" id="labelBuilderCodeSerialDigits" type="number" min="1" step="1" value="2" aria-label="Serial digit count" title="Serial digit count. Updates all {x...} placeholders in this code text to the selected width.">
+                    </label>
+                    <button class="printer-card__button printer-card__button--secondary printify-builder__preview-button" data-role="label-builder-preview" type="button">Hold To Preview</button>
+                  </span>
                 </span>
               </div>
             </div>

@@ -8,6 +8,7 @@
   };
   const DEFAULT_CODE_FALLBACK_LABEL = 'Printify';
   const DEFAULT_TEXTBOX_PLACEHOLDER = 'Click to Edit';
+  const DEFAULT_SERIAL_DIGITS = 2;
 
   const getPrinterCanvasSize = printer => {
     if (Number.isFinite(printer?.sizePxWidth) && Number.isFinite(printer?.sizePxHeight)) {
@@ -38,6 +39,7 @@
       cancelSelector: '#labelBuilderCancel',
       resetSelector: '#labelBuilderReset',
       printSelector: '#labelBuilderPrint',
+      previewSelector: '[data-role="label-builder-preview"]',
       copiesSelector: '#labelBuilderCopies',
       textCardSelector: '#labelBuilderTextCard',
       imageCardSelector: '#labelBuilderImageCard',
@@ -47,11 +49,13 @@
       autoFitSelector: '#labelBuilderAutoFit',
       textSerialEnabledSelector: '#labelBuilderTextSerialEnabled',
       textSerialValueSelector: '#labelBuilderTextSerialValue',
+      textSerialDigitsSelector: '#labelBuilderTextSerialDigits',
       textSerialValueFieldSelector: '#labelBuilderTextSerialValueField',
       qrFormatSelector: '#labelBuilderQrFormat',
       qrTextSelector: '#labelBuilderQrText',
       codeSerialEnabledSelector: '#labelBuilderCodeSerialEnabled',
       codeSerialValueSelector: '#labelBuilderCodeSerialValue',
+      codeSerialDigitsSelector: '#labelBuilderCodeSerialDigits',
       codeSerialValueFieldSelector: '#labelBuilderCodeSerialValueField',
       imageInputSelector: '#labelBuilderImageInput',
       addImageSelector: '#labelBuilderAddImage',
@@ -77,6 +81,7 @@
     const cancelButton = document.querySelector(settings.cancelSelector);
     const resetButton = document.querySelector(settings.resetSelector);
     const printButton = document.querySelector(settings.printSelector);
+    const previewButtons = Array.from(document.querySelectorAll(settings.previewSelector));
     const copiesInput = document.querySelector(settings.copiesSelector);
     const textCard = document.querySelector(settings.textCardSelector);
     const imageCard = document.querySelector(settings.imageCardSelector);
@@ -86,11 +91,13 @@
     const autoFitInput = document.querySelector(settings.autoFitSelector);
     const textSerialEnabledInput = document.querySelector(settings.textSerialEnabledSelector);
     const textSerialValueInput = document.querySelector(settings.textSerialValueSelector);
+    const textSerialDigitsInput = document.querySelector(settings.textSerialDigitsSelector);
     const textSerialValueField = document.querySelector(settings.textSerialValueFieldSelector);
     const qrFormatSelect = document.querySelector(settings.qrFormatSelector);
     const qrTextInput = document.querySelector(settings.qrTextSelector);
     const codeSerialEnabledInput = document.querySelector(settings.codeSerialEnabledSelector);
     const codeSerialValueInput = document.querySelector(settings.codeSerialValueSelector);
+    const codeSerialDigitsInput = document.querySelector(settings.codeSerialDigitsSelector);
     const codeSerialValueField = document.querySelector(settings.codeSerialValueFieldSelector);
     const imageInput = document.querySelector(settings.imageInputSelector);
     const addImageButton = document.querySelector(settings.addImageSelector);
@@ -114,6 +121,13 @@
     let isSyncingCodeSerialInput = false;
     let isSyncingQrInput = false;
     let qrUpdateTimer = null;
+    let pendingStateCommit = Promise.resolve();
+    let isSerialPreviewActive = false;
+    let lastSelectedTextObject = null;
+    let lastSelectedCodeObject = null;
+    let lastSerialValue = 1;
+    let lastSerialDigits = DEFAULT_SERIAL_DIGITS;
+    let lastBuilderStatePrinterKey = null;
     let enterPrintArmed = false;
     let enterPrintTimer = null;
 
@@ -221,6 +235,35 @@
       return Number.isFinite(parsedValue) ? Math.max(0, parsedValue) : 1;
     };
 
+    const normalizeSerialDigits = value => {
+      const parsedValue = Number.parseInt(value, 10);
+      return Number.isFinite(parsedValue) ? Math.max(1, parsedValue) : DEFAULT_SERIAL_DIGITS;
+    };
+
+    const getSerialTokenDigits = sourceText => {
+      const match = String(sourceText || '').match(/\{(x+)\}/i);
+      return match ? match[1].length : DEFAULT_SERIAL_DIGITS;
+    };
+
+    const replaceSerialTokenDigits = (sourceText, digits) => String(sourceText || '').replace(/\{x+\}/gi, `{${'x'.repeat(normalizeSerialDigits(digits))}}`);
+
+    const removeSerialTokens = sourceText => String(sourceText || '').replace(/\s*\{x+\}\s*/gi, ' ').replace(/\s{2,}/g, ' ').trim();
+
+    const appendSerialToken = (sourceText, digits = DEFAULT_SERIAL_DIGITS) => {
+      const normalizedText = String(sourceText || '');
+      const nextToken = `{${'x'.repeat(normalizeSerialDigits(digits))}}`;
+      if (/\{x+\}/i.test(normalizedText)) return replaceSerialTokenDigits(normalizedText, digits);
+      if (!normalizedText.trim()) return nextToken;
+      return `${normalizedText} ${nextToken}`;
+    };
+
+    const rememberSerialSettings = (serialValue, serialDigits) => {
+      lastSerialValue = normalizeSerialValue(serialValue);
+      lastSerialDigits = normalizeSerialDigits(serialDigits);
+    };
+
+    const getPrinterStateKey = printer => String(printer?.id || printer?.key || printer?.name || printer?.displayName || '');
+
     const applySerialTokens = (sourceText, serialValue) => String(sourceText || '').replace(/\{(x+)\}/gi, (_, digits) => (
       String(normalizeSerialValue(serialValue)).padStart(digits.length, '0')
     ));
@@ -263,8 +306,8 @@
       ensureTextboxSerialState(textObject);
       if (textObject.isEditing) return;
 
-      const nextText = textObject.serialEnabled
-        ? renderSerialText(textObject.serialTemplateText, true, textObject.serialCurrentValue)
+      const nextText = options.useRenderedText
+        ? renderSerialText(textObject.serialTemplateText, textObject.serialEnabled, textObject.serialCurrentValue)
         : textObject.serialTemplateText;
 
       textObject.set('text', nextText);
@@ -279,6 +322,13 @@
 
       textObject.setCoords();
       if (!options.skipRender) ensureCanvas().requestRenderAll();
+    };
+
+    const syncPreviewButton = () => {
+      previewButtons.forEach(previewButton => {
+        previewButton.classList.toggle('is-active', isSerialPreviewActive);
+        previewButton.disabled = !currentPrinter;
+      });
     };
 
     const clearEnterPrintPrompt = () => {
@@ -334,6 +384,10 @@
       textSerialValueField.hidden = !(preparedTextbox?.serialEnabled);
       textSerialValueInput.value = String(preparedTextbox?.serialCurrentValue || 1);
       textSerialValueInput.disabled = !preparedTextbox?.serialEnabled;
+      if (textSerialDigitsInput) {
+        textSerialDigitsInput.value = String(getSerialTokenDigits(preparedTextbox?.serialTemplateText || preparedTextbox?.text || ''));
+        textSerialDigitsInput.disabled = !preparedTextbox?.serialEnabled;
+      }
       isSyncingTextSerialInput = false;
     };
 
@@ -348,6 +402,10 @@
       codeSerialValueField.hidden = !(preparedCodeObject?.serialEnabled);
       codeSerialValueInput.value = String(preparedCodeObject?.serialCurrentValue || 1);
       codeSerialValueInput.disabled = !preparedCodeObject?.serialEnabled;
+      if (codeSerialDigitsInput) {
+        codeSerialDigitsInput.value = String(getSerialTokenDigits(preparedCodeObject?.codeText || ''));
+        codeSerialDigitsInput.disabled = !preparedCodeObject?.serialEnabled;
+      }
       isSyncingCodeSerialInput = false;
     };
 
@@ -380,6 +438,9 @@
       const textObject = activeObject instanceof window.fabric.Textbox ? activeObject : null;
       const imageObject = isImageObject(activeObject) ? activeObject : null;
       const codeObject = isCodeObject(activeObject) ? activeObject : null;
+
+      if (textObject) lastSelectedTextObject = textObject;
+      if (codeObject) lastSelectedCodeObject = codeObject;
 
       if (textCard) textCard.hidden = !textObject;
       if (imageCard) imageCard.hidden = !imageObject;
@@ -458,6 +519,20 @@
       return isCodeObject(activeObject) ? activeObject : null;
     };
 
+    const hasCanvasObject = object => Boolean(object) && ensureCanvas().getObjects().includes(object);
+
+    const getTextboxForControls = () => {
+      const activeTextbox = getEditableTextObject();
+      if (activeTextbox) return activeTextbox;
+      return hasCanvasObject(lastSelectedTextObject) ? lastSelectedTextObject : null;
+    };
+
+    const getCodeObjectForControls = () => {
+      const activeCodeObject = getEditableCodeObject();
+      if (activeCodeObject) return activeCodeObject;
+      return hasCanvasObject(lastSelectedCodeObject) ? lastSelectedCodeObject : null;
+    };
+
     const attachTextboxFrameBehavior = textbox => {
       const baseCalcTextHeight = textbox.calcTextHeight.bind(textbox);
 
@@ -525,6 +600,7 @@
 
     const focusTextbox = textObject => {
       const builderCanvas = ensureCanvas();
+      lastSelectedTextObject = textObject;
       builderCanvas.setActiveObject(textObject);
       syncTextControls(textObject);
       builderCanvas.requestRenderAll();
@@ -532,6 +608,8 @@
 
     const focusObject = object => {
       const builderCanvas = ensureCanvas();
+      if (object instanceof window.fabric.Textbox) lastSelectedTextObject = object;
+      if (isCodeObject(object)) lastSelectedCodeObject = object;
       builderCanvas.setActiveObject(object);
       syncTextControls(object || null);
       builderCanvas.requestRenderAll();
@@ -578,7 +656,7 @@
     };
 
     const updateSelectedTextbox = updates => {
-      const textObject = getEditableTextObject();
+      const textObject = getTextboxForControls();
       if (!textObject) return;
 
       textObject.set(updates);
@@ -594,6 +672,13 @@
       textObject.setCoords();
       syncTextControls(textObject);
       ensureCanvas().requestRenderAll();
+    };
+
+    const queueStateCommit = work => {
+      pendingStateCommit = pendingStateCommit
+        .catch(() => {})
+        .then(() => work());
+      return pendingStateCommit;
     };
 
     const readFileAsDataUrl = file => new Promise((resolve, reject) => {
@@ -716,7 +801,12 @@
       const serialValue = normalizeSerialValue(Object.prototype.hasOwnProperty.call(options, 'serialCurrentValue')
         ? options.serialCurrentValue
         : codeObject.serialCurrentValue);
-      const renderedInputText = renderSerialText(normalizedText, codeObject.serialEnabled, serialValue).trim();
+      const previewSerializedText = Boolean(options.useRenderedText);
+      const renderedInputText = renderSerialText(
+        normalizedText,
+        previewSerializedText && codeObject.serialEnabled,
+        serialValue
+      ).trim();
       const compatibleText = getCompatibleCodeText(renderedInputText, normalizedFormat);
       const shouldPreserveWhenBlank = Boolean(options.preserveWhenBlank);
 
@@ -770,10 +860,94 @@
     };
 
     const updateSelectedCode = async (nextCodeText, nextCodeFormat, options = {}) => {
-      const codeObject = getEditableCodeObject();
+      const codeObject = getCodeObjectForControls();
       if (!codeObject) return;
 
       await updateCodeObject(codeObject, nextCodeText, nextCodeFormat, options);
+    };
+
+    const commitTextboxState = (textObject, options = {}) => {
+      if (!(textObject instanceof window.fabric.Textbox)) return;
+
+      ensureTextboxSerialState(textObject);
+
+      if (typeof textObject.exitEditing === 'function' && textObject.isEditing && options.exitEditing) {
+        textObject.exitEditing();
+        return;
+      }
+
+      if (textObject.isEditing) {
+        textObject.serialTemplateText = String(textObject.text || '');
+        return;
+      }
+
+      refreshTextboxSerialPreview(textObject, {
+        skipRender: options.skipRender,
+        useRenderedText: options.useRenderedText,
+      });
+    };
+
+    const applyTextboxSerialDigits = (textObject, digits, options = {}) => {
+      if (!(textObject instanceof window.fabric.Textbox)) return;
+
+      ensureTextboxSerialState(textObject);
+      const nextTemplateText = replaceSerialTokenDigits(textObject.serialTemplateText || textObject.text || '', digits);
+      textObject.serialTemplateText = nextTemplateText;
+
+      if (textObject.isEditing) {
+        textObject.set('text', nextTemplateText);
+        textObject.initDimensions();
+        textObject.setCoords();
+        if (!options.skipRender) ensureCanvas().requestRenderAll();
+        return;
+      }
+
+      refreshTextboxSerialPreview(textObject, {
+        skipRender: options.skipRender,
+      });
+    };
+
+    const commitCodeObjectState = async (codeObject, options = {}) => {
+      if (!isCodeObject(codeObject)) return;
+
+      ensureCodeSerialState(codeObject);
+      window.clearTimeout(qrUpdateTimer);
+
+      const nextCodeText = options.useControlValues !== false
+        ? (qrTextInput?.value ?? codeObject.codeText ?? '')
+        : (codeObject.codeText || '');
+      const nextCodeFormat = options.useControlValues !== false
+        ? (qrFormatSelect?.value || codeObject.codeFormat || 'qrcode')
+        : (codeObject.codeFormat || 'qrcode');
+
+      await updateCodeObject(codeObject, nextCodeText, nextCodeFormat, {
+        preserveWhenBlank: true,
+        skipIncompatibleInput: true,
+        skipControlSync: options.skipControlSync,
+        useRenderedText: options.useRenderedText,
+      });
+    };
+
+    const commitObjectState = async (object, options = {}) => {
+      if (object instanceof window.fabric.Textbox) {
+        commitTextboxState(object, options);
+        return;
+      }
+
+      if (isCodeObject(object)) {
+        await commitCodeObjectState(object, options);
+      }
+    };
+
+    const applyCodeSerialDigits = async (codeObject, digits) => {
+      if (!isCodeObject(codeObject)) return;
+
+      ensureCodeSerialState(codeObject);
+      const nextCodeText = replaceSerialTokenDigits(codeObject.codeText || '', digits);
+      await updateCodeObject(codeObject, nextCodeText, codeObject.codeFormat || 'qrcode', {
+        preserveWhenBlank: true,
+        skipIncompatibleInput: true,
+      });
     };
 
     const fitSelectedImageToLabelHeight = () => {
@@ -845,6 +1019,11 @@
           ensureTextboxSerialState(object);
           if (!object.serialEnabled) continue;
 
+          object.serialCurrentValue = normalizeSerialValue(object.serialCurrentValue);
+          refreshTextboxSerialPreview(object, {
+            skipRender: true,
+            useRenderedText: true,
+          });
           object.set('text', renderSerialText(object.serialTemplateText, true, object.serialCurrentValue + copyOffset));
           object.width = object.frameWidth || object.width;
           if (object.autoFitText) {
@@ -862,6 +1041,7 @@
           preserveWhenBlank: true,
           serialCurrentValue: object.serialCurrentValue + copyOffset,
           skipControlSync: true,
+          useRenderedText: true,
         });
       }
 
@@ -894,6 +1074,7 @@
         await updateCodeObject(object, object.codeText || '', object.codeFormat || 'qrcode', {
           preserveWhenBlank: true,
           skipControlSync: true,
+          useRenderedText: false,
         });
       }
 
@@ -904,6 +1085,29 @@
       getSerialObjects().forEach(object => {
         object.serialCurrentValue = normalizeSerialValue(object.serialCurrentValue) + copies;
       });
+    };
+
+    const startSerialPreview = async () => {
+      if (isSerialPreviewActive) return;
+
+      await pendingStateCommit.catch(() => {});
+      await commitObjectState(ensureCanvas().getActiveObject(), {
+        exitEditing: true,
+        skipControlSync: true,
+      });
+
+      isSerialPreviewActive = true;
+      syncPreviewButton();
+      await applySerialPreviewForCopy(0);
+    };
+
+    const stopSerialPreview = async () => {
+      if (!isSerialPreviewActive) return;
+
+      isSerialPreviewActive = false;
+      syncPreviewButton();
+      await restoreSerialPreviewState();
+      syncTextControls(ensureCanvas().getActiveObject() || null);
     };
 
     const buildCanvasLabelFile = async (copyIndex = null) => {
@@ -956,12 +1160,15 @@
     const resetCanvas = printer => {
       const builderCanvas = ensureCanvas();
       const { width, height } = getPrinterCanvasSize(printer);
+      isSerialPreviewActive = false;
 
       builderCanvas.clear();
       builderCanvas.setDimensions({ width, height });
       builderCanvas.backgroundColor = '#ffffff';
 
       defaultTextbox = applyTextboxPlaceholder(buildTextbox(width, height));
+      lastSelectedTextObject = defaultTextbox;
+      lastSelectedCodeObject = null;
       builderCanvas.add(defaultTextbox);
       focusTextbox(defaultTextbox);
       builderCanvas.requestRenderAll();
@@ -970,22 +1177,48 @@
       if (size) size.textContent = `${width} x ${height} px`;
       if (copy) copy.textContent = `Build a label sized for ${printer.displayName}, then send it through the standard image print flow.`;
       clearEnterPrintPrompt();
+      syncPreviewButton();
+    };
+
+    const restoreBuilderSession = printer => {
+      const builderCanvas = ensureCanvas();
+      const { width, height } = getPrinterCanvasSize(printer);
+
+      builderCanvas.setDimensions({ width, height });
+      builderCanvas.backgroundColor = '#ffffff';
+      applyCanvasViewportScale();
+
+      if (size) size.textContent = `${width} x ${height} px`;
+      if (copy) copy.textContent = `Build a label sized for ${printer.displayName}, then send it through the standard image print flow.`;
+      clearEnterPrintPrompt();
+      syncPreviewButton();
+      builderCanvas.requestRenderAll();
+      syncTextControls(builderCanvas.getActiveObject() || null);
     };
 
     const close = () => {
       clearEnterPrintPrompt();
+      isSerialPreviewActive = false;
+      syncPreviewButton();
       root.classList.remove('is-open');
     };
 
     const open = printer => {
       currentPrinter = printer;
       if (!currentPrinter) return;
+      const nextPrinterKey = getPrinterStateKey(currentPrinter);
 
       if (title) title.textContent = `${printer.displayName} Builder`;
-      if (copiesInput) copiesInput.value = '1';
 
       root.classList.add('is-open');
-      resetCanvas(printer);
+      if (lastBuilderStatePrinterKey && lastBuilderStatePrinterKey === nextPrinterKey && ensureCanvas().getObjects().length > 0) {
+        restoreBuilderSession(printer);
+      } else {
+        if (copiesInput) copiesInput.value = '1';
+        resetCanvas(printer);
+        lastBuilderStatePrinterKey = nextPrinterKey;
+      }
+      syncPreviewButton();
       window.requestAnimationFrame(() => {
         applyCanvasViewportScale();
       });
@@ -994,9 +1227,15 @@
     const print = async () => {
       if (!currentPrinter) return;
       clearEnterPrintPrompt();
+      if (isSerialPreviewActive) await stopSerialPreview();
 
       const builderCanvas = ensureCanvas();
       const activeObject = builderCanvas.getActiveObject();
+      await pendingStateCommit.catch(() => {});
+      await commitObjectState(activeObject, {
+        exitEditing: true,
+        skipControlSync: true,
+      });
       const objectControls = builderCanvas.getObjects().map(object => ({
         object,
         hasBorders: object.hasBorders,
@@ -1067,6 +1306,8 @@
       if (activeObject instanceof window.fabric.ActiveSelection) {
         activeObject.getObjects().forEach(object => builderCanvas.remove(object));
       } else {
+        if (activeObject === lastSelectedTextObject) lastSelectedTextObject = null;
+        if (activeObject === lastSelectedCodeObject) lastSelectedCodeObject = null;
         builderCanvas.remove(activeObject);
       }
 
@@ -1084,10 +1325,24 @@
       });
 
       builderCanvas.on('selection:updated', event => {
+        for (const object of event.deselected || []) {
+          queueStateCommit(() => commitObjectState(object, {
+            skipControlSync: true,
+            skipRender: true,
+            useControlValues: false,
+          }));
+        }
         syncTextControls(event.selected?.[0] || null);
       });
 
-      builderCanvas.on('selection:cleared', () => {
+      builderCanvas.on('selection:cleared', event => {
+        for (const object of event.deselected || []) {
+          queueStateCommit(() => commitObjectState(object, {
+            skipControlSync: true,
+            skipRender: true,
+            useControlValues: false,
+          }));
+        }
         syncTextControls(null);
       });
 
@@ -1119,6 +1374,7 @@
     };
 
     bindCanvasEvents();
+    syncPreviewButton();
 
     fontSelect?.addEventListener('change', () => {
       if (isSyncingFontInput) return;
@@ -1143,7 +1399,7 @@
     autoFitInput?.addEventListener('change', () => {
       if (isSyncingAutoFitInput) return;
 
-      const textObject = getEditableTextObject();
+      const textObject = getTextboxForControls();
       if (!textObject) return;
 
       textObject.set('autoFitText', autoFitInput.checked);
@@ -1157,13 +1413,38 @@
     textSerialEnabledInput?.addEventListener('change', () => {
       if (isSyncingTextSerialInput) return;
 
-      const textObject = getEditableTextObject();
+      const textObject = getTextboxForControls();
       if (!textObject) return;
 
       ensureTextboxSerialState(textObject);
       textObject.serialTemplateText = textObject.isEditing ? String(textObject.text || '') : String(textObject.serialTemplateText || textObject.text || '');
       textObject.serialEnabled = textSerialEnabledInput.checked;
-      textObject.serialCurrentValue = normalizeSerialValue(textObject.serialCurrentValue);
+
+      if (textObject.serialEnabled) {
+        textObject.serialCurrentValue = lastSerialValue;
+        if (!/\{x+\}/i.test(textObject.serialTemplateText || '')) {
+          const nextTemplateText = appendSerialToken(
+            textObject.serialTemplateText,
+            lastSerialDigits
+          );
+          textObject.serialTemplateText = nextTemplateText;
+          if (textObject.isEditing) {
+            textObject.set('text', nextTemplateText);
+            textObject.initDimensions();
+            textObject.setCoords();
+          }
+        } else {
+          textObject.serialTemplateText = replaceSerialTokenDigits(textObject.serialTemplateText, lastSerialDigits);
+        }
+      } else {
+        const nextTemplateText = removeSerialTokens(textObject.serialTemplateText);
+        textObject.serialTemplateText = nextTemplateText;
+        if (textObject.isEditing) {
+          textObject.set('text', nextTemplateText);
+          textObject.initDimensions();
+          textObject.setCoords();
+        }
+      }
 
       refreshTextboxSerialPreview(textObject);
       syncTextControls(textObject);
@@ -1177,7 +1458,18 @@
 
       ensureTextboxSerialState(textObject);
       textObject.serialCurrentValue = normalizeSerialValue(textSerialValueInput.value);
+      rememberSerialSettings(textObject.serialCurrentValue, textSerialDigitsInput?.value);
       refreshTextboxSerialPreview(textObject);
+      syncTextControls(textObject);
+    });
+    textSerialDigitsInput?.addEventListener('input', () => {
+      if (isSyncingTextSerialInput) return;
+
+      const textObject = getTextboxForControls();
+      if (!textObject) return;
+
+      rememberSerialSettings(textObject.serialCurrentValue, textSerialDigitsInput.value);
+      applyTextboxSerialDigits(textObject, textSerialDigitsInput.value);
       syncTextControls(textObject);
     });
 
@@ -1199,7 +1491,7 @@
     qrTextInput?.addEventListener('input', () => {
       if (isSyncingQrInput) return;
 
-      const codeObject = getEditableCodeObject();
+      const codeObject = getCodeObjectForControls();
       if (!codeObject) return;
 
       window.clearTimeout(qrUpdateTimer);
@@ -1213,7 +1505,7 @@
     qrFormatSelect?.addEventListener('change', () => {
       if (isSyncingQrInput) return;
 
-      const codeObject = getEditableCodeObject();
+      const codeObject = getCodeObjectForControls();
       if (!codeObject) return;
 
       updateSelectedCode(qrTextInput?.value || codeObject.codeText || '', qrFormatSelect.value || 'qrcode');
@@ -1221,28 +1513,42 @@
     codeSerialEnabledInput?.addEventListener('change', () => {
       if (isSyncingCodeSerialInput) return;
 
-      const codeObject = getEditableCodeObject();
+      const codeObject = getCodeObjectForControls();
       if (!codeObject) return;
 
       ensureCodeSerialState(codeObject);
       codeObject.serialEnabled = codeSerialEnabledInput.checked;
-      codeObject.serialCurrentValue = normalizeSerialValue(codeObject.serialCurrentValue);
+      codeObject.serialCurrentValue = codeObject.serialEnabled ? lastSerialValue : normalizeSerialValue(codeObject.serialCurrentValue);
 
-      updateCodeObject(codeObject, codeObject.codeText || '', codeObject.codeFormat || 'qrcode', {
+      const nextCodeText = codeObject.serialEnabled
+        ? appendSerialToken(codeObject.codeText || '', lastSerialDigits)
+        : removeSerialTokens(codeObject.codeText || '');
+
+      updateCodeObject(codeObject, nextCodeText, codeObject.codeFormat || 'qrcode', {
         preserveWhenBlank: true,
       });
     });
     codeSerialValueInput?.addEventListener('input', () => {
       if (isSyncingCodeSerialInput) return;
 
-      const codeObject = getEditableCodeObject();
+      const codeObject = getCodeObjectForControls();
       if (!codeObject) return;
 
       ensureCodeSerialState(codeObject);
       codeObject.serialCurrentValue = normalizeSerialValue(codeSerialValueInput.value);
+      rememberSerialSettings(codeObject.serialCurrentValue, codeSerialDigitsInput?.value);
       updateCodeObject(codeObject, codeObject.codeText || '', codeObject.codeFormat || 'qrcode', {
         preserveWhenBlank: true,
       });
+    });
+    codeSerialDigitsInput?.addEventListener('input', () => {
+      if (isSyncingCodeSerialInput) return;
+
+      const codeObject = getCodeObjectForControls();
+      if (!codeObject) return;
+
+      rememberSerialSettings(codeObject.serialCurrentValue, codeSerialDigitsInput.value);
+      applyCodeSerialDigits(codeObject, codeSerialDigitsInput.value);
     });
 
     canvasShell?.addEventListener('dragenter', event => {
@@ -1269,11 +1575,42 @@
     cancelButton?.addEventListener('click', close);
     resetButton?.addEventListener('click', () => {
       clearEnterPrintPrompt();
-      if (currentPrinter) resetCanvas(currentPrinter);
+      if (currentPrinter) {
+        resetCanvas(currentPrinter);
+        lastBuilderStatePrinterKey = getPrinterStateKey(currentPrinter);
+      }
     });
     printButton?.addEventListener('click', print);
-    root.addEventListener('click', event => {
-      if (event.target === root) close();
+    previewButtons.forEach(previewButton => {
+      previewButton.addEventListener('pointerdown', async event => {
+        event.preventDefault();
+        await startSerialPreview();
+      });
+      previewButton.addEventListener('keydown', async event => {
+        if (event.repeat) return;
+        if (event.key !== ' ' && event.key !== 'Enter') return;
+
+        event.preventDefault();
+        await startSerialPreview();
+      });
+      previewButton.addEventListener('keyup', async event => {
+        if (event.key !== ' ' && event.key !== 'Enter') return;
+
+        event.preventDefault();
+        await stopSerialPreview();
+      });
+      previewButton.addEventListener('blur', async () => {
+        await stopSerialPreview();
+      });
+    });
+    window.addEventListener('pointerup', async () => {
+      await stopSerialPreview();
+    });
+    window.addEventListener('pointercancel', async () => {
+      await stopSerialPreview();
+    });
+    window.addEventListener('blur', async () => {
+      await stopSerialPreview();
     });
     window.addEventListener('resize', () => {
       if (!root.classList.contains('is-open')) return;

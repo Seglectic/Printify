@@ -1079,6 +1079,12 @@
         return;
       }
 
+      if (event.key === 'Tab' && !panel.classList.contains('is-open')) {
+        event.preventDefault();
+        openDrawer();
+        return;
+      }
+
       if (event.key === 'Escape') {
         if (!windowMenu?.hidden) {
           closeWindowMenu();

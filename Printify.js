@@ -37,10 +37,14 @@ const {
   imPath,
   printers,
 } = require('./lib/configurator');
+const { createRuntimeConfig }    = require('./lib/runtimeConfig');
 const { createConverter }        = require('./lib/converter');
 const { createPreviewer }        = require('./lib/previewer');
 const {
-  compactObject,
+  createTui,
+  promptForAlternativePort,
+} = require('./lib/tui');
+const {
   createFileChecksum,
   createJobLogEntry,
   logStamp,
@@ -59,6 +63,7 @@ const { registerRoutes }          = require('./lib/routes');
 // └─────────┘
 const app = express();                                   // Main Express app instance
 const httpServer = http.createServer(app);
+const runtimeConfig = createRuntimeConfig();
 const serverSave = createServerSave({
   serverDataPath,
   onPrintJobSaved: () => {},
@@ -87,6 +92,7 @@ const previewer = createPreviewer({
 // Centralize print prep and dispatch so routes stay thin.
 const printingService = createPrintingService({
   testing,
+  getTesting: () => runtimeConfig.getOption('testing'),
   serverSave,
   logStore,
   deduplicator,
@@ -128,21 +134,6 @@ serverSave.addPrintJobListener(notifyRecentLogUpdate);
 
 logStamp(`Printify.js v${version}`);
 
-Object.entries(printers).forEach(([printerId, printerConfig]) => {
-  logStamp(`Configured printer "${printerId}":`, compactObject({
-    displayName: printerConfig.displayName,
-    printMode: printerConfig.printMode,
-    driverName: printerConfig.driverName,
-    size: printerConfig.size,
-    units: printerConfig.units,
-    density: printerConfig.density,
-    sizePx: printerConfig.sizePx,
-    acceptedKinds: printerConfig.acceptedKinds,
-    labelBuilder: Boolean(printerConfig.labelBuilder),
-    bundleCopies: Boolean(printerConfig.bundleCopies),
-  }));
-});
-
 // Shared request middleware for JSON, form bodies, and static UI assets.
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
@@ -168,6 +159,12 @@ registerRoutes({
   logStamp,
 });
 
+const tui = createTui({
+  runtimeConfig,
+  logStamp,
+  errorLogStamp,
+});
+
 if (WebSocketServer) {
   const logSocketServer = new WebSocketServer({
     server: httpServer,
@@ -186,11 +183,29 @@ if (WebSocketServer) {
       errorLogStamp('Log websocket error:', error.message);
     });
   });
+
+  logSocketServer.on('error', () => {});
 } else {
   errorLogStamp('WebSocket support disabled: install dependencies to enable /ws/logs updates.');
 }
 
 // Start the HTTP server after middleware and routes are in place.
+const listenOnPort = requestedPort => new Promise((resolve, reject) => {
+  const handleListening = () => {
+    httpServer.off('error', handleError);
+    resolve();
+  };
+
+  const handleError = error => {
+    httpServer.off('listening', handleListening);
+    reject(error);
+  };
+
+  httpServer.once('listening', handleListening);
+  httpServer.once('error', handleError);
+  httpServer.listen(requestedPort);
+});
+
 const startServer = async () => {
   try {
     await deduplicator.initialize();
@@ -198,9 +213,37 @@ const startServer = async () => {
     errorLogStamp('Checksum cache initialization failed:', error.message);
   }
 
-  httpServer.listen(port, () => {
-    logStamp(`Server is running on port ${port}`);
-  });
+  let requestedPort = runtimeConfig.getOption('port') || port;
+
+  while (true) {
+    try {
+      await listenOnPort(requestedPort);
+      logStamp(`Server is running on port ${requestedPort}`);
+      tui.start();
+      return;
+    } catch (error) {
+      if (error.code !== 'EADDRINUSE') {
+        errorLogStamp(`Server failed to start on port ${requestedPort}:`, error.message);
+        process.exitCode = 1;
+        return;
+      }
+
+      const nextPort = await promptForAlternativePort({
+        blockedPort: requestedPort,
+        runtimeConfig,
+        logStamp,
+        errorLogStamp,
+      });
+
+      if (!nextPort) {
+        errorLogStamp('Server did not start. Update config.yaml or free the blocked port and try again.');
+        process.exitCode = 1;
+        return;
+      }
+
+      requestedPort = nextPort;
+    }
+  }
 };
 
 startServer();

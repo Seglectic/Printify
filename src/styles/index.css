@@ -272,19 +272,53 @@ img {
   max-height: 0;
   overflow: hidden;
   opacity: 0;
-  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  align-self: center;
+  padding: 4px 8px 6px;
+  border: 1px solid color-mix(in srgb, var(--printify-line) 92%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--printify-card) 88%, transparent);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 8px 18px rgba(11, 14, 13, 0.12);
   font-family: "Droid Sans Mono", "Lucida Console", Courier, monospace;
-  font-size: 18px;
   line-height: 1;
-  letter-spacing: 0.06em;
-  color: color-mix(in srgb, var(--printify-ink) 70%, transparent);
   transition: max-height 220ms ease, opacity 180ms ease, margin-top 220ms ease;
 }
 
 .printer-card.is-open .printer-card__page-total {
-  max-height: 24px;
+  max-height: 42px;
   margin-top: -6px;
   opacity: 1;
+}
+
+.printer-card__counter-digit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 24px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--printify-line) 88%, transparent);
+  background: color-mix(in srgb, var(--printify-page) 26%, var(--printify-card) 74%);
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.12);
+}
+
+.printer-card__counter-digit.is-leading .printer-card__counter-digit-face {
+  color: color-mix(in srgb, var(--printify-ink) 24%, transparent);
+}
+
+.printer-card__counter-digit-face {
+  display: block;
+  min-width: 1ch;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  color: color-mix(in srgb, var(--printify-ink) 72%, transparent);
 }
 
 .printer-card__body {
@@ -295,6 +329,11 @@ img {
   flex: 1;
   gap: 0;
   text-align: center;
+}
+
+.printer-card.is-open .printer-card__body {
+  flex: 0 0 auto;
+  margin-bottom: -10px;
 }
 
 .printer-card__icon {
@@ -323,7 +362,7 @@ img {
   position: relative;
   z-index: 1;
   display: grid;
-  gap: 14px;
+  gap: 8px;
   max-height: 0;
   opacity: 0;
   overflow: hidden;
@@ -332,7 +371,7 @@ img {
 
 .printer-card.is-open .printer-card__details {
   max-height: 252px;
-  margin-top: 10px;
+  margin-top: -8px;
   opacity: 1;
 }
 

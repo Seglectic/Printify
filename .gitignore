@@ -6,3 +6,4 @@ serverData.json
 yarn.lock
 lib/previewCache/*.png
 logs/*.ndjson
+config/config.yaml

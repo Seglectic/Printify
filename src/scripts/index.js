@@ -117,6 +117,22 @@
     return numericValue.toLocaleString();
   };
 
+  const getSixDigitCounter = value => {
+    const numericValue = Math.max(0, Math.floor(Number(value) || 0));
+    return String(numericValue).padStart(6, '0').slice(-6);
+  };
+
+  const buildPrinterCounterMarkup = value => {
+    const digits = getSixDigitCounter(value).split('');
+    const firstSignificantIndex = digits.findIndex(digit => digit !== '0');
+
+    return digits.map((digit, index) => `
+      <span class="printer-card__counter-digit${firstSignificantIndex !== -1 && index < firstSignificantIndex ? ' is-leading' : ''}" aria-hidden="true">
+        <span class="printer-card__counter-digit-face">${digit}</span>
+      </span>
+    `).join('');
+  };
+
   const getPrinterDisplayPrintCount = printer => {
     const actualPrintCounter = Number.isFinite(printer?.actualPrintCounter)
       ? printer.actualPrintCounter
@@ -341,10 +357,9 @@
       if (!printer || !pageTotal) return;
 
       const displayCount = getPrinterDisplayPrintCount(printer);
-      const displayText = formatWholeNumber(displayCount);
 
-      pageTotal.textContent = displayText;
-      pageTotal.setAttribute('aria-label', `Successful prints: ${displayCount}`);
+      pageTotal.innerHTML = buildPrinterCounterMarkup(displayCount);
+      pageTotal.setAttribute('aria-label', `Successful prints: ${formatWholeNumber(displayCount)}`);
       pageTotal.setAttribute('title', 'Successful prints');
     });
   };
@@ -461,7 +476,7 @@
         <p class="printer-card__name">${escapeHtml(printer.displayName)}</p>
         <div class="printer-card__body">
           <img class="printer-card__icon" src="${printer.iconUrl || '/favicon.ico'}" alt="${escapeHtml(printer.displayName)}">
-          <p class="printer-card__page-total" aria-label="Successful prints: ${escapeHtml(String(getPrinterDisplayPrintCount(printer)))}" title="Successful prints">${escapeHtml(formatWholeNumber(getPrinterDisplayPrintCount(printer)))}</p>
+          <p class="printer-card__page-total" aria-label="Successful prints: ${escapeHtml(formatWholeNumber(getPrinterDisplayPrintCount(printer)))}" title="Successful prints">${buildPrinterCounterMarkup(getPrinterDisplayPrintCount(printer))}</p>
         </div>
         <div class="printer-card__details">
           <p class="printer-card__hint">Drop files anywhere on this card</p>

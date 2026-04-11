@@ -88,6 +88,9 @@
       resetSelector: '#labelBuilderReset',
       printSelector: '#labelBuilderPrint',
       previewSelector: '[data-role="label-builder-preview"]',
+      monochromePreviewSelector: '#labelBuilderMonochromePreview',
+      monochromePreviewShellSelector: '#labelBuilderMonochromePreviewShell',
+      monochromePreviewImageSelector: '#labelBuilderMonochromePreviewImage',
       copiesSelector: '#labelBuilderCopies',
       textCardSelector: '#labelBuilderTextCard',
       imageCardSelector: '#labelBuilderImageCard',
@@ -107,6 +110,7 @@
       codeSerialValueFieldSelector: '#labelBuilderCodeSerialValueField',
       imageInputSelector: '#labelBuilderImageInput',
       addImageSelector: '#labelBuilderAddImage',
+      canvasWrapSelector: '.printify-builder__canvas-wrap',
       canvasShellSelector: '.printify-builder__canvas-shell',
       addTextSelector: '#labelBuilderAddText',
       addQrSelector: '#labelBuilderAddQr',
@@ -134,6 +138,9 @@
     const resetButton = root?.querySelector(settings.resetSelector);
     const printButton = root?.querySelector(settings.printSelector);
     const previewButtons = Array.from(root?.querySelectorAll(settings.previewSelector) || []);
+    const monochromePreviewButton = root?.querySelector(settings.monochromePreviewSelector);
+    const monochromePreviewShell = root?.querySelector(settings.monochromePreviewShellSelector);
+    const monochromePreviewImage = root?.querySelector(settings.monochromePreviewImageSelector);
     const copiesInput = root?.querySelector(settings.copiesSelector);
     const textCard = root?.querySelector(settings.textCardSelector);
     const imageCard = root?.querySelector(settings.imageCardSelector);
@@ -153,6 +160,7 @@
     const codeSerialValueField = root?.querySelector(settings.codeSerialValueFieldSelector);
     const imageInput = root?.querySelector(settings.imageInputSelector);
     const addImageButton = root?.querySelector(settings.addImageSelector);
+    const canvasWrap = root?.querySelector(settings.canvasWrapSelector);
     const canvasShell = root?.querySelector(settings.canvasShellSelector);
     const addTextButton = root?.querySelector(settings.addTextSelector);
     const addQrButton = root?.querySelector(settings.addQrSelector);
@@ -179,6 +187,9 @@
     let qrUpdateTimer = null;
     let pendingStateCommit = Promise.resolve();
     let isSerialPreviewActive = false;
+    let isMonochromePreviewActive = false;
+    let monochromePreviewUrl = null;
+    let monochromePreviewRequestId = 0;
     let lastSelectedTextObject = null;
     let lastSelectedCodeObject = null;
     let lastSerialValue = 1;
@@ -232,8 +243,21 @@
         element.style.height = `${displayHeight}px`;
       });
 
+      syncMonochromePreviewViewport();
       builderCanvas.calcOffset();
       builderCanvas.requestRenderAll();
+    };
+
+    const syncMonochromePreviewViewport = () => {
+      const builderCanvas = ensureCanvas();
+      const container = builderCanvas.wrapperEl;
+
+      if (!canvasWrap || !container || !monochromePreviewShell) return;
+
+      monochromePreviewShell.style.left = `${container.offsetLeft}px`;
+      monochromePreviewShell.style.top = `${container.offsetTop}px`;
+      monochromePreviewShell.style.width = `${container.offsetWidth}px`;
+      monochromePreviewShell.style.height = `${container.offsetHeight}px`;
     };
 
     const isCodeObject = object => object?.printifyObjectType === 'code';
@@ -580,6 +604,32 @@
         previewButton.classList.toggle('is-active', isSerialPreviewActive);
         previewButton.disabled = !currentPrinter;
       });
+
+      if (monochromePreviewButton) {
+        const isMonochromePrinter = Boolean(currentPrinter?.monochrome);
+        monochromePreviewButton.hidden = !isMonochromePrinter;
+        monochromePreviewButton.disabled = !isMonochromePrinter;
+        monochromePreviewButton.classList.toggle('is-active', isMonochromePreviewActive);
+      }
+    };
+
+    const revokeMonochromePreviewUrl = () => {
+      if (!monochromePreviewUrl) return;
+      URL.revokeObjectURL(monochromePreviewUrl);
+      monochromePreviewUrl = null;
+    };
+
+    const hideMonochromePreview = () => {
+      revokeMonochromePreviewUrl();
+      if (monochromePreviewImage) monochromePreviewImage.removeAttribute('src');
+      if (monochromePreviewShell) monochromePreviewShell.hidden = true;
+    };
+
+    const showMonochromePreview = blob => {
+      revokeMonochromePreviewUrl();
+      monochromePreviewUrl = URL.createObjectURL(blob);
+      if (monochromePreviewImage) monochromePreviewImage.src = monochromePreviewUrl;
+      if (monochromePreviewShell) monochromePreviewShell.hidden = false;
     };
 
     const clearEnterPrintPrompt = () => {
@@ -1367,6 +1417,110 @@
       syncTextControls(ensureCanvas().getActiveObject() || null);
     };
 
+    const buildBackendPreviewLabelFile = async () => {
+      const shouldRenderSerialState = !isSerialPreviewActive && getSerialObjects().length > 0;
+      return withCanvasExportState(async () => {
+        if (shouldRenderSerialState) {
+          await applySerialPreviewForCopy(0);
+        }
+
+        try {
+          return await buildCanvasLabelFile();
+        } finally {
+          if (shouldRenderSerialState) {
+            await restoreSerialPreviewState();
+          }
+        }
+      });
+    };
+
+    const requestMonochromePreview = async file => {
+      const formData = new FormData();
+      formData.append('imgFile', file, file.name);
+
+      const response = await fetch(`/printers/${encodeURIComponent(currentPrinter.id)}/preview/monochrome`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Preview failed for ${currentPrinter.displayName}`);
+      }
+
+      return response.blob();
+    };
+
+    const startMonochromePreview = async () => {
+      if (!currentPrinter?.monochrome || isMonochromePreviewActive) return;
+
+      const requestId = monochromePreviewRequestId + 1;
+      monochromePreviewRequestId = requestId;
+      isMonochromePreviewActive = true;
+      syncPreviewButton();
+
+      try {
+        const previewFile = await buildBackendPreviewLabelFile();
+        const previewBlob = await requestMonochromePreview(previewFile);
+
+        if (!isMonochromePreviewActive || monochromePreviewRequestId !== requestId) {
+          return;
+        }
+
+        showMonochromePreview(previewBlob);
+      } catch (error) {
+        if (isMonochromePreviewActive && monochromePreviewRequestId === requestId) {
+          await stopMonochromePreview();
+          settings.onError(new Error('Could not prepare the backend monochrome preview.'));
+        }
+      }
+    };
+
+    const stopMonochromePreview = async () => {
+      if (!isMonochromePreviewActive && monochromePreviewShell?.hidden !== false) return;
+
+      monochromePreviewRequestId += 1;
+      isMonochromePreviewActive = false;
+      hideMonochromePreview();
+      syncPreviewButton();
+    };
+
+    const withCanvasExportState = async callback => {
+      const builderCanvas = ensureCanvas();
+      const activeObject = builderCanvas.getActiveObject();
+      const objectControls = builderCanvas.getObjects().map(object => ({
+        object,
+        hasBorders: object.hasBorders,
+        hasControls: object.hasControls,
+      }));
+
+      await pendingStateCommit.catch(() => {});
+      await commitObjectState(activeObject, {
+        exitEditing: true,
+        skipControlSync: true,
+      });
+
+      builderCanvas.getObjects().forEach(object => {
+        if (typeof object.exitEditing === 'function') object.exitEditing();
+        object.set({
+          hasBorders: false,
+          hasControls: false,
+        });
+      });
+      builderCanvas.discardActiveObject();
+      builderCanvas.renderAll();
+
+      try {
+        return await callback({ activeObject });
+      } finally {
+        objectControls.forEach(({ object, hasBorders, hasControls }) => {
+          object.set({ hasBorders, hasControls });
+        });
+        if (activeObject) builderCanvas.setActiveObject(activeObject);
+        syncTextControls(builderCanvas.getActiveObject() || null);
+        builderCanvas.requestRenderAll();
+      }
+    };
+
     const buildCanvasLabelFile = async (copyIndex = null) => {
       const builderCanvas = ensureCanvas();
       builderCanvas.renderAll();
@@ -1422,6 +1576,8 @@
       const builderCanvas = ensureCanvas();
       const { width, height } = getPrinterCanvasMetrics(printer);
       isSerialPreviewActive = false;
+      isMonochromePreviewActive = false;
+      hideMonochromePreview();
 
       builderCanvas.clear();
       builderCanvas.setDimensions({ width, height });
@@ -1470,6 +1626,7 @@
     const close = () => {
       clearEnterPrintPrompt();
       isSerialPreviewActive = false;
+      void stopMonochromePreview();
       syncPreviewButton();
       root.classList.remove('is-open');
     };
@@ -1477,6 +1634,8 @@
     const open = printer => {
       currentPrinter = printer;
       if (!currentPrinter) return;
+      isMonochromePreviewActive = false;
+      hideMonochromePreview();
       const nextPrinterKey = getPrinterStateKey(currentPrinter);
       const isRestoringSamePrinter = lastBuilderStatePrinterKey && lastBuilderStatePrinterKey === nextPrinterKey && ensureCanvas().getObjects().length > 0;
 
@@ -1507,74 +1666,41 @@
       if (!currentPrinter) return;
       clearEnterPrintPrompt();
       if (isSerialPreviewActive) await stopSerialPreview();
-
-      const builderCanvas = ensureCanvas();
-      const activeObject = builderCanvas.getActiveObject();
-      await pendingStateCommit.catch(() => {});
-      await commitObjectState(activeObject, {
-        exitEditing: true,
-        skipControlSync: true,
-      });
-      const objectControls = builderCanvas.getObjects().map(object => ({
-        object,
-        hasBorders: object.hasBorders,
-        hasControls: object.hasControls,
-      }));
-
-      builderCanvas.getObjects().forEach(object => {
-        if (typeof object.exitEditing === 'function') object.exitEditing();
-        object.set({
-          hasBorders: false,
-          hasControls: false,
-        });
-      });
-      builderCanvas.discardActiveObject();
-      builderCanvas.renderAll();
+      if (isMonochromePreviewActive) await stopMonochromePreview();
 
       const copies = Math.max(1, Number.parseInt(copiesInput?.value || '1', 10) || 1);
       const hasSerialObjects = getSerialObjects().length > 0;
 
       try {
-        let files = [];
-        let requestedPrintCount = copies;
+        await withCanvasExportState(async () => {
+          let files = [];
+          let requestedPrintCount = copies;
 
-        if (hasSerialObjects) {
-          requestedPrintCount = 1;
-          for (let copyIndex = 0; copyIndex < copies; copyIndex += 1) {
-            await applySerialPreviewForCopy(copyIndex);
-            files.push(await buildCanvasLabelFile(copyIndex));
+          if (hasSerialObjects) {
+            requestedPrintCount = 1;
+            for (let copyIndex = 0; copyIndex < copies; copyIndex += 1) {
+              await applySerialPreviewForCopy(copyIndex);
+              files.push(await buildCanvasLabelFile(copyIndex));
+            }
+          } else {
+            files = [await buildCanvasLabelFile()];
           }
-        } else {
-          files = [await buildCanvasLabelFile()];
-        }
 
-        await settings.onPrint(currentPrinter, files, {
-          printCount: requestedPrintCount,
-          tapeWidthMm: isTapePrinter(currentPrinter) ? currentTapeWidthMm : null,
-          lengthMm: isTapePrinter(currentPrinter) ? getTapeExportLengthMm(currentPrinter) : null,
+          await settings.onPrint(currentPrinter, files, {
+            printCount: requestedPrintCount,
+            tapeWidthMm: isTapePrinter(currentPrinter) ? currentTapeWidthMm : null,
+            lengthMm: isTapePrinter(currentPrinter) ? getTapeExportLengthMm(currentPrinter) : null,
+          });
+
+          if (hasSerialObjects) {
+            advanceSerialObjects(copies);
+          }
+          await restoreSerialPreviewState();
         });
-
-        if (hasSerialObjects) {
-          advanceSerialObjects(copies);
-        }
-        await restoreSerialPreviewState();
-
-        objectControls.forEach(({ object, hasBorders, hasControls }) => {
-          object.set({ hasBorders, hasControls });
-        });
-        if (activeObject) builderCanvas.setActiveObject(activeObject);
-        syncTextControls(builderCanvas.getActiveObject() || null);
-        builderCanvas.requestRenderAll();
 
         if (settings.closeOnPrint) close();
       } catch (error) {
         await restoreSerialPreviewState();
-        objectControls.forEach(({ object, hasBorders, hasControls }) => {
-          object.set({ hasBorders, hasControls });
-        });
-        if (activeObject) builderCanvas.setActiveObject(activeObject);
-        syncTextControls(builderCanvas.getActiveObject() || null);
-        builderCanvas.requestRenderAll();
         settings.onError(error);
       }
     };
@@ -1895,6 +2021,7 @@
     cancelButton?.addEventListener('click', close);
     resetButton?.addEventListener('click', () => {
       clearEnterPrintPrompt();
+      void stopMonochromePreview();
       if (currentPrinter) {
         currentTapeWidthMm = isTapePrinter(currentPrinter) ? getResolvedDefaultTapeWidth(currentPrinter) : null;
         currentTapeLengthMm = DEFAULT_TAPE_LENGTH_MM;
@@ -1927,14 +2054,37 @@
         await stopSerialPreview();
       });
     });
+    monochromePreviewButton?.addEventListener('pointerdown', async event => {
+      event.preventDefault();
+      await startMonochromePreview();
+    });
+    monochromePreviewButton?.addEventListener('keydown', async event => {
+      if (event.repeat) return;
+      if (event.key !== ' ' && event.key !== 'Enter') return;
+
+      event.preventDefault();
+      await startMonochromePreview();
+    });
+    monochromePreviewButton?.addEventListener('keyup', async event => {
+      if (event.key !== ' ' && event.key !== 'Enter') return;
+
+      event.preventDefault();
+      await stopMonochromePreview();
+    });
+    monochromePreviewButton?.addEventListener('blur', async () => {
+      await stopMonochromePreview();
+    });
     window.addEventListener('pointerup', async () => {
       await stopSerialPreview();
+      await stopMonochromePreview();
     });
     window.addEventListener('pointercancel', async () => {
       await stopSerialPreview();
+      await stopMonochromePreview();
     });
     window.addEventListener('blur', async () => {
       await stopSerialPreview();
+      await stopMonochromePreview();
     });
     window.addEventListener('resize', () => {
       if (!root.classList.contains('is-open')) return;

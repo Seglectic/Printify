@@ -43,6 +43,9 @@
           <div class="printify-builder__canvas-shell">
             <canvas class="printify-builder__canvas" id="labelCanvas" width="425" height="200"></canvas>
           </div>
+          <div class="printify-builder__baked-preview" id="labelBuilderMonochromePreviewShell" hidden>
+            <img id="labelBuilderMonochromePreviewImage" alt="Backend monochrome print preview">
+          </div>
           <input id="labelBuilderImageInput" type="file" accept="image/*" hidden>
         </div>
 
@@ -197,6 +200,7 @@
               Copies
               <input id="labelBuilderCopies" type="number" min="1" value="1">
             </label>
+            <button class="printer-card__button printer-card__button--secondary printify-builder__preview-button" id="labelBuilderMonochromePreview" type="button" hidden>Hold To Preview</button>
             <span class="printify-builder__size" id="labelBuilderSize">425 x 200 px</span>
           </div>
         </div>

@@ -44,6 +44,8 @@ clientPluginConfig:
 # │  - output: required for cli mode; "png" or "pdf"          │
 # │  - acceptedKinds: any of pdf, image, zip                  │
 # │  - monochrome: force image prep to black/white            │
+# │  - monochromeBit: 1 for true black/white output           │
+# │    or 8 for grayscale                                     │
 # │  - monochromeDither: floydsteinberg,                      │
 # │    riemersma, or none                                     │
 # │  - labelBuilder: enables the label builder                │
@@ -86,6 +88,7 @@ printers:
     density: "135"
     acceptedKinds: [ "image" ]
     monochrome: true
+    monochromeBit: 1
     monochromeDither: "floydsteinberg"
     labelBuilder: true
     bundleCopies: false
@@ -98,6 +101,9 @@ printers:
     units: "inch"
     density: "200"
     acceptedKinds: [ "pdf", "image", "zip" ]
+    monochrome: true
+    monochromeBit: 1
+    monochromeDither: "floydsteinberg"
     labelBuilder: true
     bundleCopies: true
 

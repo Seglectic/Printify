@@ -9,8 +9,56 @@
   const DEFAULT_CODE_FALLBACK_LABEL = 'Printify';
   const DEFAULT_TEXTBOX_PLACEHOLDER = 'Click to Edit';
   const DEFAULT_SERIAL_DIGITS = 2;
+  const DEFAULT_TAPE_LENGTH_MM = 60;
+  const MIN_TAPE_LENGTH_MM = 8;
+  const TAPE_EXPORT_PADDING_MM = 4;
+
+  const mmToPixels = (millimeters, density) => {
+    const numericMillimeters = Number(millimeters);
+    const numericDensity = Number(density);
+
+    if (!Number.isFinite(numericMillimeters) || numericMillimeters <= 0 || !Number.isFinite(numericDensity) || numericDensity <= 0) {
+      return null;
+    }
+
+    return Math.max(1, Math.round((numericMillimeters / 25.4) * numericDensity));
+  };
+
+  const normalizeTapeLengthMm = value => {
+    const parsedValue = Number.parseInt(value, 10);
+    return Number.isFinite(parsedValue) ? Math.max(MIN_TAPE_LENGTH_MM, parsedValue) : DEFAULT_TAPE_LENGTH_MM;
+  };
+
+  const getResolvedDefaultTapeWidth = printer => {
+    const configuredTapes = Array.isArray(printer?.tapes) ? printer.tapes : [];
+    const preferredTape = Number.parseInt(printer?.lastTapeWidthMm, 10);
+    const defaultTape = Number.parseInt(printer?.defaultTape, 10);
+
+    if (configuredTapes.includes(preferredTape)) {
+      return preferredTape;
+    }
+
+    if (configuredTapes.includes(defaultTape)) {
+      return defaultTape;
+    }
+
+    return configuredTapes[0] || null;
+  };
 
   const getPrinterCanvasSize = printer => {
+    if (printer?.isTape) {
+      const tapeWidthMm = getResolvedDefaultTapeWidth(printer) || 12;
+      const tapeHeightPx = mmToPixels(tapeWidthMm, printer?.density);
+      const tapeLengthPx = mmToPixels(DEFAULT_TAPE_LENGTH_MM, printer?.density);
+
+      if (Number.isFinite(tapeHeightPx) && Number.isFinite(tapeLengthPx)) {
+        return {
+          width: tapeLengthPx,
+          height: tapeHeightPx,
+        };
+      }
+    }
+
     if (Number.isFinite(printer?.sizePxWidth) && Number.isFinite(printer?.sizePxHeight)) {
       return {
         width: printer.sizePxWidth,
@@ -62,6 +110,10 @@
       canvasShellSelector: '.printify-builder__canvas-shell',
       addTextSelector: '#labelBuilderAddText',
       addQrSelector: '#labelBuilderAddQr',
+      tapeControlsSelector: '#labelBuilderTapeControls',
+      tapeWidthSelector: '#labelBuilderTapeWidth',
+      tapeLengthSelector: '#labelBuilderTapeLength',
+      tapeAutoLengthSelector: '#labelBuilderTapeAutoLength',
       fitImageHeightSelector: '#labelBuilderFitImageHeight',
       alignLeftSelector: '#labelBuilderAlignLeft',
       alignCenterSelector: '#labelBuilderAlignCenter',
@@ -73,41 +125,45 @@
     }, options || {});
 
     const root = document.querySelector(settings.rootSelector);
-    const title = document.querySelector(settings.titleSelector);
-    const copy = document.querySelector(settings.copySelector);
-    const size = document.querySelector(settings.sizeSelector);
-    const enterConfirm = document.querySelector(settings.enterConfirmSelector);
-    const closeButton = document.querySelector(settings.closeSelector);
-    const cancelButton = document.querySelector(settings.cancelSelector);
-    const resetButton = document.querySelector(settings.resetSelector);
-    const printButton = document.querySelector(settings.printSelector);
-    const previewButtons = Array.from(document.querySelectorAll(settings.previewSelector));
-    const copiesInput = document.querySelector(settings.copiesSelector);
-    const textCard = document.querySelector(settings.textCardSelector);
-    const imageCard = document.querySelector(settings.imageCardSelector);
-    const qrCard = document.querySelector(settings.qrCardSelector);
-    const fontSelect = document.querySelector(settings.fontSelector);
-    const fontSizeInput = document.querySelector(settings.fontSizeSelector);
-    const autoFitInput = document.querySelector(settings.autoFitSelector);
-    const textSerialEnabledInput = document.querySelector(settings.textSerialEnabledSelector);
-    const textSerialValueInput = document.querySelector(settings.textSerialValueSelector);
-    const textSerialDigitsInput = document.querySelector(settings.textSerialDigitsSelector);
-    const textSerialValueField = document.querySelector(settings.textSerialValueFieldSelector);
-    const qrFormatSelect = document.querySelector(settings.qrFormatSelector);
-    const qrTextInput = document.querySelector(settings.qrTextSelector);
-    const codeSerialEnabledInput = document.querySelector(settings.codeSerialEnabledSelector);
-    const codeSerialValueInput = document.querySelector(settings.codeSerialValueSelector);
-    const codeSerialDigitsInput = document.querySelector(settings.codeSerialDigitsSelector);
-    const codeSerialValueField = document.querySelector(settings.codeSerialValueFieldSelector);
-    const imageInput = document.querySelector(settings.imageInputSelector);
-    const addImageButton = document.querySelector(settings.addImageSelector);
-    const canvasShell = document.querySelector(settings.canvasShellSelector);
-    const addTextButton = document.querySelector(settings.addTextSelector);
-    const addQrButton = document.querySelector(settings.addQrSelector);
-    const fitImageHeightButton = document.querySelector(settings.fitImageHeightSelector);
-    const alignLeftButton = document.querySelector(settings.alignLeftSelector);
-    const alignCenterButton = document.querySelector(settings.alignCenterSelector);
-    const alignRightButton = document.querySelector(settings.alignRightSelector);
+    const title = root?.querySelector(settings.titleSelector);
+    const copy = root?.querySelector(settings.copySelector);
+    const size = root?.querySelector(settings.sizeSelector);
+    const enterConfirm = root?.querySelector(settings.enterConfirmSelector);
+    const closeButton = root?.querySelector(settings.closeSelector);
+    const cancelButton = root?.querySelector(settings.cancelSelector);
+    const resetButton = root?.querySelector(settings.resetSelector);
+    const printButton = root?.querySelector(settings.printSelector);
+    const previewButtons = Array.from(root?.querySelectorAll(settings.previewSelector) || []);
+    const copiesInput = root?.querySelector(settings.copiesSelector);
+    const textCard = root?.querySelector(settings.textCardSelector);
+    const imageCard = root?.querySelector(settings.imageCardSelector);
+    const qrCard = root?.querySelector(settings.qrCardSelector);
+    const fontSelect = root?.querySelector(settings.fontSelector);
+    const fontSizeInput = root?.querySelector(settings.fontSizeSelector);
+    const autoFitInput = root?.querySelector(settings.autoFitSelector);
+    const textSerialEnabledInput = root?.querySelector(settings.textSerialEnabledSelector);
+    const textSerialValueInput = root?.querySelector(settings.textSerialValueSelector);
+    const textSerialDigitsInput = root?.querySelector(settings.textSerialDigitsSelector);
+    const textSerialValueField = root?.querySelector(settings.textSerialValueFieldSelector);
+    const qrFormatSelect = root?.querySelector(settings.qrFormatSelector);
+    const qrTextInput = root?.querySelector(settings.qrTextSelector);
+    const codeSerialEnabledInput = root?.querySelector(settings.codeSerialEnabledSelector);
+    const codeSerialValueInput = root?.querySelector(settings.codeSerialValueSelector);
+    const codeSerialDigitsInput = root?.querySelector(settings.codeSerialDigitsSelector);
+    const codeSerialValueField = root?.querySelector(settings.codeSerialValueFieldSelector);
+    const imageInput = root?.querySelector(settings.imageInputSelector);
+    const addImageButton = root?.querySelector(settings.addImageSelector);
+    const canvasShell = root?.querySelector(settings.canvasShellSelector);
+    const addTextButton = root?.querySelector(settings.addTextSelector);
+    const addQrButton = root?.querySelector(settings.addQrSelector);
+    const tapeControls = root?.querySelector(settings.tapeControlsSelector);
+    const tapeWidthSelect = root?.querySelector(settings.tapeWidthSelector);
+    const tapeLengthInput = root?.querySelector(settings.tapeLengthSelector);
+    const tapeAutoLengthInput = root?.querySelector(settings.tapeAutoLengthSelector);
+    const fitImageHeightButton = root?.querySelector(settings.fitImageHeightSelector);
+    const alignLeftButton = root?.querySelector(settings.alignLeftSelector);
+    const alignCenterButton = root?.querySelector(settings.alignCenterSelector);
+    const alignRightButton = root?.querySelector(settings.alignRightSelector);
 
     if (!root || !window.fabric) return null;
 
@@ -130,6 +186,10 @@
     let lastBuilderStatePrinterKey = null;
     let enterPrintArmed = false;
     let enterPrintTimer = null;
+    let currentTapeWidthMm = null;
+    let currentTapeLengthMm = DEFAULT_TAPE_LENGTH_MM;
+    let tapeMinimumLengthMm = DEFAULT_TAPE_LENGTH_MM;
+    let tapeAutoLengthEnabled = true;
 
     const ensureCanvas = () => {
       if (canvas) return canvas;
@@ -178,6 +238,197 @@
 
     const isCodeObject = object => object?.printifyObjectType === 'code';
     const isImageObject = object => object?.printifyObjectType === 'image';
+    const isTapePrinter = printer => Boolean(printer?.isTape);
+
+    const getCurrentTapeCanvasSize = printer => {
+      const tapeWidthMm = currentTapeWidthMm || getResolvedDefaultTapeWidth(printer) || 12;
+      const tapeLengthMm = normalizeTapeLengthMm(currentTapeLengthMm);
+      const width = mmToPixels(tapeLengthMm, printer?.density);
+      const height = mmToPixels(tapeWidthMm, printer?.density);
+
+      return {
+        width: Number.isFinite(width) ? width : DEFAULT_CANVAS_SIZE.width,
+        height: Number.isFinite(height) ? height : DEFAULT_CANVAS_SIZE.height,
+      };
+    };
+
+    const describeBuilderSize = printer => {
+      const builderCanvas = ensureCanvas();
+
+      if (!isTapePrinter(printer)) {
+        return `${builderCanvas.getWidth()} x ${builderCanvas.getHeight()} px`;
+      }
+
+      const exportLengthMm = getTapeExportLengthMm(printer);
+      const lengthLabel = tapeAutoLengthEnabled
+        ? `${exportLengthMm}mm auto`
+        : `${normalizeTapeLengthMm(currentTapeLengthMm)}mm`;
+
+      return `${currentTapeWidthMm}mm tape • ${lengthLabel} • ${builderCanvas.getWidth()} x ${builderCanvas.getHeight()} px`;
+    };
+
+    const refreshBuilderMeta = () => {
+      if (currentPrinter && size) {
+        size.textContent = describeBuilderSize(currentPrinter);
+      }
+    };
+
+    const syncTapeControls = printer => {
+      const tapeMode = isTapePrinter(printer);
+
+      if (tapeControls) {
+        tapeControls.hidden = !tapeMode;
+        tapeControls.style.display = tapeMode ? '' : 'none';
+      }
+
+      if (!tapeMode) {
+        return;
+      }
+
+      if (tapeWidthSelect) {
+        const printerTapes = Array.isArray(printer?.tapes) ? printer.tapes : [];
+        tapeWidthSelect.innerHTML = printerTapes.map(tapeWidth => (
+          `<option value="${tapeWidth}">${tapeWidth} mm</option>`
+        )).join('');
+
+        if (currentTapeWidthMm && printerTapes.includes(currentTapeWidthMm)) {
+          tapeWidthSelect.value = String(currentTapeWidthMm);
+        }
+      }
+
+      if (tapeLengthInput) {
+        tapeLengthInput.value = String(normalizeTapeLengthMm(tapeMinimumLengthMm));
+        tapeLengthInput.disabled = false;
+      }
+
+      if (tapeAutoLengthInput) {
+        tapeAutoLengthInput.checked = tapeAutoLengthEnabled;
+      }
+    };
+
+    const persistTapePreference = async printer => {
+      if (!isTapePrinter(printer) || !currentTapeWidthMm) {
+        return;
+      }
+
+      try {
+        await fetch(`/printers/${encodeURIComponent(printer.id)}/preferences/tape`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            tapeWidthMm: currentTapeWidthMm,
+          }),
+        });
+      } catch (error) {
+        // Keep tape preference persistence best-effort so the builder stays usable offline.
+      }
+    };
+
+    const getContentBounds = () => {
+      const builderCanvas = ensureCanvas();
+      const objects = builderCanvas.getObjects().filter(object => !object.excludeFromExport);
+
+      if (!objects.length) {
+        return null;
+      }
+
+      const bounds = objects
+        .map(object => object.getBoundingRect())
+        .filter(boundary => Number.isFinite(boundary?.left) && Number.isFinite(boundary?.top));
+
+      if (!bounds.length) {
+        return null;
+      }
+
+      const right = Math.max(...bounds.map(boundary => boundary.left + boundary.width));
+      const bottom = Math.max(...bounds.map(boundary => boundary.top + boundary.height));
+
+      return { right, bottom };
+    };
+
+    const getRequiredTapeLengthMm = printer => {
+      const bounds = getContentBounds();
+      const density = Number(printer?.density);
+      const paddingPx = mmToPixels(TAPE_EXPORT_PADDING_MM, density) || 0;
+
+      if (!bounds || !Number.isFinite(density) || density <= 0) {
+        return normalizeTapeLengthMm(tapeMinimumLengthMm);
+      }
+
+      return Math.max(
+        normalizeTapeLengthMm(tapeMinimumLengthMm),
+        Math.ceil(((bounds.right + paddingPx) / density) * 25.4)
+      );
+    };
+
+    const getTapeExportLengthMm = printer => (
+      isTapePrinter(printer)
+        ? normalizeTapeLengthMm(currentTapeLengthMm)
+        : null
+    );
+
+    const getPrinterCanvasMetrics = printer => (
+      isTapePrinter(printer)
+        ? getCurrentTapeCanvasSize(printer)
+        : getPrinterCanvasSize(printer)
+    );
+
+    const applyTapeCanvasSize = async printer => {
+      if (!printer || !isTapePrinter(printer)) {
+        return;
+      }
+
+      const builderCanvas = ensureCanvas();
+      const { width, height } = getCurrentTapeCanvasSize(printer);
+
+      builderCanvas.setDimensions({ width, height });
+      builderCanvas.getObjects().forEach(object => {
+        if (object instanceof window.fabric.Textbox) {
+          object.frameWidth = Math.max(48, Math.min(object.frameWidth || object.width || 0, width));
+          object.frameHeight = Math.max(32, Math.min(object.frameHeight || object.height || 0, height));
+          object.width = object.frameWidth;
+          if (object.autoFitText) {
+            fitTextboxFontToFrame(object);
+          } else {
+            object.initDimensions();
+          }
+        }
+
+        const bounds = object.getBoundingRect();
+        const nextLeft = Math.max(0, Math.min(object.left || 0, width - bounds.width));
+        const nextTop = Math.max(0, Math.min(object.top || 0, height - bounds.height));
+
+        object.set({
+          left: Math.round(nextLeft),
+          top: Math.round(nextTop),
+        });
+        object.setCoords();
+      });
+
+      refreshBuilderMeta();
+      applyCanvasViewportScale();
+      builderCanvas.requestRenderAll();
+      await persistTapePreference(printer);
+    };
+
+    const syncAutoFitTapeCanvas = async () => {
+      if (!currentPrinter || !isTapePrinter(currentPrinter) || !tapeAutoLengthEnabled) {
+        return;
+      }
+
+      const requiredLengthMm = getRequiredTapeLengthMm(currentPrinter);
+      const nextLengthMm = Math.max(normalizeTapeLengthMm(tapeMinimumLengthMm), requiredLengthMm);
+
+      if (nextLengthMm === normalizeTapeLengthMm(currentTapeLengthMm)) {
+        refreshBuilderMeta();
+        return;
+      }
+
+      currentTapeLengthMm = nextLengthMm;
+      await applyTapeCanvasSize(currentPrinter);
+    };
 
     const resolveBuilderVersionLabel = () => {
       const clientVersion = String(window.PRINTIFY_CLIENT_VERSION || '').trim();
@@ -653,6 +904,8 @@
       builderCanvas.add(textbox);
       focusTextbox(textbox);
       beginTextboxEditing(textbox);
+      refreshBuilderMeta();
+      void syncAutoFitTapeCanvas();
     };
 
     const updateSelectedTextbox = updates => {
@@ -672,6 +925,7 @@
       textObject.setCoords();
       syncTextControls(textObject);
       ensureCanvas().requestRenderAll();
+      void syncAutoFitTapeCanvas();
     };
 
     const queueStateCommit = work => {
@@ -745,6 +999,8 @@
         fitObjectToCanvas(image);
         ensureCanvas().add(image);
         focusObject(image);
+        refreshBuilderMeta();
+        void syncAutoFitTapeCanvas();
       } catch (error) {
         settings.onError(new Error('Could not load that image into the label builder.'));
       }
@@ -969,6 +1225,7 @@
       });
       imageObject.setCoords();
       builderCanvas.requestRenderAll();
+      void syncAutoFitTapeCanvas();
     };
 
     const bakeTextboxScale = event => {
@@ -1113,6 +1370,10 @@
     const buildCanvasLabelFile = async (copyIndex = null) => {
       const builderCanvas = ensureCanvas();
       builderCanvas.renderAll();
+      const exportWidth = isTapePrinter(currentPrinter)
+        ? (mmToPixels(getTapeExportLengthMm(currentPrinter), currentPrinter?.density) || builderCanvas.getWidth())
+        : builderCanvas.getWidth();
+      const exportHeight = builderCanvas.getHeight();
 
       const blob = await new Promise(resolve => {
         builderCanvas.lowerCanvasEl.toBlob(resolve);
@@ -1123,8 +1384,8 @@
       }
 
       const logicalCanvas = document.createElement('canvas');
-      logicalCanvas.width = builderCanvas.getWidth();
-      logicalCanvas.height = builderCanvas.getHeight();
+      logicalCanvas.width = exportWidth;
+      logicalCanvas.height = exportHeight;
       const logicalContext = logicalCanvas.getContext('2d');
 
       if (!logicalContext) {
@@ -1141,8 +1402,8 @@
         builderCanvas.lowerCanvasEl.height,
         0,
         0,
-        logicalCanvas.width,
-        logicalCanvas.height
+        builderCanvas.getWidth(),
+        exportHeight
       );
 
       const normalizedBlob = await new Promise(resolve => {
@@ -1159,7 +1420,7 @@
 
     const resetCanvas = printer => {
       const builderCanvas = ensureCanvas();
-      const { width, height } = getPrinterCanvasSize(printer);
+      const { width, height } = getPrinterCanvasMetrics(printer);
       isSerialPreviewActive = false;
 
       builderCanvas.clear();
@@ -1173,23 +1434,33 @@
       focusTextbox(defaultTextbox);
       builderCanvas.requestRenderAll();
       applyCanvasViewportScale();
+      syncTapeControls(printer);
 
-      if (size) size.textContent = `${width} x ${height} px`;
-      if (copy) copy.textContent = `Build a label sized for ${printer.displayName}, then send it through the standard image print flow.`;
+      refreshBuilderMeta();
+      if (copy) {
+        copy.textContent = isTapePrinter(printer)
+          ? `Build a tape label for ${printer.displayName}. Tape width sets label height, and length can expand to fit the content.`
+          : `Build a label sized for ${printer.displayName}, then send it through the standard image print flow.`;
+      }
       clearEnterPrintPrompt();
       syncPreviewButton();
     };
 
     const restoreBuilderSession = printer => {
       const builderCanvas = ensureCanvas();
-      const { width, height } = getPrinterCanvasSize(printer);
+      const { width, height } = getPrinterCanvasMetrics(printer);
 
       builderCanvas.setDimensions({ width, height });
       builderCanvas.backgroundColor = '#ffffff';
       applyCanvasViewportScale();
+      syncTapeControls(printer);
 
-      if (size) size.textContent = `${width} x ${height} px`;
-      if (copy) copy.textContent = `Build a label sized for ${printer.displayName}, then send it through the standard image print flow.`;
+      refreshBuilderMeta();
+      if (copy) {
+        copy.textContent = isTapePrinter(printer)
+          ? `Build a tape label for ${printer.displayName}. Tape width sets label height, and length can expand to fit the content.`
+          : `Build a label sized for ${printer.displayName}, then send it through the standard image print flow.`;
+      }
       clearEnterPrintPrompt();
       syncPreviewButton();
       builderCanvas.requestRenderAll();
@@ -1207,11 +1478,19 @@
       currentPrinter = printer;
       if (!currentPrinter) return;
       const nextPrinterKey = getPrinterStateKey(currentPrinter);
+      const isRestoringSamePrinter = lastBuilderStatePrinterKey && lastBuilderStatePrinterKey === nextPrinterKey && ensureCanvas().getObjects().length > 0;
+
+      if (!isRestoringSamePrinter) {
+        currentTapeWidthMm = isTapePrinter(printer) ? getResolvedDefaultTapeWidth(printer) : null;
+        currentTapeLengthMm = DEFAULT_TAPE_LENGTH_MM;
+        tapeMinimumLengthMm = DEFAULT_TAPE_LENGTH_MM;
+        tapeAutoLengthEnabled = true;
+      }
 
       if (title) title.textContent = `${printer.displayName} Builder`;
 
       root.classList.add('is-open');
-      if (lastBuilderStatePrinterKey && lastBuilderStatePrinterKey === nextPrinterKey && ensureCanvas().getObjects().length > 0) {
+      if (isRestoringSamePrinter) {
         restoreBuilderSession(printer);
       } else {
         if (copiesInput) copiesInput.value = '1';
@@ -1271,6 +1550,8 @@
 
         await settings.onPrint(currentPrinter, files, {
           printCount: requestedPrintCount,
+          tapeWidthMm: isTapePrinter(currentPrinter) ? currentTapeWidthMm : null,
+          lengthMm: isTapePrinter(currentPrinter) ? getTapeExportLengthMm(currentPrinter) : null,
         });
 
         if (hasSerialObjects) {
@@ -1314,6 +1595,7 @@
       builderCanvas.discardActiveObject();
       syncTextControls(null);
       builderCanvas.requestRenderAll();
+      refreshBuilderMeta();
       return true;
     };
 
@@ -1322,6 +1604,7 @@
 
       builderCanvas.on('selection:created', event => {
         syncTextControls(event.selected?.[0] || null);
+        void syncAutoFitTapeCanvas();
       });
 
       builderCanvas.on('selection:updated', event => {
@@ -1333,6 +1616,7 @@
           }));
         }
         syncTextControls(event.selected?.[0] || null);
+        void syncAutoFitTapeCanvas();
       });
 
       builderCanvas.on('selection:cleared', event => {
@@ -1344,6 +1628,7 @@
           }));
         }
         syncTextControls(null);
+        void syncAutoFitTapeCanvas();
       });
 
       builderCanvas.on('text:changed', event => {
@@ -1355,6 +1640,8 @@
           if (event.target.autoFitText) fitTextboxFontToFrame(event.target);
         }
         syncTextControls(event.target || null);
+        refreshBuilderMeta();
+        void syncAutoFitTapeCanvas();
       });
 
       builderCanvas.on('mouse:down', event => {
@@ -1364,7 +1651,11 @@
         beginTextboxEditing(event.target);
       });
 
-      builderCanvas.on('object:scaling', bakeTextboxScale);
+      builderCanvas.on('object:modified', event => {
+        bakeTextboxScale(event);
+        refreshBuilderMeta();
+        void syncAutoFitTapeCanvas();
+      });
 
       builderCanvas.on('mouse:dblclick', event => {
         if (!(event.target instanceof window.fabric.Textbox)) return;
@@ -1488,6 +1779,35 @@
     alignLeftButton?.addEventListener('click', () => updateSelectedTextbox({ textAlign: 'left' }));
     alignCenterButton?.addEventListener('click', () => updateSelectedTextbox({ textAlign: 'center' }));
     alignRightButton?.addEventListener('click', () => updateSelectedTextbox({ textAlign: 'right' }));
+    tapeWidthSelect?.addEventListener('change', async () => {
+      if (!currentPrinter || !isTapePrinter(currentPrinter)) return;
+
+      const nextTapeWidthMm = Number.parseInt(tapeWidthSelect.value, 10);
+      if (!Number.isFinite(nextTapeWidthMm)) return;
+
+      currentTapeWidthMm = nextTapeWidthMm;
+      await applyTapeCanvasSize(currentPrinter);
+    });
+    tapeLengthInput?.addEventListener('input', async () => {
+      if (!currentPrinter || !isTapePrinter(currentPrinter)) return;
+
+      tapeMinimumLengthMm = normalizeTapeLengthMm(tapeLengthInput.value);
+      currentTapeLengthMm = tapeAutoLengthEnabled
+        ? Math.max(tapeMinimumLengthMm, getRequiredTapeLengthMm(currentPrinter))
+        : tapeMinimumLengthMm;
+      refreshBuilderMeta();
+      await applyTapeCanvasSize(currentPrinter);
+    });
+    tapeAutoLengthInput?.addEventListener('change', () => {
+      if (!currentPrinter || !isTapePrinter(currentPrinter)) return;
+
+      tapeAutoLengthEnabled = Boolean(tapeAutoLengthInput.checked);
+      currentTapeLengthMm = tapeAutoLengthEnabled
+        ? Math.max(tapeMinimumLengthMm, getRequiredTapeLengthMm(currentPrinter))
+        : tapeMinimumLengthMm;
+      refreshBuilderMeta();
+      void syncAutoFitTapeCanvas();
+    });
     qrTextInput?.addEventListener('input', () => {
       if (isSyncingQrInput) return;
 
@@ -1576,6 +1896,10 @@
     resetButton?.addEventListener('click', () => {
       clearEnterPrintPrompt();
       if (currentPrinter) {
+        currentTapeWidthMm = isTapePrinter(currentPrinter) ? getResolvedDefaultTapeWidth(currentPrinter) : null;
+        currentTapeLengthMm = DEFAULT_TAPE_LENGTH_MM;
+        tapeMinimumLengthMm = DEFAULT_TAPE_LENGTH_MM;
+        tapeAutoLengthEnabled = true;
         resetCanvas(currentPrinter);
         lastBuilderStatePrinterKey = getPrinterStateKey(currentPrinter);
       }

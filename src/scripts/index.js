@@ -137,17 +137,48 @@
     `).join('');
   };
 
-  const getPrinterDisplayPrintCount = printer => {
-    const actualPrintCounter = Number.isFinite(printer?.actualPrintCounter)
-      ? printer.actualPrintCounter
+  const getPrinterDisplayPageCount = printer => {
+    const actualPageCounter = Number.isFinite(printer?.actualPageCounter)
+      ? printer.actualPageCounter
       : 0;
-    const combinedPrintCounter = Number.isFinite(printer?.printCounter)
-      ? printer.printCounter
-      : actualPrintCounter;
+    const combinedPageCounter = Number.isFinite(printer?.pageCounter)
+      ? printer.pageCounter
+      : actualPageCounter;
 
     return appState.testing
-      ? combinedPrintCounter
-      : actualPrintCounter;
+      ? combinedPageCounter
+      : actualPageCounter;
+  };
+
+  const getPrinterDisplayAreaSquareMm = printer => {
+    const actualAreaSquareMm = Number.isFinite(printer?.actualPaperAreaSquareMm)
+      ? printer.actualPaperAreaSquareMm
+      : 0;
+    const combinedAreaSquareMm = Number.isFinite(printer?.paperAreaSquareMm)
+      ? printer.paperAreaSquareMm
+      : actualAreaSquareMm;
+
+    return appState.testing
+      ? combinedAreaSquareMm
+      : actualAreaSquareMm;
+  };
+
+  const formatAreaSquareMm = value => {
+    const numericValue = Number(value);
+
+    if (!Number.isFinite(numericValue)) {
+      return '0';
+    }
+
+    return Math.round(numericValue).toLocaleString();
+  };
+
+  const buildPrinterCounterTooltip = printer => {
+    const numericPageCount = Math.max(0, Math.floor(Number(getPrinterDisplayPageCount(printer)) || 0));
+    const pageCount = formatWholeNumber(numericPageCount);
+    const pageLabel = numericPageCount === 1 ? 'page' : 'pages';
+    const areaSquareMm = formatAreaSquareMm(getPrinterDisplayAreaSquareMm(printer));
+    return `${pageCount} ${pageLabel} printed\n(${areaSquareMm}mm²)`;
   };
 
   const getFileExtension = fileName => {
@@ -156,6 +187,18 @@
   };
 
   const getPrinterTargetSize = printer => {
+    if (printer?.isTape) {
+      const tapeWidth = Number.parseInt(printer.lastTapeWidthMm || printer.defaultTape || printer.tapes?.[0], 10);
+      const density = Number(printer?.density);
+
+      if (Number.isFinite(tapeWidth) && Number.isFinite(density) && density > 0) {
+        return {
+          width: Math.round((60 / 25.4) * density),
+          height: Math.round((tapeWidth / 25.4) * density),
+        };
+      }
+    }
+
     if (Number.isFinite(printer?.sizePxWidth) && Number.isFinite(printer?.sizePxHeight)) {
       return {
         width: printer.sizePxWidth,
@@ -360,11 +403,12 @@
 
       if (!printer || !pageTotal) return;
 
-      const displayCount = getPrinterDisplayPrintCount(printer);
+      const displayCount = getPrinterDisplayPageCount(printer);
 
       pageTotal.innerHTML = buildPrinterCounterMarkup(displayCount);
-      pageTotal.setAttribute('aria-label', `Successful prints: ${formatWholeNumber(displayCount)}`);
-      pageTotal.setAttribute('title', 'Successful prints');
+      pageTotal.setAttribute('aria-label', `Successful pages printed: ${formatWholeNumber(displayCount)}`);
+      pageTotal.setAttribute('title', buildPrinterCounterTooltip(printer));
+      pageTotal.setAttribute('data-counter-tooltip', buildPrinterCounterTooltip(printer));
     });
   };
 
@@ -494,7 +538,7 @@
         <p class="printer-card__name">${escapeHtml(printer.displayName)}</p>
         <div class="printer-card__body">
           <img class="printer-card__icon" src="${printer.iconUrl || '/favicon.ico'}" alt="${escapeHtml(printer.displayName)}">
-          <p class="printer-card__page-total" aria-label="Successful prints: ${escapeHtml(formatWholeNumber(getPrinterDisplayPrintCount(printer)))}" title="Successful prints">${buildPrinterCounterMarkup(getPrinterDisplayPrintCount(printer))}</p>
+          <p class="printer-card__page-total" aria-label="Successful pages printed: ${escapeHtml(formatWholeNumber(getPrinterDisplayPageCount(printer)))}" title="${escapeHtml(buildPrinterCounterTooltip(printer))}" data-counter-tooltip="${escapeHtml(buildPrinterCounterTooltip(printer))}">${buildPrinterCounterMarkup(getPrinterDisplayPageCount(printer))}</p>
         </div>
         <div class="printer-card__details">
           <p class="printer-card__hint">Drop files anywhere on this card</p>

@@ -34,16 +34,22 @@ clientPluginConfig:
 # │    driver mode                                            │
 # │  - size: print target size in decimal form,               │
 # │    such as "4x6" or "3.8x5.8"                             │
+# │    or "tape" for variable-length tape labels              │
 # │  - units: inch, mm, cm, or px                             │
 # │  - density: ImageMagick density used to convert           │
 # │    physical size to effective pixels                      │
+# │  - tapes: supported tape widths in mm for                 │
+# │    size: "tape" printers                                  │
+# │  - defaultTape: optional default tape width               │
+# │  - output: required for cli mode; "png" or "pdf"          │
 # │  - acceptedKinds: any of pdf, image, zip                  │
 # │  - labelBuilder: enables the label builder                │
 # │  - bundleCopies: bundle image copies into                 │
 # │    one PDF before printing                                │
 # │  - cliCommand: command used for cli mode                  │
 # │  - cliArgs: args for cli mode; supports                   │
-# │    the {file} placeholder                                 │
+# │    the {file}, {tapeWidthMm}, and {lengthMm} placeholders │
+# │  - tape width controls print height; length is job-driven │
 # ╰───────────────────────────────────────────────────────────╯
 
 #  Example printer object with every supported key.         
@@ -67,14 +73,17 @@ clientPluginConfig:
 printers:
   ptouch:
     displayName: "P-Touch Cube"
-    # printMode: "driver"
-    driverName: "PTouchCube"
-    # size: "4x6"
-    # units: "inch"
-    # density: "200"
-    acceptedKinds: [ "pdf", "image", "zip" ]
+    printMode: "cli"
+    cliCommand: "ptouch-print"
+    cliArgs: [ "--image", "{file}" ]
+    output: "png"
+    size: "tape"
+    tapes: [ 6, 9, 12, 18, 24, 36 ]
+    defaultTape: 24
+    density: "180"
+    acceptedKinds: [ "image" ]
     labelBuilder: true
-    bundleCopies: true
+    bundleCopies: false
 
   zebra:
     displayName: "Zebra Label Printer"

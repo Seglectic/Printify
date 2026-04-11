@@ -62,6 +62,22 @@
           <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAddQr" type="button">🔳 Code</button>
         </div>
 
+        <div class="printify-builder__controls printify-builder__controls--tape" id="labelBuilderTapeControls" hidden>
+          <label class="printify-builder__field printify-builder__field--stacked" for="labelBuilderTapeWidth">
+            Tape Width
+            <select id="labelBuilderTapeWidth"></select>
+          </label>
+          <label class="printify-builder__field printify-builder__field--stacked" for="labelBuilderTapeLength">
+            Length (mm)
+            <input id="labelBuilderTapeLength" type="number" min="1" step="1" value="60" inputmode="numeric">
+          </label>
+          <label class="printify-builder__field printify-builder__field--checkbox" for="labelBuilderTapeAutoLength">
+            <input id="labelBuilderTapeAutoLength" type="checkbox" checked>
+            <span class="printify-builder__toggle" aria-hidden="true"></span>
+            <span>Auto Fit Length</span>
+          </label>
+        </div>
+
         <div class="printify-builder__control-stack">
           <div class="printify-builder__text-card" id="labelBuilderTextCard" hidden>
             <div class="printify-builder__text-card-header">
@@ -213,6 +229,11 @@
         let previewUrl = null;
 
         const describePrinterSize = printer => {
+          if (printer?.isTape) {
+            const tapeList = Array.isArray(printer?.tapes) ? printer.tapes.join(', ') : '';
+            return tapeList ? `tape • ${tapeList} mm` : 'tape';
+          }
+
           const physicalSize = printer?.size && printer?.units
             ? `${printer.size} ${printer.units}`
             : null;

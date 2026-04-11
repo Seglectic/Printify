@@ -295,6 +295,37 @@ img {
   opacity: 1;
 }
 
+.printer-card.is-open .printer-card__page-total::after {
+  content: attr(data-counter-tooltip);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 10px);
+  transform: translate(-50%, 8px);
+  min-width: 148px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--printify-line) 88%, transparent);
+  background: color-mix(in srgb, var(--printify-card) 96%, var(--printify-page));
+  color: var(--printify-ink);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+  letter-spacing: 0.01em;
+  text-align: center;
+  white-space: pre-line;
+  box-shadow: 0 10px 28px rgba(17, 24, 39, 0.22);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease, transform 120ms ease;
+  z-index: 3;
+}
+
+.printer-card.is-open .printer-card__page-total:hover::after,
+.printer-card.is-open .printer-card__page-total:focus-visible::after {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
 .printer-card__counter-digit {
   display: inline-flex;
   align-items: center;
@@ -835,6 +866,15 @@ img {
   margin-top: 14px;
 }
 
+.printify-builder__controls--tape {
+  justify-content: flex-start;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--printify-line) 86%, transparent);
+  background: color-mix(in srgb, var(--printify-card) 84%, var(--printify-page));
+}
+
 .printify-builder__tooltip-wrap {
   position: relative;
   display: inline-flex;
@@ -932,6 +972,11 @@ img {
 
 .printify-builder__field--copies {
   letter-spacing: 0.06em;
+}
+
+.printify-builder__field--tape-length input,
+#labelBuilderTapeLength {
+  width: 116px;
 }
 
 .printify-builder__field--checkbox input {

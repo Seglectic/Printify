@@ -101,6 +101,8 @@
   inset: 0;
   z-index: 20;
   background: rgba(20, 30, 43, 0.18);
+  -webkit-backdrop-filter: blur(1.5px);
+  backdrop-filter: blur(1.5px);
   opacity: 0;
   pointer-events: none;
   transition: opacity 280ms ease;
@@ -109,6 +111,14 @@
 .printify-log-drawer__scrim.is-open {
   opacity: 1;
   pointer-events: auto;
+}
+
+body.printify-log-drawer-open .printify-theme-toggle,
+body.printify-log-drawer-open .clippy,
+body.printify-log-drawer-open .clippy-balloon {
+  -webkit-filter: blur(1.5px);
+  filter: blur(1.5px);
+  transition: filter 280ms ease;
 }
 
 .printify-log-drawer__panel {
@@ -270,15 +280,15 @@
 .printify-log-drawer__preview-pane {
   position: fixed;
   top: 20px;
-  left: min(460px, calc(92vw + 28px));
-  z-index: 28;
+  left: min(460px, calc(92vw + 300px));
+  z-index: 23;
   width: min(420px, calc(100vw - 480px));
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transform: translate3d(0, -18px, 0);
-  transform-origin: top left;
-  transition: opacity 180ms ease, transform 240ms cubic-bezier(0.22, 1, 0.36, 1), visibility 0s linear 240ms;
+  transform: translate3d(-300px, 0, 0);
+  transform-origin: center left;
+  transition: opacity 220ms ease, transform 300ms cubic-bezier(0.22, 1, 0.36, 1), visibility 0s linear 300ms;
 }
 
 .printify-log-drawer__preview-pane.is-visible {
@@ -286,7 +296,7 @@
   visibility: visible;
   pointer-events: auto;
   transform: translate3d(0, 0, 0);
-  transition: opacity 180ms ease, transform 260ms cubic-bezier(0.22, 1, 0.36, 1), visibility 0s linear 0s;
+  transition: opacity 220ms ease, transform 320ms cubic-bezier(0.22, 1, 0.36, 1), visibility 0s linear 0s;
 }
 
 .printify-log-drawer__preview-pane.is-closing {
@@ -392,14 +402,14 @@
   box-shadow: var(--pld-shadow);
   padding: 18px;
   backdrop-filter: blur(12px);
-  transform: translateY(-10px);
-  transform-origin: top left;
+  transform: translateX(-18px);
+  transform-origin: center left;
   opacity: 0.78;
-  transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1), opacity 180ms ease;
+  transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1), opacity 220ms ease;
 }
 
 .printify-log-drawer__preview-pane.is-visible .printify-log-drawer__preview-card {
-  transform: translateY(0);
+  transform: translateX(0);
   opacity: 1;
 }
 

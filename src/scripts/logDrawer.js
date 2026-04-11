@@ -48,12 +48,12 @@
           <div class="printify-log-drawer__preview-meta" data-role="preview-meta"></div>
         </div>
         <div class="printify-log-drawer__preview-actions">
+          <button class="printify-log-drawer__preview-button printify-log-drawer__preview-button--secondary" type="button" data-role="preview-open">Open Image</button>
+          <button class="printify-log-drawer__preview-button printify-log-drawer__preview-button--primary" type="button" data-role="preview-print">Reprint</button>
           <label class="printify-log-drawer__preview-field" for="printifyLogDrawerCopies">
             Copies
             <input class="printify-log-drawer__preview-input" id="printifyLogDrawerCopies" data-role="preview-copies" type="number" min="1" max="50" value="1">
           </label>
-          <button class="printify-log-drawer__preview-button printify-log-drawer__preview-button--secondary" type="button" data-role="preview-open">Open Image</button>
-          <button class="printify-log-drawer__preview-button printify-log-drawer__preview-button--primary" type="button" data-role="preview-print">Reprint</button>
         </div>
         <p class="printify-log-drawer__preview-status" data-role="preview-status"></p>
       </div>
@@ -913,10 +913,12 @@
       panel.classList.toggle('is-open', isOpen);
       scrim.classList.toggle('is-open', isOpen);
       toggle.classList.toggle('is-hidden', isOpen);
+      document.body.classList.toggle('printify-log-drawer-open', isOpen);
 
       if (!isOpen) {
         expandedChecksumJobKeys.clear();
         selectedChecksumJobKeys.clear();
+        closePreviewPane();
         renderLogs(currentJobs);
         closeConfirmPane();
       }

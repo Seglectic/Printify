@@ -2,7 +2,7 @@
   // ╭──────────────────────────╮
   // │  Shared constants        │
   // ╰──────────────────────────╯
-  const APP_VERSION = '2.6.3';
+  const APP_VERSION = '2.7.1';
   window.PRINTIFY_CLIENT_VERSION = APP_VERSION;
   const PRINTIFY_LOG_ROUTE = '#printifyLogDrawer';
   const PRINTIFY_FILE_KINDS = {
@@ -332,35 +332,72 @@
   // ╭──────────────────────────╮
   // │  Server bootstrap        │
   // ╰──────────────────────────╯
-  const loadVersion = () => fetch('/version')
-    .then(response => response.json())
-    .then(serverData => {
-      appState.serverVersion = serverData.version;
-      appState.pageHits = serverData.pageHits;
-      appState.printCounter = serverData.printCounter;
-      appState.exactPrintCounter = Number.isFinite(serverData.exactPrintCounter)
-        ? serverData.exactPrintCounter
-        : serverData.printCounter;
-      appState.pageCounter = Number.isFinite(serverData.pageCounter) ? serverData.pageCounter : 0;
-      appState.actualPrintCounter = Number.isFinite(serverData.actualPrintCounter) ? serverData.actualPrintCounter : 0;
-      appState.actualPageCounter = Number.isFinite(serverData.actualPageCounter) ? serverData.actualPageCounter : 0;
-      appState.testingPrintCounter = Number.isFinite(serverData.testingPrintCounter) ? serverData.testingPrintCounter : 0;
-      appState.testingPageCounter = Number.isFinite(serverData.testingPageCounter) ? serverData.testingPageCounter : 0;
-      appState.paperAreaSquareMm = Number.isFinite(serverData.paperAreaSquareMm) ? serverData.paperAreaSquareMm : 0;
-      appState.actualPaperAreaSquareMm = Number.isFinite(serverData.actualPaperAreaSquareMm) ? serverData.actualPaperAreaSquareMm : 0;
-      appState.testingPaperAreaSquareMm = Number.isFinite(serverData.testingPaperAreaSquareMm) ? serverData.testingPaperAreaSquareMm : 0;
-      appState.serverDataVersion = serverData.dataVersion || 'Unknown';
-      appState.testing = Boolean(serverData.testing);
-      appState.lastStartedAt = serverData.lastStartedAt || null;
-      appState.lastPrintAt = serverData.lastPrintAt || null;
-      appState.lastPrintJob = serverData.lastPrintJob || null;
-      appState.dailyStats = serverData.dailyStats || {};
-      appState.assistant = serverData.assistant || 'Clippy';
+  const syncPrinterStatBadges = () => {
+    Array.from(printerGrid?.querySelectorAll('[data-role="printer-card"]') || []).forEach(card => {
+      const printerId = card.getAttribute('data-printer-id');
+      const printer = getPrinterById(printerId);
+      const pageTotal = card.querySelector('.printer-card__page-total');
+
+      if (!printer || !pageTotal) return;
+
+      const displayCount = getPrinterDisplayPrintCount(printer);
+      const displayText = formatWholeNumber(displayCount);
+
+      pageTotal.textContent = displayText;
+      pageTotal.setAttribute('aria-label', `Successful prints: ${displayCount}`);
+      pageTotal.setAttribute('title', 'Successful prints');
+    });
+  };
+
+  const applyServerData = (serverData, { updateFooter = false, patchPrinterStats = false } = {}) => {
+    if (!serverData || typeof serverData !== 'object') {
+      return;
+    }
+
+    appState.serverVersion = serverData.version;
+    appState.pageHits = serverData.pageHits;
+    appState.printCounter = serverData.printCounter;
+    appState.exactPrintCounter = Number.isFinite(serverData.exactPrintCounter)
+      ? serverData.exactPrintCounter
+      : serverData.printCounter;
+    appState.pageCounter = Number.isFinite(serverData.pageCounter) ? serverData.pageCounter : 0;
+    appState.actualPrintCounter = Number.isFinite(serverData.actualPrintCounter) ? serverData.actualPrintCounter : 0;
+    appState.actualPageCounter = Number.isFinite(serverData.actualPageCounter) ? serverData.actualPageCounter : 0;
+    appState.testingPrintCounter = Number.isFinite(serverData.testingPrintCounter) ? serverData.testingPrintCounter : 0;
+    appState.testingPageCounter = Number.isFinite(serverData.testingPageCounter) ? serverData.testingPageCounter : 0;
+    appState.paperAreaSquareMm = Number.isFinite(serverData.paperAreaSquareMm) ? serverData.paperAreaSquareMm : 0;
+    appState.actualPaperAreaSquareMm = Number.isFinite(serverData.actualPaperAreaSquareMm) ? serverData.actualPaperAreaSquareMm : 0;
+    appState.testingPaperAreaSquareMm = Number.isFinite(serverData.testingPaperAreaSquareMm) ? serverData.testingPaperAreaSquareMm : 0;
+    appState.serverDataVersion = serverData.dataVersion || 'Unknown';
+    appState.testing = Boolean(serverData.testing);
+    appState.lastStartedAt = serverData.lastStartedAt || null;
+    appState.lastPrintAt = serverData.lastPrintAt || null;
+    appState.lastPrintJob = serverData.lastPrintJob || null;
+    appState.dailyStats = serverData.dailyStats || {};
+    appState.assistant = serverData.assistant || 'Clippy';
+
+    if (patchPrinterStats && serverData.printers && appState.printers.length) {
+      appState.printers = appState.printers.map(printer => ({
+        ...printer,
+        ...(serverData.printers[printer.id] || {}),
+      }));
+      syncPrinterStatBadges();
+    }
+
+    if (updateFooter) {
       footer.textContent = '';
       typeWrite(footer, `Client v${APP_VERSION}`, 40);
       window.setTimeout(() => {
         typeWrite(footer, ` | Server v${serverData.version}`, 40);
       }, 1200);
+    }
+  };
+
+  const loadVersion = options => fetch('/version')
+    .then(response => response.json())
+    .then(serverData => {
+      applyServerData(serverData, options);
+      return serverData;
     });
 
   const loadPrinters = () => fetch('/printers')
@@ -370,7 +407,7 @@
       renderPrinters(appState.printers);
     });
 
-  const refreshServerState = () => Promise.all([loadVersion(), loadPrinters()]);
+  const refreshServerState = () => loadVersion({ patchPrinterStats: true });
   const queueServerStateRefresh = () => {
     if (appState.statsRefreshTimer) {
       window.clearTimeout(appState.statsRefreshTimer);
@@ -1193,7 +1230,7 @@
     bootStatsSocket();
 
     try {
-      await Promise.all([loadVersion(), loadPrinters()]);
+      await Promise.all([loadVersion({ updateFooter: true }), loadPrinters()]);
       window.addEventListener('resize', updatePrinterGridVerticalOffset);
       bootClippy();
     } catch (error) {

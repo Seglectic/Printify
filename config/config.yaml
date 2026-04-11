@@ -43,6 +43,9 @@ clientPluginConfig:
 # │  - defaultTape: optional default tape width               │
 # │  - output: required for cli mode; "png" or "pdf"          │
 # │  - acceptedKinds: any of pdf, image, zip                  │
+# │  - monochrome: force image prep to black/white            │
+# │  - monochromeDither: floydsteinberg,                      │
+# │    riemersma, or none                                     │
 # │  - labelBuilder: enables the label builder                │
 # │  - bundleCopies: bundle image copies into                 │
 # │    one PDF before printing                                │
@@ -80,8 +83,10 @@ printers:
     size: "tape"
     tapes: [ 6, 9, 12, 18, 24, 36 ]
     defaultTape: 24
-    density: "180"
+    density: "135"
     acceptedKinds: [ "image" ]
+    monochrome: true
+    monochromeDither: "floydsteinberg"
     labelBuilder: true
     bundleCopies: false
 

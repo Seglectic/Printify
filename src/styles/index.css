@@ -178,6 +178,12 @@ img {
   pointer-events: none;
 }
 
+.printer-card--ghost {
+  position: fixed;
+  margin: 0;
+  z-index: 40;
+}
+
 .printer-card:hover,
 .printer-card:focus-visible,
 .printer-card.is-open,

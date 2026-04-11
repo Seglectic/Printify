@@ -601,6 +601,29 @@
     return card;
   };
 
+  const animatePrinterCardRemoval = card => {
+    if (!card?.isConnected) return;
+
+    const rect = card.getBoundingClientRect();
+    const ghost = card.cloneNode(true);
+
+    ghost.classList.add('printer-card--instant', 'printer-card--ghost');
+    ghost.classList.remove('is-open', 'is-highlighted', 'is-drop-invalid', 'is-drop-clearing', 'is-entering', 'is-removing');
+    ghost.style.left = `${rect.left}px`;
+    ghost.style.top = `${rect.top}px`;
+    ghost.style.width = `${rect.width}px`;
+    ghost.style.height = `${rect.height}px`;
+    document.body.appendChild(ghost);
+
+    window.requestAnimationFrame(() => {
+      ghost.classList.add('is-removing');
+    });
+
+    window.setTimeout(() => {
+      ghost.remove();
+    }, 130);
+  };
+
   const renderPrinters = (printers, { preserveExisting = false } = {}) => {
     if (appState.openPrinterId && !printers.some(printer => printer.id === appState.openPrinterId)) {
       appState.openPrinterId = null;
@@ -627,8 +650,20 @@
       Array.from(printerGrid.querySelectorAll('[data-role="printer-card"]'))
         .map(card => [card.getAttribute('data-printer-id'), card])
     );
+    const nextPrinterIds = new Set(printers.map(printer => printer.id));
 
     printerGrid.querySelector('.printer-card--empty')?.remove();
+
+    existingCards.forEach((card, printerId) => {
+      if (nextPrinterIds.has(printerId)) {
+        return;
+      }
+
+      resetCardDragState(card);
+      animatePrinterCardRemoval(card);
+      card.remove();
+      existingCards.delete(printerId);
+    });
 
     let insertionCursor = printerGrid.firstElementChild;
 
@@ -648,17 +683,6 @@
       const nextCard = createPrinterCardElement(printer, index, { instant: true });
       printerGrid.insertBefore(nextCard, insertionCursor);
       insertionCursor = nextCard.nextElementSibling;
-    });
-
-    existingCards.forEach(card => {
-      resetCardDragState(card);
-      card.classList.add('printer-card--instant', 'is-removing');
-      window.setTimeout(() => {
-        if (card.isConnected) {
-          card.remove();
-          updatePrinterGridVerticalOffset();
-        }
-      }, 130);
     });
 
     window.requestAnimationFrame(() => {

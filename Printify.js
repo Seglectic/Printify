@@ -55,6 +55,7 @@ const {
 } = require('./lib/logger');
 const { createServerSave }        = require('./lib/serverSave');
 const { createLogStore }          = require('./lib/logStore');
+const { createLogStats }          = require('./lib/logStats');
 const { createDeduplicator }      = require('./lib/deduplicator');
 const { createPrintingService }   = require('./lib/printing');
 const { createIngestService }     = require('./lib/ingest');
@@ -67,14 +68,21 @@ const { registerRoutes }          = require('./lib/routes');
 const app = express();                                   // Main Express app instance
 const httpServer = http.createServer(app);
 const runtimeConfig = createRuntimeConfig();
-const serverSave = createServerSave({
-  serverDataPath,
-  onPrintJobSaved: () => {},
-}); // Persist lightweight server stats across restarts.
 const logStore = createLogStore({
   logsDir,
   errorLogStamp,
 });
+const logStats = createLogStats({
+  logsDir,
+  printerRegistry: printers,
+  logStamp,
+  errorLogStamp,
+});
+const serverSave = createServerSave({
+  serverDataPath,
+  logStats,
+  onPrintJobSaved: () => {},
+}); // Persist lightweight server stats across restarts.
 const deduplicator = createDeduplicator({
   logsDir,
   logStamp,
@@ -173,6 +181,7 @@ const tui = createTui({
   logsDir,
   uploadsDir,
   logStore,
+  logStats,
   deduplicator,
   ingestService,
   onLogsPurged: notifyRecentLogUpdate,
@@ -222,6 +231,12 @@ const listenOnPort = requestedPort => new Promise((resolve, reject) => {
 });
 
 const startServer = async () => {
+  try {
+    await logStats.initialize();
+  } catch (error) {
+    errorLogStamp('Log stats initialization failed:', error.message);
+  }
+
   try {
     await deduplicator.initialize();
   } catch (error) {

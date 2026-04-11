@@ -213,6 +213,16 @@
     return `${(size / (1024 ** 3)).toFixed(1)} GB`;
   };
 
+  const formatPagesValue = pages => {
+    const pageCount = Number.parseInt(pages, 10);
+
+    if (!Number.isFinite(pageCount) || pageCount <= 0) {
+      return null;
+    }
+
+    return String(pageCount);
+  };
+
   // ╭──────────────────────────╮
   // │  Drawer factory          │
   // ╰──────────────────────────╯
@@ -468,6 +478,7 @@
           ? [['Original Print Time', formatDetailedTimestamp(job.reprintSourceTimestamp)]]
           : []),
         ['Copies', formatCopiesValue(job)],
+        ['Pages', formatPagesValue(job.pages)],
         ['File Size', formatFileSize(job.fileSizeBytes)],
         ['File Path', formatRelativeFilePath(job.filePath)],
         ['Error', job.error],

@@ -265,13 +265,35 @@ img {
   color: var(--printify-muted);
 }
 
+.printer-card__page-total {
+  position: relative;
+  z-index: 1;
+  margin: -20px 0 0;
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  text-align: center;
+  font-family: "Droid Sans Mono", "Lucida Console", Courier, monospace;
+  font-size: 18px;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  color: color-mix(in srgb, var(--printify-ink) 70%, transparent);
+  transition: max-height 220ms ease, opacity 180ms ease, margin-top 220ms ease;
+}
+
+.printer-card.is-open .printer-card__page-total {
+  max-height: 24px;
+  margin-top: -6px;
+  opacity: 1;
+}
+
 .printer-card__body {
   position: relative;
   z-index: 1;
   display: grid;
   place-items: center;
   flex: 1;
-  gap: 12px;
+  gap: 0;
   text-align: center;
 }
 
@@ -309,7 +331,7 @@ img {
 }
 
 .printer-card.is-open .printer-card__details {
-  max-height: 220px;
+  max-height: 252px;
   margin-top: 10px;
   opacity: 1;
 }

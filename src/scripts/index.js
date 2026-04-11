@@ -46,8 +46,17 @@
     pageHits: 0,
     printCounter: 0,
     exactPrintCounter: 0,
+    pageCounter: 0,
+    actualPrintCounter: 0,
+    actualPageCounter: 0,
+    testingPrintCounter: 0,
+    testingPageCounter: 0,
+    paperAreaSquareMm: 0,
+    actualPaperAreaSquareMm: 0,
+    testingPaperAreaSquareMm: 0,
     serverVersion: 'Unknown',
     serverDataVersion: 'Unknown',
+    testing: false,
     lastStartedAt: null,
     lastPrintAt: null,
     lastPrintJob: null,
@@ -58,6 +67,9 @@
     labelBuilder: null,
     logDrawer: null,
     openPrinterId: null,
+    statsSocket: null,
+    statsSocketReconnectTimer: null,
+    statsRefreshTimer: null,
   };
 
   const dragDepth = new Map();
@@ -94,6 +106,29 @@
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+
+  const formatWholeNumber = value => {
+    const numericValue = Number(value);
+
+    if (!Number.isFinite(numericValue)) {
+      return '0';
+    }
+
+    return numericValue.toLocaleString();
+  };
+
+  const getPrinterDisplayPrintCount = printer => {
+    const actualPrintCounter = Number.isFinite(printer?.actualPrintCounter)
+      ? printer.actualPrintCounter
+      : 0;
+    const combinedPrintCounter = Number.isFinite(printer?.printCounter)
+      ? printer.printCounter
+      : actualPrintCounter;
+
+    return appState.testing
+      ? combinedPrintCounter
+      : actualPrintCounter;
+  };
 
   const getFileExtension = fileName => {
     const segments = String(fileName || '').toLowerCase().split('.');
@@ -306,7 +341,16 @@
       appState.exactPrintCounter = Number.isFinite(serverData.exactPrintCounter)
         ? serverData.exactPrintCounter
         : serverData.printCounter;
+      appState.pageCounter = Number.isFinite(serverData.pageCounter) ? serverData.pageCounter : 0;
+      appState.actualPrintCounter = Number.isFinite(serverData.actualPrintCounter) ? serverData.actualPrintCounter : 0;
+      appState.actualPageCounter = Number.isFinite(serverData.actualPageCounter) ? serverData.actualPageCounter : 0;
+      appState.testingPrintCounter = Number.isFinite(serverData.testingPrintCounter) ? serverData.testingPrintCounter : 0;
+      appState.testingPageCounter = Number.isFinite(serverData.testingPageCounter) ? serverData.testingPageCounter : 0;
+      appState.paperAreaSquareMm = Number.isFinite(serverData.paperAreaSquareMm) ? serverData.paperAreaSquareMm : 0;
+      appState.actualPaperAreaSquareMm = Number.isFinite(serverData.actualPaperAreaSquareMm) ? serverData.actualPaperAreaSquareMm : 0;
+      appState.testingPaperAreaSquareMm = Number.isFinite(serverData.testingPaperAreaSquareMm) ? serverData.testingPaperAreaSquareMm : 0;
       appState.serverDataVersion = serverData.dataVersion || 'Unknown';
+      appState.testing = Boolean(serverData.testing);
       appState.lastStartedAt = serverData.lastStartedAt || null;
       appState.lastPrintAt = serverData.lastPrintAt || null;
       appState.lastPrintJob = serverData.lastPrintJob || null;
@@ -325,6 +369,18 @@
       appState.printers = payload.printers || [];
       renderPrinters(appState.printers);
     });
+
+  const refreshServerState = () => Promise.all([loadVersion(), loadPrinters()]);
+  const queueServerStateRefresh = () => {
+    if (appState.statsRefreshTimer) {
+      window.clearTimeout(appState.statsRefreshTimer);
+    }
+
+    appState.statsRefreshTimer = window.setTimeout(() => {
+      appState.statsRefreshTimer = null;
+      refreshServerState().catch(() => {});
+    }, 350);
+  };
 
   // ╭──────────────────────────╮
   // │  Printer rendering       │
@@ -368,6 +424,7 @@
         <p class="printer-card__name">${escapeHtml(printer.displayName)}</p>
         <div class="printer-card__body">
           <img class="printer-card__icon" src="${printer.iconUrl || '/favicon.ico'}" alt="${escapeHtml(printer.displayName)}">
+          <p class="printer-card__page-total" aria-label="Successful prints: ${escapeHtml(String(getPrinterDisplayPrintCount(printer)))}" title="Successful prints">${escapeHtml(formatWholeNumber(getPrinterDisplayPrintCount(printer)))}</p>
         </div>
         <div class="printer-card__details">
           <p class="printer-card__hint">Drop files anywhere on this card</p>
@@ -735,6 +792,7 @@
 
     const groupedFiles = groupFilesByKind(printer, files);
     const uploadResults = await uploadGroupedFiles(printer, groupedFiles, extraFields);
+    await refreshServerState();
     const skippedCount = uploadResults.reduce((total, result) => (
       total + Number(result?.skippedCount || 0)
     ), 0);
@@ -1028,6 +1086,50 @@
     }
   };
 
+  const bootStatsSocket = () => {
+    if (!('WebSocket' in window)) return;
+
+    const reconnectDelayMs = 2500;
+    const connect = () => {
+      if (
+        appState.statsSocket
+        && (
+          appState.statsSocket.readyState === window.WebSocket.OPEN
+          || appState.statsSocket.readyState === window.WebSocket.CONNECTING
+        )
+      ) {
+        return;
+      }
+
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const socket = new window.WebSocket(`${protocol}//${window.location.host}/ws/logs`);
+      appState.statsSocket = socket;
+
+      socket.addEventListener('message', () => {
+        queueServerStateRefresh();
+      });
+
+      socket.addEventListener('close', () => {
+        if (appState.statsSocket === socket) {
+          appState.statsSocket = null;
+        }
+
+        if (appState.statsSocketReconnectTimer) return;
+
+        appState.statsSocketReconnectTimer = window.setTimeout(() => {
+          appState.statsSocketReconnectTimer = null;
+          connect();
+        }, reconnectDelayMs);
+      });
+
+      socket.addEventListener('error', () => {
+        socket.close();
+      });
+    };
+
+    connect();
+  };
+
   const bootLabelBuilder = () => {
     if (typeof window.createPrintifyLabelBuilder !== 'function') return;
 
@@ -1056,6 +1158,15 @@
       window.setTimeout(() => {
         const line = window.PrintifyQuippy?.getRandomBootLine({
           printCounter: appState.exactPrintCounter || appState.printCounter,
+          pageCounter: appState.pageCounter,
+          actualPrintCounter: appState.actualPrintCounter,
+          actualPageCounter: appState.actualPageCounter,
+          testingPrintCounter: appState.testingPrintCounter,
+          testingPageCounter: appState.testingPageCounter,
+          paperAreaSquareMm: appState.paperAreaSquareMm,
+          actualPaperAreaSquareMm: appState.actualPaperAreaSquareMm,
+          testingPaperAreaSquareMm: appState.testingPaperAreaSquareMm,
+          testing: appState.testing,
           pageHits: appState.pageHits,
           printers: appState.printers,
           serverVersion: appState.serverVersion,
@@ -1079,6 +1190,7 @@
     bindPrinterEvents();
     bootLogDrawer();
     bootLabelBuilder();
+    bootStatsSocket();
 
     try {
       await Promise.all([loadVersion(), loadPrinters()]);

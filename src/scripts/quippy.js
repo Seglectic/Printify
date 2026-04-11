@@ -91,6 +91,21 @@
     '$printer remains available for $filekinds, assuming everyone behaves.',
   ];
 
+  const TREE_TEMPLATES = [
+    "You've killed $scoretrees trees so far.",
+    '$scorepages pages, that is about $scoretrees trees.',
+    '$scoretrees trees. Not a forest, but still a statement.',
+    '$actualpages real pages puts us at $actualtrees trees.',
+    '$testingpages testing pages have added $testingtrees trees to the rehearsal tally.',
+    'Paper math says $scorepages pages comes out to $scoretrees trees.',
+    '$actualtrees trees have gone into the tray in earnest.',
+    '$testingtrees trees have been emotionally compromised by testing mode.',
+  ];
+
+  const TREE_REFERENCE_PAGE_COUNT = 8333;
+  const LETTER_PAGE_AREA_SQUARE_MM = 215.9 * 279.4;
+  const TREE_REFERENCE_AREA_SQUARE_MM = TREE_REFERENCE_PAGE_COUNT * LETTER_PAGE_AREA_SQUARE_MM;
+
   const pickOne = values => {
     const cleanValues = (values || []).filter(Boolean);
     if (!cleanValues.length) return null;
@@ -141,6 +156,16 @@
     return `${days} day${days === 1 ? '' : 's'} ago`;
   };
 
+  const formatTreeCount = areaSquareMm => {
+    const numericArea = Number(areaSquareMm);
+
+    if (!Number.isFinite(numericArea) || numericArea < 0) {
+      return null;
+    }
+
+    return (numericArea / TREE_REFERENCE_AREA_SQUARE_MM).toFixed(1);
+  };
+
   const guessFileKindFromFilename = fileName => {
     const normalizedName = String(fileName || '').toLowerCase();
     if (!normalizedName) return null;
@@ -158,6 +183,14 @@
     const todayStats = getTodayStats(context?.dailyStats);
     const lastPrintJob = context?.lastPrintJob || null;
     const lastPrintKind = getJobFileKind(lastPrintJob);
+    const totalPages = Number.isFinite(context?.pageCounter) ? context.pageCounter : null;
+    const actualPages = Number.isFinite(context?.actualPageCounter) ? context.actualPageCounter : null;
+    const testingPages = Number.isFinite(context?.testingPageCounter) ? context.testingPageCounter : null;
+    const totalAreaSquareMm = Number.isFinite(context?.paperAreaSquareMm) ? context.paperAreaSquareMm : null;
+    const actualAreaSquareMm = Number.isFinite(context?.actualPaperAreaSquareMm) ? context.actualPaperAreaSquareMm : null;
+    const testingAreaSquareMm = Number.isFinite(context?.testingPaperAreaSquareMm) ? context.testingPaperAreaSquareMm : null;
+    const scorePages = context?.testing ? totalPages : actualPages;
+    const scoreAreaSquareMm = context?.testing ? totalAreaSquareMm : actualAreaSquareMm;
 
     return {
       printcount: () => (
@@ -178,6 +211,22 @@
       ),
       todayhits: () => (
         Number.isFinite(todayStats?.pageHits) ? String(todayStats.pageHits) : null
+      ),
+      scorepages: () => (
+        Number.isFinite(scorePages) ? String(scorePages) : null
+      ),
+      actualpages: () => (
+        Number.isFinite(actualPages) ? String(actualPages) : null
+      ),
+      testingpages: () => (
+        Number.isFinite(testingPages) && testingPages > 0 ? String(testingPages) : null
+      ),
+      scoretrees: () => formatTreeCount(scoreAreaSquareMm),
+      actualtrees: () => (
+        Number.isFinite(actualAreaSquareMm) && actualPages > 0 ? formatTreeCount(actualAreaSquareMm) : null
+      ),
+      testingtrees: () => (
+        Number.isFinite(testingAreaSquareMm) && testingPages > 0 ? formatTreeCount(testingAreaSquareMm) : null
       ),
       dataversion: () => context?.serverDataVersion || null,
       lastfile: () => lastPrintJob?.originalFilename || null,
@@ -259,6 +308,7 @@
 
   const getBootLines = context => ([
     ...buildTemplateLines(STAT_TEMPLATES, context || {}),
+    ...buildTemplateLines(TREE_TEMPLATES, context || {}),
     ...buildTemplateLines(LAST_PRINT_TEMPLATES, context || {}),
     ...buildCapabilityLines(context?.printers),
     ...GENERAL_LINES,

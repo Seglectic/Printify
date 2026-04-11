@@ -101,13 +101,13 @@ printers:
     labelBuilder: true
     bundleCopies: false
 
-  # dymoLabel:
-  #   displayName: "Dymo Label Maker"
-  #   printMode: "driver"
-  #   driverName: "DYMO4XLUSB"
-  #   size: "2.125x1"
-  #   units: "inch"
-  #   density: "200"
-  #   acceptedKinds: [ "image" ]
-  #   labelBuilder: true
-  #   bundleCopies: true
+  dymoLabel:
+    displayName: "Dymo Label Maker"
+    printMode: "driver"
+    driverName: "DYMO4XLUSB"
+    size: "2.125x1"
+    units: "inch"
+    density: "200"
+    acceptedKinds: [ "image" ]
+    labelBuilder: true
+    bundleCopies: true

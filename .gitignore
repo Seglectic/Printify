@@ -7,3 +7,4 @@ yarn.lock
 lib/previewCache/*.png
 logs/*.ndjson
 config/config.yaml
+config/config.yaml

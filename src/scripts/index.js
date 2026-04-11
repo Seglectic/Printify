@@ -463,11 +463,11 @@
       return serverData;
     });
 
-  const loadPrinters = () => fetch('/printers')
+  const loadPrinters = ({ preserveExisting = false } = {}) => fetch('/printers')
     .then(response => response.json())
     .then(payload => {
       appState.printers = payload.printers || [];
-      renderPrinters(appState.printers);
+      renderPrinters(appState.printers, { preserveExisting });
     });
 
   const loadClientPlugins = () => fetch('/client-plugins')
@@ -485,7 +485,7 @@
     });
 
   const refreshServerState = () => loadVersion({ patchPrinterStats: true });
-  const refreshPrinterState = () => loadPrinters()
+  const refreshPrinterState = () => loadPrinters({ preserveExisting: true })
     .then(() => loadVersion({ patchPrinterStats: true }));
   const queueServerStateRefresh = () => {
     if (appState.statsRefreshTimer) {
@@ -521,7 +521,91 @@
     return accepts.join(',');
   };
 
-  const renderPrinters = printers => {
+  const buildPrinterCardInnerMarkup = printer => `
+    <div class="printer-card__overlay" aria-hidden="true"></div>
+    <div class="printer-card__file-count" data-role="file-count" style="--printer-file-count-ratio:${getPrinterPaperRatio(printer)};" aria-hidden="true">
+      <span class="printer-card__file-count-text">
+        <span class="printer-card__file-count-number">1</span>
+      </span>
+    </div>
+    <p class="printer-card__name">${escapeHtml(printer.displayName)}</p>
+    <div class="printer-card__body">
+      <img class="printer-card__icon" src="${printer.iconUrl || '/favicon.ico'}" alt="${escapeHtml(printer.displayName)}">
+      <p class="printer-card__page-total" aria-label="Successful pages printed: ${escapeHtml(formatWholeNumber(getPrinterDisplayPageCount(printer)))}" title="${escapeHtml(buildPrinterCounterTooltip(printer))}" data-counter-tooltip="${escapeHtml(buildPrinterCounterTooltip(printer))}">${buildPrinterCounterMarkup(getPrinterDisplayPageCount(printer))}</p>
+    </div>
+    <div class="printer-card__details">
+      <p class="printer-card__hint">Drop files anywhere on this card</p>
+      <div class="printer-card__kind-bubbles">
+        ${(printer.acceptedKinds || []).map(fileKind => `
+          <span class="printer-card__kind-bubble ${getFileKindToneClass(fileKind)}">${escapeHtml(PRINTIFY_FILE_KINDS[fileKind]?.label || fileKind.toUpperCase())}</span>
+        `).join('')}
+      </div>
+      <div class="printer-card__actions">
+        <button class="printer-card__button printer-card__button--primary" type="button" data-role="choose-files" data-printer-id="${printer.id}">Choose Files</button>
+        ${printer.labelBuilder ? `<button class="printer-card__button printer-card__button--secondary" type="button" data-role="label-builder" data-printer-id="${printer.id}">Label Builder</button>` : ''}
+      </div>
+    </div>
+    <input class="printer-card__file-input" data-role="file-input" data-printer-id="${printer.id}" type="file" multiple accept="${buildAcceptValue(printer.acceptedKinds || [])}">
+  `;
+
+  const buildPrinterCardMarkup = (printer, index) => `
+    <article
+      class="printer-card${appState.openPrinterId === printer.id ? ' is-open' : ''}"
+      data-role="printer-card"
+      data-printer-id="${printer.id}"
+      style="--card-index:${index};"
+      role="button"
+      tabindex="0"
+      aria-expanded="${appState.openPrinterId === printer.id ? 'true' : 'false'}"
+    >
+      ${buildPrinterCardInnerMarkup(printer)}
+    </article>
+  `;
+
+  const syncPrinterCard = (card, printer, index) => {
+    const isOpen = appState.openPrinterId === printer.id;
+    const preservedClasses = {
+      highlighted: card.classList.contains('is-highlighted'),
+      invalid: card.classList.contains('is-drop-invalid'),
+      clearing: card.classList.contains('is-drop-clearing'),
+      entering: card.classList.contains('is-entering'),
+      removing: card.classList.contains('is-removing'),
+    };
+
+    card.setAttribute('data-printer-id', printer.id);
+    card.setAttribute('style', `--card-index:${index};`);
+    card.setAttribute('role', 'button');
+    card.setAttribute('tabindex', '0');
+    card.setAttribute('aria-expanded', String(isOpen));
+    card.classList.toggle('is-open', isOpen);
+    card.innerHTML = buildPrinterCardInnerMarkup(printer);
+    card.classList.toggle('is-highlighted', preservedClasses.highlighted);
+    card.classList.toggle('is-drop-invalid', preservedClasses.invalid);
+    card.classList.toggle('is-drop-clearing', preservedClasses.clearing);
+    card.classList.toggle('is-entering', preservedClasses.entering);
+    card.classList.toggle('is-removing', preservedClasses.removing);
+  };
+
+  const createPrinterCardElement = (printer, index, { instant = false } = {}) => {
+    const template = document.createElement('template');
+    template.innerHTML = buildPrinterCardMarkup(printer, index).trim();
+    const card = template.content.firstElementChild;
+
+    if (instant) {
+      card.classList.add('printer-card--instant', 'is-entering');
+      window.requestAnimationFrame(() => {
+        card.classList.remove('is-entering');
+      });
+    }
+
+    return card;
+  };
+
+  const renderPrinters = (printers, { preserveExisting = false } = {}) => {
+    if (appState.openPrinterId && !printers.some(printer => printer.id === appState.openPrinterId)) {
+      appState.openPrinterId = null;
+    }
+
     if (!printers.length) {
       printerGrid.innerHTML = `
         <article class="printer-card printer-card--empty">
@@ -531,42 +615,45 @@
       return;
     }
 
-    printerGrid.innerHTML = printers.map((printer, index) => `
-      <article
-        class="printer-card${appState.openPrinterId === printer.id ? ' is-open' : ''}"
-        data-role="printer-card"
-        data-printer-id="${printer.id}"
-        style="--card-index:${index};"
-        role="button"
-        tabindex="0"
-        aria-expanded="${appState.openPrinterId === printer.id ? 'true' : 'false'}"
-      >
-        <div class="printer-card__overlay" aria-hidden="true"></div>
-        <div class="printer-card__file-count" data-role="file-count" style="--printer-file-count-ratio:${getPrinterPaperRatio(printer)};" aria-hidden="true">
-          <span class="printer-card__file-count-text">
-            <span class="printer-card__file-count-number">1</span>
-          </span>
-        </div>
-        <p class="printer-card__name">${escapeHtml(printer.displayName)}</p>
-        <div class="printer-card__body">
-          <img class="printer-card__icon" src="${printer.iconUrl || '/favicon.ico'}" alt="${escapeHtml(printer.displayName)}">
-          <p class="printer-card__page-total" aria-label="Successful pages printed: ${escapeHtml(formatWholeNumber(getPrinterDisplayPageCount(printer)))}" title="${escapeHtml(buildPrinterCounterTooltip(printer))}" data-counter-tooltip="${escapeHtml(buildPrinterCounterTooltip(printer))}">${buildPrinterCounterMarkup(getPrinterDisplayPageCount(printer))}</p>
-        </div>
-        <div class="printer-card__details">
-          <p class="printer-card__hint">Drop files anywhere on this card</p>
-          <div class="printer-card__kind-bubbles">
-            ${(printer.acceptedKinds || []).map(fileKind => `
-              <span class="printer-card__kind-bubble ${getFileKindToneClass(fileKind)}">${escapeHtml(PRINTIFY_FILE_KINDS[fileKind]?.label || fileKind.toUpperCase())}</span>
-            `).join('')}
-          </div>
-          <div class="printer-card__actions">
-            <button class="printer-card__button printer-card__button--primary" type="button" data-role="choose-files" data-printer-id="${printer.id}">Choose Files</button>
-            ${printer.labelBuilder ? `<button class="printer-card__button printer-card__button--secondary" type="button" data-role="label-builder" data-printer-id="${printer.id}">Label Builder</button>` : ''}
-          </div>
-        </div>
-        <input class="printer-card__file-input" data-role="file-input" data-printer-id="${printer.id}" type="file" multiple accept="${buildAcceptValue(printer.acceptedKinds || [])}">
-      </article>
-    `).join('');
+    if (!preserveExisting) {
+      printerGrid.innerHTML = printers.map((printer, index) => buildPrinterCardMarkup(printer, index)).join('');
+      window.requestAnimationFrame(() => {
+        updatePrinterGridVerticalOffset();
+      });
+      return;
+    }
+
+    const existingCards = new Map(
+      Array.from(printerGrid.querySelectorAll('[data-role="printer-card"]'))
+        .map(card => [card.getAttribute('data-printer-id'), card])
+    );
+
+    printerGrid.querySelector('.printer-card--empty')?.remove();
+
+    printers.forEach((printer, index) => {
+      const existingCard = existingCards.get(printer.id);
+
+      if (existingCard) {
+        syncPrinterCard(existingCard, printer, index);
+        printerGrid.appendChild(existingCard);
+        existingCards.delete(printer.id);
+        return;
+      }
+
+      printerGrid.appendChild(createPrinterCardElement(printer, index, { instant: true }));
+    });
+
+    existingCards.forEach(card => {
+      resetCardDragState(card);
+      card.classList.add('printer-card--instant', 'is-removing');
+      window.setTimeout(() => {
+        if (card.isConnected) {
+          card.remove();
+          updatePrinterGridVerticalOffset();
+        }
+      }, 130);
+    });
+
     window.requestAnimationFrame(() => {
       updatePrinterGridVerticalOffset();
     });

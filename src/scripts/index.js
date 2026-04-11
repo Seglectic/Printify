@@ -627,27 +627,27 @@
       Array.from(printerGrid.querySelectorAll('[data-role="printer-card"]'))
         .map(card => [card.getAttribute('data-printer-id'), card])
     );
-    const currentPrinterIds = Array.from(printerGrid.querySelectorAll('[data-role="printer-card"]'))
-      .map(card => card.getAttribute('data-printer-id'));
-    const nextPrinterIds = printers.map(printer => printer.id);
-    const hasSameOrder = currentPrinterIds.length === nextPrinterIds.length
-      && currentPrinterIds.every((printerId, index) => printerId === nextPrinterIds[index]);
 
     printerGrid.querySelector('.printer-card--empty')?.remove();
+
+    let insertionCursor = printerGrid.firstElementChild;
 
     printers.forEach((printer, index) => {
       const existingCard = existingCards.get(printer.id);
 
       if (existingCard) {
         syncPrinterCard(existingCard, printer, index);
-        if (!hasSameOrder) {
-          printerGrid.appendChild(existingCard);
+        if (existingCard !== insertionCursor) {
+          printerGrid.insertBefore(existingCard, insertionCursor);
         }
         existingCards.delete(printer.id);
+        insertionCursor = existingCard.nextElementSibling;
         return;
       }
 
-      printerGrid.appendChild(createPrinterCardElement(printer, index, { instant: true }));
+      const nextCard = createPrinterCardElement(printer, index, { instant: true });
+      printerGrid.insertBefore(nextCard, insertionCursor);
+      insertionCursor = nextCard.nextElementSibling;
     });
 
     existingCards.forEach(card => {

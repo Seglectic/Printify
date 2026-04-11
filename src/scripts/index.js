@@ -45,7 +45,13 @@
     printers: [],
     pageHits: 0,
     printCounter: 0,
+    exactPrintCounter: 0,
     serverVersion: 'Unknown',
+    serverDataVersion: 'Unknown',
+    lastStartedAt: null,
+    lastPrintAt: null,
+    lastPrintJob: null,
+    dailyStats: {},
     assistant: 'Clippy',
     feedbackTimer: null,
     assistantAgent: null,
@@ -297,6 +303,14 @@
       appState.serverVersion = serverData.version;
       appState.pageHits = serverData.pageHits;
       appState.printCounter = serverData.printCounter;
+      appState.exactPrintCounter = Number.isFinite(serverData.exactPrintCounter)
+        ? serverData.exactPrintCounter
+        : serverData.printCounter;
+      appState.serverDataVersion = serverData.dataVersion || 'Unknown';
+      appState.lastStartedAt = serverData.lastStartedAt || null;
+      appState.lastPrintAt = serverData.lastPrintAt || null;
+      appState.lastPrintJob = serverData.lastPrintJob || null;
+      appState.dailyStats = serverData.dailyStats || {};
       appState.assistant = serverData.assistant || 'Clippy';
       footer.textContent = '';
       typeWrite(footer, `Client v${APP_VERSION}`, 40);
@@ -1041,9 +1055,15 @@
 
       window.setTimeout(() => {
         const line = window.PrintifyQuippy?.getRandomBootLine({
-          printCounter: appState.printCounter,
+          printCounter: appState.exactPrintCounter || appState.printCounter,
           pageHits: appState.pageHits,
           printers: appState.printers,
+          serverVersion: appState.serverVersion,
+          serverDataVersion: appState.serverDataVersion,
+          lastStartedAt: appState.lastStartedAt,
+          lastPrintAt: appState.lastPrintAt,
+          lastPrintJob: appState.lastPrintJob,
+          dailyStats: appState.dailyStats,
         }) || 'I appear to be between remarks at the moment.';
 
         agent.speak(line);

@@ -594,7 +594,9 @@
     if (instant) {
       card.classList.add('printer-card--instant', 'is-entering');
       window.requestAnimationFrame(() => {
-        card.classList.remove('is-entering');
+        window.requestAnimationFrame(() => {
+          card.classList.remove('is-entering');
+        });
       });
     }
 
@@ -605,23 +607,59 @@
     if (!card?.isConnected) return;
 
     const rect = card.getBoundingClientRect();
-    const ghost = card.cloneNode(true);
+    const placeholder = document.createElement('div');
+    placeholder.className = 'printer-card printer-card--placeholder';
+    placeholder.setAttribute('aria-hidden', 'true');
+    placeholder.style.height = `${rect.height}px`;
+    card.replaceWith(placeholder);
 
-    ghost.classList.add('printer-card--instant', 'printer-card--ghost');
-    ghost.classList.remove('is-open', 'is-highlighted', 'is-drop-invalid', 'is-drop-clearing', 'is-entering', 'is-removing');
-    ghost.style.left = `${rect.left}px`;
-    ghost.style.top = `${rect.top}px`;
-    ghost.style.width = `${rect.width}px`;
-    ghost.style.height = `${rect.height}px`;
-    document.body.appendChild(ghost);
+    card.classList.add('printer-card--instant', 'printer-card--ghost');
+    card.classList.remove('is-open', 'is-highlighted', 'is-drop-invalid', 'is-drop-clearing', 'is-entering', 'is-removing');
+    card.style.left = `${rect.left}px`;
+    card.style.top = `${rect.top}px`;
+    card.style.width = `${rect.width}px`;
+    card.style.height = `${rect.height}px`;
+    card.style.pointerEvents = 'none';
+    document.body.appendChild(card);
+
+    const removeGhost = () => {
+      placeholder.remove();
+      card.remove();
+    };
+
+    if (typeof card.animate === 'function') {
+      const animation = card.animate(
+        [
+          {
+            opacity: 1,
+            transform: 'translateY(0) scale(1)',
+            filter: 'blur(0) saturate(1)',
+          },
+          {
+            opacity: 0,
+            transform: 'translateY(-10px) scale(0.94)',
+            filter: 'blur(6px) saturate(0.88)',
+          },
+        ],
+        {
+          duration: 180,
+          easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+          fill: 'forwards',
+        }
+      );
+
+      animation.addEventListener('finish', removeGhost, { once: true });
+      animation.addEventListener('cancel', removeGhost, { once: true });
+      return;
+    }
+
+    card.getBoundingClientRect();
 
     window.requestAnimationFrame(() => {
-      ghost.classList.add('is-removing');
+      card.classList.add('is-removing');
     });
 
-    window.setTimeout(() => {
-      ghost.remove();
-    }, 130);
+    window.setTimeout(removeGhost, 190);
   };
 
   const renderPrinters = (printers, { preserveExisting = false } = {}) => {
@@ -661,7 +699,6 @@
 
       resetCardDragState(card);
       animatePrinterCardRemoval(card);
-      card.remove();
       existingCards.delete(printerId);
     });
 

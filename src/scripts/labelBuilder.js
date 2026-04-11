@@ -12,6 +12,11 @@
   const DEFAULT_TAPE_LENGTH_MM = 60;
   const MIN_TAPE_LENGTH_MM = 8;
   const TAPE_EXPORT_PADDING_MM = 4;
+  const BUILDER_MODAL_CLOSE_MS = 220;
+  const BUILDER_HANDLE_BASE_SIZE = 12;
+  const BUILDER_HANDLE_TOUCH_SIZE = 22;
+  const BUILDER_ROTATION_SNAP_ANGLE = 45;
+  const BUILDER_ROTATION_SNAP_THRESHOLD = 8;
 
   const mmToPixels = (millimeters, density) => {
     const numericMillimeters = Number(millimeters);
@@ -201,6 +206,9 @@
     let currentTapeLengthMm = DEFAULT_TAPE_LENGTH_MM;
     let tapeMinimumLengthMm = DEFAULT_TAPE_LENGTH_MM;
     let tapeAutoLengthEnabled = true;
+    let currentViewportScale = 1;
+    let closeAnimationTimer = null;
+    let openAnimationFrame = null;
 
     const ensureCanvas = () => {
       if (canvas) return canvas;
@@ -214,6 +222,29 @@
       });
 
       return canvas;
+    };
+
+    const getCanvasControlSizing = () => {
+      const pageZoom = Math.max(0.2, Number(window.visualViewport?.scale) || 1);
+      const effectiveScale = Math.max((currentViewportScale || 1) * pageZoom, 0.12);
+      const controlScale = Math.max(1, Math.min(5, 1 / effectiveScale));
+      return {
+        cornerSize: Math.round(BUILDER_HANDLE_BASE_SIZE * controlScale),
+        touchCornerSize: Math.round(BUILDER_HANDLE_TOUCH_SIZE * controlScale),
+      };
+    };
+
+    const updateCanvasControlAppearance = () => {
+      const builderCanvas = ensureCanvas();
+      const { cornerSize, touchCornerSize } = getCanvasControlSizing();
+
+      builderCanvas.getObjects().forEach(object => {
+        object.set({
+          cornerSize,
+          touchCornerSize,
+        });
+        object.setCoords();
+      });
     };
 
     const applyCanvasViewportScale = () => {
@@ -237,12 +268,14 @@
       const displayScale = Math.min(1, availableWidth / logicalWidth, availableHeight / logicalHeight);
       const displayWidth = Math.max(1, Math.round(logicalWidth * displayScale));
       const displayHeight = Math.max(1, Math.round(logicalHeight * displayScale));
+      currentViewportScale = displayScale;
 
       [container, lowerCanvas, upperCanvas].forEach(element => {
         element.style.width = `${displayWidth}px`;
         element.style.height = `${displayHeight}px`;
       });
 
+      updateCanvasControlAppearance();
       syncMonochromePreviewViewport();
       builderCanvas.calcOffset();
       builderCanvas.requestRenderAll();
@@ -263,6 +296,30 @@
     const isCodeObject = object => object?.printifyObjectType === 'code';
     const isImageObject = object => object?.printifyObjectType === 'image';
     const isTapePrinter = printer => Boolean(printer?.isTape);
+    const isArrowNudgeKey = key => key === 'ArrowUp' || key === 'ArrowDown' || key === 'ArrowLeft' || key === 'ArrowRight';
+
+    const applyBuilderObjectDefaults = object => {
+      if (!object) return object;
+      const { cornerSize, touchCornerSize } = getCanvasControlSizing();
+
+      object.set({
+        transparentCorners: false,
+        cornerStyle: 'circle',
+        cornerColor: '#1f6f43',
+        borderColor: '#1f6f43',
+        borderScaleFactor: 2,
+        cornerSize,
+        touchCornerSize,
+        snapAngle: BUILDER_ROTATION_SNAP_ANGLE,
+        snapThreshold: BUILDER_ROTATION_SNAP_THRESHOLD,
+      });
+
+      if (object.controls?.mtr) {
+        object.controls.mtr.cursorStyleHandler = () => 'grab';
+      }
+
+      return object;
+    };
 
     const getCurrentTapeCanvasSize = printer => {
       const tapeWidthMm = currentTapeWidthMm || getResolvedDefaultTapeWidth(printer) || 12;
@@ -876,7 +933,7 @@
       return textbox;
     };
 
-    const buildTextbox = (canvasWidth, canvasHeight, overrides = {}) => attachTextboxFrameBehavior(new window.fabric.Textbox(Object.prototype.hasOwnProperty.call(overrides, 'text') ? overrides.text : '', {
+    const buildTextbox = (canvasWidth, canvasHeight, overrides = {}) => attachTextboxFrameBehavior(applyBuilderObjectDefaults(new window.fabric.Textbox(Object.prototype.hasOwnProperty.call(overrides, 'text') ? overrides.text : '', {
       left: Math.round(canvasWidth * 0.08),
       top: Math.round(canvasHeight * 0.08),
       width: Math.round(canvasWidth * 0.76),
@@ -897,7 +954,7 @@
       padding: 10,
       frameHeight: Math.max(56, Math.round(canvasHeight * 0.82)),
       ...overrides,
-    }));
+    })));
 
     const focusTextbox = textObject => {
       const builderCanvas = ensureCanvas();
@@ -1038,12 +1095,7 @@
         const imageElement = await loadImageElement(dataUrl);
         const FabricImageCtor = window.fabric.FabricImage || window.fabric.Image;
         const image = new FabricImageCtor(imageElement);
-        image.set({
-          cornerStyle: 'circle',
-          cornerColor: '#1f6f43',
-          borderColor: '#1f6f43',
-          borderScaleFactor: 2,
-          transparentCorners: false,
+        applyBuilderObjectDefaults(image).set({
           printifyObjectType: 'image',
         });
         fitObjectToCanvas(image);
@@ -1062,12 +1114,7 @@
       const FabricImageCtor = window.fabric.FabricImage || window.fabric.Image;
       const codeImage = new FabricImageCtor(imageElement);
 
-      codeImage.set({
-        cornerStyle: 'circle',
-        cornerColor: '#1f6f43',
-        borderColor: '#1f6f43',
-        borderScaleFactor: 2,
-        transparentCorners: false,
+      applyBuilderObjectDefaults(codeImage).set({
         codeText: rawCodeText,
         codeFormat,
         renderedCodeText: codeText,
@@ -1588,6 +1635,7 @@
       lastSelectedCodeObject = null;
       builderCanvas.add(defaultTextbox);
       focusTextbox(defaultTextbox);
+      updateCanvasControlAppearance();
       builderCanvas.requestRenderAll();
       applyCanvasViewportScale();
       syncTapeControls(printer);
@@ -1608,6 +1656,8 @@
 
       builderCanvas.setDimensions({ width, height });
       builderCanvas.backgroundColor = '#ffffff';
+      builderCanvas.getObjects().forEach(applyBuilderObjectDefaults);
+      updateCanvasControlAppearance();
       applyCanvasViewportScale();
       syncTapeControls(printer);
 
@@ -1628,7 +1678,16 @@
       isSerialPreviewActive = false;
       void stopMonochromePreview();
       syncPreviewButton();
+      window.clearTimeout(closeAnimationTimer);
+      if (openAnimationFrame) {
+        window.cancelAnimationFrame(openAnimationFrame);
+        openAnimationFrame = null;
+      }
       root.classList.remove('is-open');
+      root.classList.add('is-closing');
+      closeAnimationTimer = window.setTimeout(() => {
+        root.classList.remove('is-mounted', 'is-closing');
+      }, BUILDER_MODAL_CLOSE_MS);
     };
 
     const open = printer => {
@@ -1648,7 +1707,9 @@
 
       if (title) title.textContent = `${printer.displayName} Builder`;
 
-      root.classList.add('is-open');
+      window.clearTimeout(closeAnimationTimer);
+      root.classList.remove('is-closing');
+      root.classList.add('is-mounted');
       if (isRestoringSamePrinter) {
         restoreBuilderSession(printer);
       } else {
@@ -1657,8 +1718,12 @@
         lastBuilderStatePrinterKey = nextPrinterKey;
       }
       syncPreviewButton();
-      window.requestAnimationFrame(() => {
+      openAnimationFrame = window.requestAnimationFrame(() => {
         applyCanvasViewportScale();
+        openAnimationFrame = window.requestAnimationFrame(() => {
+          root.classList.add('is-open');
+          openAnimationFrame = null;
+        });
       });
     };
 
@@ -1725,6 +1790,42 @@
       return true;
     };
 
+    const nudgeActiveObject = key => {
+      const builderCanvas = ensureCanvas();
+      const activeObject = builderCanvas.getActiveObject();
+
+      if (!activeObject) return false;
+
+      const delta = {
+        ArrowUp: { left: 0, top: -1 },
+        ArrowDown: { left: 0, top: 1 },
+        ArrowLeft: { left: -1, top: 0 },
+        ArrowRight: { left: 1, top: 0 },
+      }[key];
+
+      if (!delta) return false;
+
+      const applyDelta = object => {
+        object.set({
+          left: Math.round((object.left || 0) + delta.left),
+          top: Math.round((object.top || 0) + delta.top),
+        });
+        object.setCoords();
+      };
+
+      if (activeObject instanceof window.fabric.ActiveSelection) {
+        activeObject.getObjects().forEach(applyDelta);
+        activeObject.setCoords();
+      } else {
+        applyDelta(activeObject);
+      }
+
+      builderCanvas.requestRenderAll();
+      refreshBuilderMeta();
+      void syncAutoFitTapeCanvas();
+      return true;
+    };
+
     const bindCanvasEvents = () => {
       const builderCanvas = ensureCanvas();
 
@@ -1781,6 +1882,11 @@
         bakeTextboxScale(event);
         refreshBuilderMeta();
         void syncAutoFitTapeCanvas();
+      });
+
+      builderCanvas.on('object:rotating', event => {
+        if (!event.target) return;
+        applyBuilderObjectDefaults(event.target);
       });
 
       builderCanvas.on('mouse:dblclick', event => {
@@ -2090,6 +2196,10 @@
       if (!root.classList.contains('is-open')) return;
       applyCanvasViewportScale();
     });
+    window.visualViewport?.addEventListener('resize', () => {
+      if (!root.classList.contains('is-open')) return;
+      applyCanvasViewportScale();
+    });
     document.addEventListener('keydown', event => {
       if (!root.classList.contains('is-open')) return;
 
@@ -2121,6 +2231,13 @@
       }
 
       clearEnterPrintPrompt();
+
+      if (isArrowNudgeKey(event.key) && !event.shiftKey && !event.metaKey && !event.ctrlKey && !event.altKey && !isEditingTextbox && !isTypingIntoField) {
+        if (nudgeActiveObject(event.key)) {
+          event.preventDefault();
+        }
+        return;
+      }
 
       if ((event.key === 'Delete' || event.key === 'Backspace') && !isEditingTextbox && !isTypingIntoField) {
         if (deleteActiveObject()) {

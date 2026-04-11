@@ -946,7 +946,20 @@
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       logSocket = new window.WebSocket(`${protocol}//${window.location.host}${settings.websocketPath}`);
 
-      logSocket.addEventListener('message', () => {
+      logSocket.addEventListener('message', event => {
+        let payload = null;
+
+        try {
+          payload = JSON.parse(event.data);
+        } catch (error) {
+          payload = null;
+        }
+
+        if (payload?.type === 'printers-updated') {
+          loadPrinters().finally(loadRecentLogs);
+          return;
+        }
+
         loadRecentLogs();
       });
 
@@ -1222,8 +1235,10 @@
     });
 
     document.addEventListener('keydown', event => {
+      const isBuilderOpen = Boolean(document.querySelector('.printify-builder.is-mounted, .printify-builder.is-open, .printify-builder.is-closing'));
       const isTypingTarget = ['INPUT', 'TEXTAREA'].includes(event.target.tagName) || event.target.isContentEditable;
 
+      if (isBuilderOpen && event.key !== 'Escape') return;
       if (isTypingTarget && event.key !== 'Escape') return;
 
       if (event.key === 'ArrowLeft' || event.key === 'Tab') {

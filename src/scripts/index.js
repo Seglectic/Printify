@@ -485,6 +485,8 @@
     });
 
   const refreshServerState = () => loadVersion({ patchPrinterStats: true });
+  const refreshPrinterState = () => loadPrinters()
+    .then(() => loadVersion({ patchPrinterStats: true }));
   const queueServerStateRefresh = () => {
     if (appState.statsRefreshTimer) {
       window.clearTimeout(appState.statsRefreshTimer);
@@ -493,6 +495,16 @@
     appState.statsRefreshTimer = window.setTimeout(() => {
       appState.statsRefreshTimer = null;
       refreshServerState().catch(() => {});
+    }, 350);
+  };
+  const queuePrinterStateRefresh = () => {
+    if (appState.statsRefreshTimer) {
+      window.clearTimeout(appState.statsRefreshTimer);
+    }
+
+    appState.statsRefreshTimer = window.setTimeout(() => {
+      appState.statsRefreshTimer = null;
+      refreshPrinterState().catch(() => {});
     }, 350);
   };
 
@@ -1219,7 +1231,20 @@
       const socket = new window.WebSocket(`${protocol}//${window.location.host}/ws/logs`);
       appState.statsSocket = socket;
 
-      socket.addEventListener('message', () => {
+      socket.addEventListener('message', event => {
+        let payload = null;
+
+        try {
+          payload = JSON.parse(event.data);
+        } catch (error) {
+          payload = null;
+        }
+
+        if (payload?.type === 'printers-updated') {
+          queuePrinterStateRefresh();
+          return;
+        }
+
         queueServerStateRefresh();
       });
 

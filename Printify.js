@@ -39,7 +39,6 @@ const {
   assistant,
   clientPlugins,
   imPath,
-  printers,
 } = require('./lib/configurator');
 const { createPluginLoader } = require('./lib/pluginLoader');
 const { createRuntimeConfig }    = require('./lib/runtimeConfig');
@@ -61,6 +60,7 @@ const { createLogStats }          = require('./lib/logStats');
 const { createDeduplicator }      = require('./lib/deduplicator');
 const { createPrintingService }   = require('./lib/printing');
 const { createIngestService }     = require('./lib/ingest');
+const { createPrinterManager }    = require('./lib/printerManager');
 const { registerRoutes }          = require('./lib/routes');
 
 
@@ -83,12 +83,13 @@ const logStore = createLogStore({
 });
 const logStats = createLogStats({
   logsDir,
-  printerRegistry: printers,
+  printerRegistry: {},
   logStamp,
   errorLogStamp,
 });
 const serverSave = createServerSave({
   serverDataPath,
+  legacyServerDataPath: path.join(rootDir, 'serverData.json'),
   logStats,
   onPrintJobSaved: () => {},
 }); // Persist lightweight server stats across restarts.
@@ -130,26 +131,42 @@ const ingestService = createIngestService({
   logStamp,
   errorLogStamp,
 });
+const logSocketClients = new Set();
+
+const notifySocketClients = payload => {
+  if (!WebSocket) {
+    return;
+  }
+
+  const message = JSON.stringify(payload);
+
+  logSocketClients.forEach(socket => {
+    if (socket.readyState === WebSocket.OPEN) {
+      socket.send(message);
+    }
+  });
+};
+
+const notifyRecentLogUpdate = () => {
+  notifySocketClients({ type: 'print-jobs-updated' });
+};
+
+const printerManager = createPrinterManager({
+  runtimeConfig,
+  printingService,
+  serverSave,
+  logStats,
+  logStamp,
+  errorLogStamp,
+  onReload: payload => {
+    notifySocketClients(payload);
+  },
+});
 
 
 // ┌────────────────┐
 // │  Server wiring │
 // └────────────────┘
-const logSocketClients = new Set();
-const notifyRecentLogUpdate = () => {
-  if (!WebSocket) {
-    return;
-  }
-
-  const payload = JSON.stringify({ type: 'print-jobs-updated' });
-
-  logSocketClients.forEach(socket => {
-    if (socket.readyState === WebSocket.OPEN) {
-      socket.send(payload);
-    }
-  });
-};
-
 serverSave.addPrintJobListener(notifyRecentLogUpdate);
 
 logStamp(`Printify.js v${version}`);
@@ -182,7 +199,7 @@ registerRoutes({
   configDir,
   configPath,
   iconsDir,
-  printers,
+  printerManager,
   printingService,
   ingestService,
   previewer,
@@ -192,6 +209,7 @@ registerRoutes({
   assistant,
   pluginLoader,
   runtimeConfig,
+  reloadPrinters: reason => printerManager.reload(reason),
   errorLogStamp,
   logStamp,
 });
@@ -204,7 +222,11 @@ const tui = createTui({
   logStats,
   deduplicator,
   ingestService,
-  onLogsPurged: notifyRecentLogUpdate,
+  onLogsPurged: () => {
+    serverSave.syncPrinterCache();
+    notifyRecentLogUpdate();
+  },
+  onReload: reason => printerManager.reload(reason),
   logStamp,
   errorLogStamp,
 });
@@ -253,6 +275,7 @@ const listenOnPort = requestedPort => new Promise((resolve, reject) => {
 const startServer = async () => {
   try {
     await logStats.initialize();
+    serverSave.syncPrinterCache();
   } catch (error) {
     errorLogStamp('Log stats initialization failed:', error.message);
   }

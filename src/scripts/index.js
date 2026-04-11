@@ -627,6 +627,11 @@
       Array.from(printerGrid.querySelectorAll('[data-role="printer-card"]'))
         .map(card => [card.getAttribute('data-printer-id'), card])
     );
+    const currentPrinterIds = Array.from(printerGrid.querySelectorAll('[data-role="printer-card"]'))
+      .map(card => card.getAttribute('data-printer-id'));
+    const nextPrinterIds = printers.map(printer => printer.id);
+    const hasSameOrder = currentPrinterIds.length === nextPrinterIds.length
+      && currentPrinterIds.every((printerId, index) => printerId === nextPrinterIds[index]);
 
     printerGrid.querySelector('.printer-card--empty')?.remove();
 
@@ -635,7 +640,9 @@
 
       if (existingCard) {
         syncPrinterCard(existingCard, printer, index);
-        printerGrid.appendChild(existingCard);
+        if (!hasSameOrder) {
+          printerGrid.appendChild(existingCard);
+        }
         existingCards.delete(printer.id);
         return;
       }

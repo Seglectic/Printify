@@ -66,6 +66,10 @@
     assistantAgent: null,
     labelBuilder: null,
     logDrawer: null,
+    clientPluginsById: {},
+    clientPluginModules: {},
+    hiddenTriggerBuffer: '',
+    hiddenTriggerTimer: null,
     openPrinterId: null,
     statsSocket: null,
     statsSocketReconnectTimer: null,
@@ -420,6 +424,20 @@
     .then(payload => {
       appState.printers = payload.printers || [];
       renderPrinters(appState.printers);
+    });
+
+  const loadClientPlugins = () => fetch('/client-plugins')
+    .then(response => response.json())
+    .then(payload => {
+      const plugins = Array.isArray(payload?.plugins) ? payload.plugins : [];
+
+      appState.clientPluginsById = plugins.reduce((pluginMap, pluginConfig) => {
+        if (pluginConfig?.id) {
+          pluginMap[pluginConfig.id] = pluginConfig;
+        }
+
+        return pluginMap;
+      }, {});
     });
 
   const refreshServerState = () => loadVersion({ patchPrinterStats: true });
@@ -1192,6 +1210,103 @@
     });
   };
 
+  const isTypingContext = target => {
+    if (!target || !(target instanceof Element)) return false;
+
+    if (target.closest('input, textarea, select, [contenteditable="true"]')) {
+      return true;
+    }
+
+    return target.getAttribute('contenteditable') === 'true';
+  };
+
+  const resetHiddenTriggerBuffer = () => {
+    appState.hiddenTriggerBuffer = '';
+
+    if (appState.hiddenTriggerTimer) {
+      window.clearTimeout(appState.hiddenTriggerTimer);
+      appState.hiddenTriggerTimer = null;
+    }
+  };
+
+  const queueHiddenTriggerReset = () => {
+    if (appState.hiddenTriggerTimer) {
+      window.clearTimeout(appState.hiddenTriggerTimer);
+    }
+
+    appState.hiddenTriggerTimer = window.setTimeout(() => {
+      resetHiddenTriggerBuffer();
+    }, 1200);
+  };
+
+  const loadClientPluginModule = async pluginConfig => {
+    const scriptUrl = String(pluginConfig?.scriptUrl || '').trim();
+
+    if (!scriptUrl) {
+      throw new Error(`Client plugin "${pluginConfig?.id || 'unknown'}" is missing a script URL.`);
+    }
+
+    if (!appState.clientPluginModules[scriptUrl]) {
+      appState.clientPluginModules[scriptUrl] = import(scriptUrl);
+    }
+
+    return appState.clientPluginModules[scriptUrl];
+  };
+
+  const activateClientPlugin = async pluginId => {
+    const pluginConfig = appState.clientPluginsById[pluginId];
+
+    if (!pluginConfig) {
+      throw new Error(`Client plugin "${pluginId}" is not enabled.`);
+    }
+
+    const pluginModule = await loadClientPluginModule(pluginConfig);
+
+    if (typeof pluginModule.activatePlugin !== 'function') {
+      throw new Error(`Client plugin "${pluginId}" does not expose an activatePlugin() entry.`);
+    }
+
+    return pluginModule.activatePlugin(pluginConfig, {
+      showFeedback,
+    });
+  };
+
+  const bindClientPluginTriggers = () => {
+    document.addEventListener('keydown', async event => {
+      if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return;
+      if (isTypingContext(event.target)) return;
+
+      const key = String(event.key || '');
+
+      if (key.length !== 1) {
+        return;
+      }
+
+      const nextBuffer = `${appState.hiddenTriggerBuffer}${key}`.slice(-12);
+      appState.hiddenTriggerBuffer = nextBuffer;
+      queueHiddenTriggerReset();
+
+      const enabledPlugins = Object.values(appState.clientPluginsById);
+      const matchedPlugin = enabledPlugins.find(pluginConfig => (
+        pluginConfig?.triggerCode
+        && nextBuffer.endsWith(String(pluginConfig.triggerCode))
+      ));
+
+      if (!matchedPlugin) {
+        return;
+      }
+
+      resetHiddenTriggerBuffer();
+
+      try {
+        await activateClientPlugin(matchedPlugin.id);
+      } catch (error) {
+        showFeedback(error.message || 'Could not open client plugin.');
+        console.error(error);
+      }
+    });
+  };
+
   const bootClippy = () => {
     if (appState.assistant === 'none') return;
     if (!window.clippy) return;
@@ -1240,12 +1355,17 @@
   const boot = async () => {
     bootTheme();
     bindPrinterEvents();
+    bindClientPluginTriggers();
     bootLogDrawer();
     bootLabelBuilder();
     bootStatsSocket();
 
     try {
-      await Promise.all([loadVersion({ updateFooter: true }), loadPrinters()]);
+      await Promise.all([
+        loadVersion({ updateFooter: true }),
+        loadPrinters(),
+        loadClientPlugins(),
+      ]);
       window.addEventListener('resize', updatePrinterGridVerticalOffset);
       bootClippy();
     } catch (error) {

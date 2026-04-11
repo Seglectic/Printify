@@ -1,0 +1,382 @@
+.printify-emu {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  font-family: "Droid Sans Mono", monospace;
+  --emu-shell: #c9cbc0;
+  --emu-shell-dark: #8a92aa;
+  --emu-ink: #24326e;
+  --emu-accent: #8d2f6f;
+  --emu-button: #1d1c20;
+  --emu-surface: rgba(224, 226, 216, 0.78);
+  --emu-card: #d9dbd1;
+  --emu-card-selected: #b5bac7;
+  --emu-border: rgba(82, 89, 111, 0.28);
+}
+
+.printify-emu [hidden] {
+  display: none !important;
+}
+
+.printify-emu__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(20, 24, 34, 0.72);
+  backdrop-filter: blur(10px);
+}
+
+.printify-emu.is-playing .printify-emu__backdrop {
+  background: rgba(20, 24, 34, 0.72);
+}
+
+.printify-emu__window {
+  position: relative;
+  width: min(1120px, calc(100vw - 32px));
+  margin: min(6vh, 42px) auto;
+  padding: 22px;
+  border: 1px solid var(--emu-border);
+  border-radius: 28px;
+  background: var(--emu-shell);
+  box-shadow:
+    0 20px 80px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.34);
+  color: var(--emu-ink);
+}
+
+.printify-emu.is-playing .printify-emu__window {
+  background: var(--emu-shell);
+  border-color: rgba(82, 89, 111, 0.38);
+  box-shadow:
+    0 28px 90px rgba(0, 0, 0, 0.36),
+    inset 0 1px 0 rgba(255, 255, 255, 0.34);
+  color: #24326e;
+}
+
+.printify-emu__header,
+.printify-emu__body,
+.printify-emu__actions {
+  display: flex;
+  gap: 18px;
+}
+
+.printify-emu__header,
+.printify-emu__body {
+  align-items: flex-start;
+}
+
+.printify-emu__header {
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.printify-emu__eyebrow,
+.printify-emu__title,
+.printify-emu__status,
+.printify-emu__controls p,
+.printify-emu__pane-eyebrow,
+.printify-emu__pane-copy {
+  margin: 0;
+}
+
+.printify-emu__eyebrow,
+.printify-emu__pane-eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--emu-accent);
+}
+
+.printify-emu__title {
+  margin-top: 6px;
+  font-size: clamp(26px, 4vw, 34px);
+}
+
+.printify-emu__title,
+.printify-emu.is-playing .printify-emu__title {
+  color: #263a7a;
+}
+
+.printify-emu__pane-copy {
+  margin-top: 6px;
+  color: #56617f;
+  font-size: 13px;
+}
+
+.printify-emu__launcher {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 22px;
+}
+
+.printify-emu__launcher-pane {
+  min-width: 0;
+  padding: 18px;
+  border-radius: 22px;
+  background: var(--emu-surface);
+  border: 1px solid rgba(36, 50, 110, 0.12);
+}
+
+.printify-emu__pane-header {
+  margin-bottom: 18px;
+}
+
+.printify-emu__rom-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 16px;
+}
+
+.printify-emu__slot-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.printify-emu__grid-card,
+.printify-emu__slot-card {
+  appearance: none;
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  gap: 10px;
+  width: 100%;
+  min-height: 156px;
+  padding: 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(36, 50, 110, 0.14);
+  background: var(--emu-card);
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: transform 120ms ease, border-color 120ms ease, background-color 120ms ease, box-shadow 120ms ease;
+}
+
+.printify-emu__grid-card:hover,
+.printify-emu__slot-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(141, 47, 111, 0.34);
+}
+
+.printify-emu__grid-card.is-selected,
+.printify-emu__slot-card.is-selected {
+  border-color: rgba(36, 50, 110, 0.42);
+  background: var(--emu-card-selected);
+  box-shadow: inset 0 0 0 1px rgba(36, 50, 110, 0.12);
+}
+
+.printify-emu__grid-icon,
+.printify-emu__slot-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(141, 47, 111, 0.18), rgba(36, 50, 110, 0.12));
+  box-shadow: inset 0 0 0 1px rgba(36, 50, 110, 0.12);
+  color: var(--emu-ink);
+  font-size: 18px;
+  letter-spacing: 0.08em;
+}
+
+.printify-emu__grid-title,
+.printify-emu__slot-label {
+  font-size: 15px;
+  color: var(--emu-ink);
+}
+
+.printify-emu__grid-meta,
+.printify-emu__slot-meta,
+.printify-emu__slot-stamp {
+  display: block;
+  color: #56617f;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.printify-emu__slot-stamp {
+  margin-top: auto;
+}
+
+.printify-emu__launcher-actions {
+  display: flex;
+  margin-top: 20px;
+}
+
+.printify-emu__screen-shell {
+  flex: 1 1 520px;
+  min-width: 0;
+  padding: 28px;
+  border-radius: 22px;
+  background: var(--emu-shell-dark);
+  box-shadow: inset 0 0 0 1px rgba(36, 50, 110, 0.16);
+}
+
+.printify-emu.is-playing .printify-emu__screen-shell {
+  background: #8a92aa;
+  box-shadow:
+    inset 0 0 0 1px rgba(36, 50, 110, 0.16),
+    inset 0 18px 30px rgba(255, 255, 255, 0.08);
+}
+
+.printify-emu__screen {
+  display: block;
+  width: 100%;
+  aspect-ratio: 160 / 144;
+  border-radius: 12px;
+  background: #8bac0f;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  box-shadow:
+    inset 0 0 0 2px rgba(12, 21, 12, 0.45),
+    0 14px 30px rgba(0, 0, 0, 0.28);
+}
+
+.printify-emu.is-playing .printify-emu__screen {
+  box-shadow:
+    inset 0 0 0 2px rgba(28, 35, 56, 0.4),
+    0 16px 28px rgba(36, 50, 110, 0.22);
+}
+
+.printify-emu__panel {
+  flex: 0 0 250px;
+  display: grid;
+  gap: 14px;
+}
+
+.printify-emu__status,
+.printify-emu__controls {
+  padding: 14px 15px;
+  border-radius: 16px;
+  background: rgba(141, 146, 170, 0.24);
+  border: 1px solid rgba(36, 50, 110, 0.14);
+}
+
+.printify-emu.is-playing .printify-emu__status,
+.printify-emu.is-playing .printify-emu__controls {
+  background: rgba(141, 146, 170, 0.24);
+  border: 1px solid rgba(36, 50, 110, 0.14);
+}
+
+.printify-emu__status {
+  min-height: 52px;
+  color: var(--emu-ink);
+}
+
+.printify-emu.is-playing .printify-emu__status {
+  color: #24326e;
+}
+
+.printify-emu__controls {
+  display: grid;
+  gap: 9px;
+  font-size: 13px;
+  color: #3d4768;
+}
+
+.printify-emu.is-playing .printify-emu__controls {
+  color: #3d4768;
+}
+
+.printify-emu__actions {
+  flex-wrap: wrap;
+}
+
+.printify-emu__actions--debug .printify-emu__button {
+  flex: 1 1 0;
+}
+
+.printify-emu__button,
+.printify-emu__close {
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  padding: 12px 16px;
+  font: inherit;
+  cursor: pointer;
+  transition: transform 120ms ease, opacity 120ms ease, background-color 120ms ease;
+}
+
+.printify-emu__button,
+.printify-emu__close {
+  background: var(--emu-button);
+  color: #ece8df;
+  box-shadow: inset 0 -2px 0 rgba(255, 255, 255, 0.06);
+}
+
+.printify-emu.is-playing .printify-emu__button,
+.printify-emu.is-playing .printify-emu__close {
+  background: #1d1c20;
+  color: #ece8df;
+  box-shadow: inset 0 -2px 0 rgba(255, 255, 255, 0.06);
+}
+
+.printify-emu__button--secondary {
+  background: var(--emu-accent);
+  color: #f5edf3;
+  border: 1px solid rgba(36, 50, 110, 0.12);
+}
+
+.printify-emu.is-playing .printify-emu__button--secondary {
+  background: #8d2f6f;
+  color: #f5edf3;
+  border: 1px solid rgba(36, 50, 110, 0.12);
+}
+
+.printify-emu__button--start {
+  width: 100%;
+  padding: 18px 22px;
+  font-size: 16px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.printify-emu__button:hover,
+.printify-emu__close:hover {
+  transform: translateY(-1px);
+}
+
+.printify-emu__button:active,
+.printify-emu__close:active {
+  transform: translateY(0);
+}
+
+.printify-emu__button:disabled,
+.printify-emu__close:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+  transform: none;
+}
+
+@media (max-width: 900px) {
+  .printify-emu__launcher,
+  .printify-emu__body {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+
+  .printify-emu__slot-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .printify-emu__screen-shell,
+  .printify-emu__panel {
+    width: 100%;
+    flex-basis: auto;
+  }
+}
+
+@media (max-width: 680px) {
+  .printify-emu__window {
+    padding: 16px;
+    margin: 16px auto;
+  }
+
+  .printify-emu__launcher {
+    gap: 16px;
+  }
+
+  .printify-emu__rom-grid,
+  .printify-emu__slot-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

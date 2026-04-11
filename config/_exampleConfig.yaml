@@ -14,6 +14,20 @@ port: 8020
 testing: true
 assistant: none
 # imPath: ""
+clientPlugins: []
+
+# Optional browser-only modules that stay unloaded until explicitly triggered.
+# Available plugins:
+# - emu: lazy-loads a Game Boy popup with a locally hosted ROM + save file
+#
+# clientPlugins:
+#   - emu
+#
+# clientPluginConfig:
+#   emu:
+#     rom: "tetris.gb"
+#     save: "tetris.sav"
+#     triggerCode: "123"
 
 # ╭───────────────────────────────────────────────────────────╮
 # │  Printer options                                          │

@@ -8,3 +8,7 @@ lib/previewCache/*.png
 logs/*.ndjson
 config/config.yaml
 config/config.yaml
+src/plugins/emu/ROM/*
+!src/plugins/emu/ROM/.gitkeep
+src/plugins/emu/SAVES/*
+!src/plugins/emu/SAVES/.gitkeep

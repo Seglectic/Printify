@@ -3,12 +3,9 @@
   // │  Confirm indicator UI    │
   // ╰──────────────────────────╯
   // Printer-local upload indicators:
-  // - SIZE controls the canvas diameter in CSS pixels
-  // - RING_SIZE controls how many indicators fit in one orbit before spilling out
-  // - RING_GAP controls the spacing between each orbit around the printer card
-  const CONFIRM_INDICATOR_SIZE = 72;
-  const CONFIRM_INDICATOR_RING_SIZE = 12;
-  const CONFIRM_INDICATOR_RING_GAP = 30;
+  const CONFIRM_INDICATOR_SIZE = 72;      // Confirm canvas in CSS px
+  const CONFIRM_INDICATOR_RING_SIZE = 12; // How many indicators fit in one orbit around a card
+  const CONFIRM_INDICATOR_RING_GAP = 30;  // Spacing between each orbit around the card
 
   const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
   const lerp = (start, end, progress) => start + ((end - start) * progress);
@@ -21,9 +18,9 @@
 
   const drawWorkingDots = (context, now) => {
     const center = CONFIRM_INDICATOR_SIZE / 2;
-    const dotCount = 6;
+    const dotCount = 5;
     const orbitalRadiusX = 12;
-    const orbitalRadiusY = 7;
+    const orbitalRadiusY = orbitalRadiusX*0.8;
     const dotRadius = 2.8;
     const time = now / 260;
 

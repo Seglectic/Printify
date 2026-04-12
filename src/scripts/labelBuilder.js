@@ -870,6 +870,7 @@
         frameWidth: nextFrameWidth,
       });
 
+      syncTextboxWrappingBehavior(textObject);
       if (textObject.autoFitText) fitTextboxFontToFrame(textObject);
       textObject.initDimensions();
       textObject.setCoords();
@@ -957,6 +958,33 @@
       return hasCanvasObject(lastSelectedCodeObject) ? lastSelectedCodeObject : null;
     };
 
+    const syncTextboxWrappingBehavior = textbox => {
+      if (!(textbox instanceof window.fabric.Textbox)) return textbox;
+
+      const availableWidth = Math.max(12, (textbox.frameWidth || textbox.width || 0) - (textbox.padding * 2));
+      const lines = String(textbox.text || '').split(/\r?\n/);
+
+      const shouldSplitLongWord = lines.some((line, lineIndex) => {
+        const words = typeof textbox.wordSplit === 'function'
+          ? textbox.wordSplit(line)
+          : line.split(/\s+/);
+
+        return words.some(word => {
+          if (!word) return false;
+          const graphemes = typeof textbox.graphemeSplit === 'function'
+            ? textbox.graphemeSplit(word)
+            : Array.from(word);
+          const wordWidth = typeof textbox._measureWord === 'function'
+            ? textbox._measureWord(graphemes, lineIndex, 0)
+            : 0;
+          return wordWidth > availableWidth;
+        });
+      });
+
+      textbox.splitByGrapheme = shouldSplitLongWord;
+      return textbox;
+    };
+
     const attachTextboxFrameBehavior = textbox => {
       const baseCalcTextHeight = textbox.calcTextHeight.bind(textbox);
 
@@ -973,6 +1001,7 @@
       };
       textbox.splitByGrapheme = false;
       ensureTextboxSerialState(textbox);
+      syncTextboxWrappingBehavior(textbox);
       textbox.on('editing:exited', () => {
         ensureTextboxSerialState(textbox);
         textbox.serialTemplateText = String(textbox.text || '');
@@ -1097,6 +1126,7 @@
       textObject.frameWidth = Math.max(textObject.frameWidth || textObject.width || 0, 48);
       textObject.frameHeight = Math.max(textObject.frameHeight || 0, 32);
       textObject.width = textObject.frameWidth;
+      syncTextboxWrappingBehavior(textObject);
       if (textObject.autoFitText) fitTextboxFontToFrame(textObject);
       textObject.initDimensions();
       textObject.setCoords();
@@ -1952,7 +1982,10 @@
           event.target.serialTemplateText = String(event.target.text || '');
           event.target.isPlaceholderText = false;
           event.target.width = event.target.frameWidth || event.target.width;
+          syncTextboxWrappingBehavior(event.target);
           if (event.target.autoFitText) fitTextboxFontToFrame(event.target);
+          event.target.initDimensions();
+          event.target.setCoords();
         }
         syncTextControls(event.target || null);
         refreshBuilderMeta();

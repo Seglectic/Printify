@@ -16,12 +16,12 @@ assistant: none
 fileWatchReload: true
 # imPath: ""
 
-# Optional plugin config lives under Plugins.
+# Optional plugin config lives under plugins.
 # Available plugins:
 # - emu: lazy-loads a Game Boy popup with a locally hosted ROM + save file
 # - ptouch: polls "ptouch-print --info" and keeps online/tape width in sync
 #
-# Plugins:
+# plugins:
 #   emu:
 #     enabled: false
 #     rom: "tetris.gb"

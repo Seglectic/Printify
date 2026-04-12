@@ -15,7 +15,7 @@ port: 8020
 testing: true
 assistant: Links
 # imPath: ""
-Plugins:
+plugins:
   emu:
     enabled: true
     rom: "tetris.gb"

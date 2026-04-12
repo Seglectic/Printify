@@ -48,8 +48,6 @@ const {
   promptForAlternativePort,
 } = require('./lib/tui');
 const {
-  createFileChecksum,
-  createJobLogEntry,
   logStamp,
   errorLogStamp,
 } = require('./lib/logger');
@@ -57,6 +55,7 @@ const { createServerSave }        = require('./lib/serverSave');
 const { createLogStore }          = require('./lib/logStore');
 const { createLogStats }          = require('./lib/logStats');
 const { createDeduplicator }      = require('./lib/deduplicator');
+const { createJobSystem }         = require('./lib/jobSystem');
 const { createPrintingService }   = require('./lib/printing');
 const { createIngestService }     = require('./lib/ingest');
 const { createPrinterManager }    = require('./lib/printerManager');
@@ -101,28 +100,6 @@ const previewer = createPreviewer({
   logStamp,
   errorLogStamp,
 });
-
-// Centralize print prep and dispatch so routes stay thin.
-const printingService = createPrintingService({
-  testing,
-  getTesting: () => runtimeConfig.getOption('testing'),
-  serverSave,
-  logStore,
-  deduplicator,
-  createFileChecksum,
-  createJobLogEntry,
-  logStamp,
-  errorLogStamp,
-  converter,
-  previewer,
-});
-const ingestService = createIngestService({
-  uploadsDir,
-  printingService,
-  deduplicator,
-  logStamp,
-  errorLogStamp,
-});
 const logSocketClients = new Set();
 
 const notifySocketClients = payload => {
@@ -138,6 +115,32 @@ const notifySocketClients = payload => {
     }
   });
 };
+const jobSystem = createJobSystem({
+  onQueueChange: notifySocketClients,
+  logStamp,
+  errorLogStamp,
+});
+
+// Centralize print prep and dispatch so routes stay thin.
+const printingService = createPrintingService({
+  testing,
+  getTesting: () => runtimeConfig.getOption('testing'),
+  serverSave,
+  logStore,
+  deduplicator,
+  logStamp,
+  errorLogStamp,
+  converter,
+  previewer,
+  jobSystem,
+});
+const ingestService = createIngestService({
+  uploadsDir,
+  printingService,
+  deduplicator,
+  logStamp,
+  errorLogStamp,
+});
 
 const notifyRecentLogUpdate = () => {
   notifySocketClients({ type: 'print-jobs-updated' });
@@ -215,6 +218,7 @@ registerRoutes({
   reloadPrinters: reason => printerManager.reload(reason),
   errorLogStamp,
   logStamp,
+  jobSystem,
 });
 
 const tui = createTui({
@@ -243,6 +247,10 @@ if (WebSocketServer) {
   logSocketServer.on('connection', socket => {
     logSocketClients.add(socket);
     socket.send(JSON.stringify({ type: 'connected' }));
+    socket.send(JSON.stringify({
+      type: 'job-queue-sync',
+      jobs: jobSystem.getActiveJobs(),
+    }));
 
     socket.on('close', () => {
       logSocketClients.delete(socket);

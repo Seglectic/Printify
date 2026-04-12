@@ -1,4 +1,65 @@
 (function () {
+  const ID_DEBUG_PREFIX = '[id-debug]';
+  const UUID_GREGORIAN_OFFSET_100NS = 122192928000000000n;
+  const UUID_100NS_PER_MILLISECOND = 10000n;
+  let lastClientJobTimestamp = 0n;
+
+  const debugIdLog = (...args) => {
+    if (typeof console !== 'undefined' && typeof console.debug === 'function') {
+      console.debug(ID_DEBUG_PREFIX, ...args);
+    }
+  };
+
+  const createClientJobId = () => {
+    if (!window.crypto?.getRandomValues) {
+      const fallbackId = `reprint-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
+      debugIdLog('reprint client id generated (fallback)', fallbackId);
+      return fallbackId;
+    }
+
+    let timestamp100ns = UUID_GREGORIAN_OFFSET_100NS + (BigInt(Date.now()) * UUID_100NS_PER_MILLISECOND);
+
+    if (timestamp100ns <= lastClientJobTimestamp) {
+      timestamp100ns = lastClientJobTimestamp + 1n;
+    }
+
+    lastClientJobTimestamp = timestamp100ns;
+
+    const clockSeq = new Uint8Array(2);
+    const nodeId = new Uint8Array(6);
+    window.crypto.getRandomValues(clockSeq);
+    window.crypto.getRandomValues(nodeId);
+
+    const bytes = new Uint8Array(16);
+    const timestampHex = timestamp100ns.toString(16).padStart(15, '0');
+
+    const writeHex = (offset, value) => {
+      for (let index = 0; index < value.length; index += 2) {
+        bytes[offset + (index / 2)] = Number.parseInt(value.slice(index, index + 2), 16);
+      }
+    };
+
+    writeHex(0, timestampHex.slice(0, 8));
+    writeHex(4, timestampHex.slice(8, 12));
+    bytes[6] = 0x60 | Number.parseInt(timestampHex.slice(12, 13), 16);
+    bytes[7] = Number.parseInt(timestampHex.slice(13, 15), 16);
+    bytes[8] = 0x80 | (clockSeq[0] & 0x3f);
+    bytes[9] = clockSeq[1];
+    bytes.set(nodeId, 10);
+
+    const hex = Array.from(bytes, value => value.toString(16).padStart(2, '0'));
+    const clientJobId = [
+      hex.slice(0, 4).join(''),
+      hex.slice(4, 6).join(''),
+      hex.slice(6, 8).join(''),
+      hex.slice(8, 10).join(''),
+      hex.slice(10, 16).join(''),
+    ].join('-');
+
+    debugIdLog('reprint client id generated', clientJobId);
+    return clientJobId;
+  };
+
   // ╭──────────────────────────╮
   // │  Shared drawer markup    │
   // ╰──────────────────────────╯
@@ -595,7 +656,10 @@
       }
 
       return Promise.all(batchRequests.map(request => (
-        fetch(settings.reprintUrl, {
+        (() => {
+          const clientJobId = createClientJobId();
+          debugIdLog('batch reprint start', `printer=${request.printerId}`, `clientJobId=${clientJobId}`, `timestamp=${request.timestamp}`);
+          return fetch(settings.reprintUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -605,6 +669,7 @@
             printerId: request.printerId,
             chksum: request.chksum,
             copyCount: request.copyCount,
+            clientJobId,
           }),
         }).then(async response => {
           if (!response.ok) {
@@ -612,7 +677,8 @@
           }
 
           return response.json();
-        })
+        });
+        })()
       )))
         .then(() => {
           if (batchStatus) {
@@ -1228,6 +1294,8 @@
       previewStatus.textContent = normalizedCopyCount > 1
         ? `Sending ${normalizedCopyCount} copies...`
         : 'Sending reprint...';
+      const clientJobId = createClientJobId();
+      debugIdLog('preview reprint start', `printer=${job.printerId}`, `clientJobId=${clientJobId}`, `timestamp=${job.timestamp}`);
 
       fetch(settings.reprintUrl, {
         method: 'POST',
@@ -1239,6 +1307,7 @@
           printerId: job.printerId,
           chksum: job.chksum,
           copyCount: normalizedCopyCount,
+          clientJobId,
         }),
       })
         .then(async response => {

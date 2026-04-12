@@ -40,6 +40,10 @@
     'A recent copy of this file was already sent to this printer. Queue another one?',
     'This document has a fresh print history for this printer. Send it again?',
   ];
+  const ID_DEBUG_PREFIX = '[id-debug]';
+  const UUID_GREGORIAN_OFFSET_100NS = 122192928000000000n;
+  const UUID_100NS_PER_MILLISECOND = 10000n;
+  let lastClientJobTimestamp = 0n;
 
   const appState = {
     printers: [],
@@ -75,6 +79,7 @@
     statsSocketReconnectTimer: null,
     statsRefreshTimer: null,
     confirmSystem: null,
+    activeJobs: [],
   };
 
   const dragDepth = new Map();
@@ -252,6 +257,62 @@
     if (!Number.isFinite(value)) return '0';
     const rounded = value >= 100 ? Math.round(value) : Math.round(value * 10) / 10;
     return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+  };
+
+  const debugIdLog = (...args) => {
+    if (typeof console !== 'undefined' && typeof console.debug === 'function') {
+      console.debug(ID_DEBUG_PREFIX, ...args);
+    }
+  };
+
+  const createClientJobId = () => {
+    if (!window.crypto?.getRandomValues) {
+      const fallbackId = `client-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
+      debugIdLog('client id generated (fallback)', fallbackId);
+      return fallbackId;
+    }
+
+    let timestamp100ns = UUID_GREGORIAN_OFFSET_100NS + (BigInt(Date.now()) * UUID_100NS_PER_MILLISECOND);
+
+    if (timestamp100ns <= lastClientJobTimestamp) {
+      timestamp100ns = lastClientJobTimestamp + 1n;
+    }
+
+    lastClientJobTimestamp = timestamp100ns;
+
+    const clockSeq = new Uint8Array(2);
+    const nodeId = new Uint8Array(6);
+    window.crypto.getRandomValues(clockSeq);
+    window.crypto.getRandomValues(nodeId);
+
+    const bytes = new Uint8Array(16);
+    const timestampHex = timestamp100ns.toString(16).padStart(15, '0');
+
+    const writeHex = (offset, value) => {
+      for (let index = 0; index < value.length; index += 2) {
+        bytes[offset + (index / 2)] = Number.parseInt(value.slice(index, index + 2), 16);
+      }
+    };
+
+    writeHex(0, timestampHex.slice(0, 8));
+    writeHex(4, timestampHex.slice(8, 12));
+    bytes[6] = 0x60 | Number.parseInt(timestampHex.slice(12, 13), 16);
+    bytes[7] = Number.parseInt(timestampHex.slice(13, 15), 16);
+    bytes[8] = 0x80 | (clockSeq[0] & 0x3f);
+    bytes[9] = clockSeq[1];
+    bytes.set(nodeId, 10);
+
+    const hex = Array.from(bytes, value => value.toString(16).padStart(2, '0'));
+    const clientJobId = [
+      hex.slice(0, 4).join(''),
+      hex.slice(4, 6).join(''),
+      hex.slice(6, 8).join(''),
+      hex.slice(8, 10).join(''),
+      hex.slice(10, 16).join(''),
+    ].join('-');
+
+    debugIdLog('client id generated', clientJobId);
+    return clientJobId;
   };
 
   const showFeedback = message => {
@@ -448,6 +509,7 @@
     appState.lastPrintJob = serverData.lastPrintJob || null;
     appState.dailyStats = serverData.dailyStats || {};
     appState.assistant = serverData.assistant || 'Clippy';
+    appState.activeJobs = Array.isArray(serverData.activeJobs) ? serverData.activeJobs : appState.activeJobs;
 
     if (patchPrinterStats && serverData.printers && appState.printers.length) {
       appState.printers = appState.printers.map(printer => ({
@@ -464,6 +526,8 @@
         typeWrite(footer, ` | Server v${serverData.version}`, 40);
       }, 1200);
     }
+
+    appState.confirmSystem?.syncJobs?.(appState.activeJobs);
   };
 
   const loadVersion = options => fetch('/version')
@@ -962,20 +1026,25 @@
     }
 
     const duplicates = Array.isArray(uploadResult.duplicates) ? uploadResult.duplicates : [];
-    const duplicatesByChecksum = new Map();
+    const duplicatePromptGroups = new Map();
     const approvedItemIds = [];
 
     duplicates.forEach(duplicate => {
-      const checksumKey = duplicate.checksum || duplicate.id;
-      const groupedDuplicates = duplicatesByChecksum.get(checksumKey) || [];
+      const isZipDuplicate = duplicate?.sourceType === 'upload-zip-pdf';
+      const groupKey = isZipDuplicate
+        ? `zip:${duplicate.uploadGroupId || duplicate.sourceArchiveName || duplicate.id}`
+        : `file:${duplicate.checksum || duplicate.id}`;
+      const groupedDuplicates = duplicatePromptGroups.get(groupKey) || [];
       groupedDuplicates.push(duplicate);
-      duplicatesByChecksum.set(checksumKey, groupedDuplicates);
+      duplicatePromptGroups.set(groupKey, groupedDuplicates);
     });
 
-    for (const groupedDuplicates of duplicatesByChecksum.values()) {
+    for (const groupedDuplicates of duplicatePromptGroups.values()) {
       const sampleDuplicate = groupedDuplicates[0];
+      const isZipDuplicate = sampleDuplicate?.sourceType === 'upload-zip-pdf';
+      const duplicateCount = groupedDuplicates.length;
 
-      if (sampleDuplicate.checksum && isDuplicateChecksumWhitelisted(sampleDuplicate.checksum)) {
+      if (!isZipDuplicate && sampleDuplicate.checksum && isDuplicateChecksumWhitelisted(sampleDuplicate.checksum)) {
         groupedDuplicates.forEach(duplicate => {
           approvedItemIds.push(duplicate.id);
         });
@@ -985,9 +1054,11 @@
       const accepted = await showPromptCard({
         tone: 'warning',
         eyebrow: 'Recent Match',
-        title: 'Duplicate Detected',
+        title: isZipDuplicate ? 'Duplicate ZIP Contents Detected' : 'Duplicate Detected',
         message: pickRandomPrompt(),
-        subtext: `Matched ${sampleDuplicate.originalFilename} on ${printer.displayName}. Approving it suppresses repeat warnings for 24 hours in this browser.`,
+        subtext: isZipDuplicate
+          ? `Matched ${duplicateCount} ${duplicateCount === 1 ? 'PDF' : 'PDFs'} from ${sampleDuplicate.sourceArchiveName || 'this ZIP'} on ${printer.displayName}. Approving sends the full duplicate set from that ZIP upload.`
+          : `Matched ${sampleDuplicate.originalFilename} on ${printer.displayName}. Approving it suppresses repeat warnings for 24 hours in this browser.`,
         confirmLabel: 'Send It',
         cancelLabel: 'Cancel',
       });
@@ -996,7 +1067,7 @@
         continue;
       }
 
-      if (sampleDuplicate.checksum) {
+      if (!isZipDuplicate && sampleDuplicate.checksum) {
         whitelistDuplicateChecksum(sampleDuplicate.checksum);
       }
 
@@ -1044,22 +1115,32 @@
 
     for (const [fileKind, files] of groupEntries) {
       files.forEach(file => {
+        const clientJobId = createClientJobId();
         uploadJobs.push({
           fileKind,
           file,
-          indicator: appState.confirmSystem?.createIndicator(printer.id) || {
+          clientJobId,
+          indicator: appState.confirmSystem?.createIndicator(printer.id, {
+            id: clientJobId,
+            state: 'uploading',
+            progress: 0.02,
+          }) || {
             setProgress() {},
+            setState() {},
             settle() {},
           },
         });
+        debugIdLog('indicator created', `printer=${printer.id}`, `clientJobId=${clientJobId}`, `file=${file.name}`);
       });
     }
 
-    const settledUploads = await Promise.allSettled(uploadJobs.map(async ({ fileKind, file, indicator }) => {
+    const settledUploads = await Promise.allSettled(uploadJobs.map(async ({ fileKind, file, indicator, clientJobId }) => {
       const routePath = `/${printer.id}/${fileKind}`;
       const formData = new FormData();
 
       formData.append(PRINTIFY_FILE_KINDS[fileKind].fieldName, file, file.name);
+      formData.append('clientJobId', clientJobId);
+      debugIdLog('upload start', `printer=${printer.id}`, `route=${routePath}`, `clientJobId=${clientJobId}`, `file=${file.name}`);
 
       Object.entries(extraFields).forEach(([fieldName, fieldValue]) => {
         if (fieldValue !== null && fieldValue !== undefined && fieldValue !== '') {
@@ -1071,12 +1152,20 @@
         const uploadResult = await uploadFormDataWithProgress({
           routePath,
           formData,
-          onProgress: progress => indicator.setProgress(progress),
+          onProgress: progress => indicator.setProgress(Math.max(0.02, progress * 0.28)),
         });
         const resolvedResult = await resolvePendingDuplicates(printer, uploadResult);
+        debugIdLog(
+          'upload success',
+          `printer=${printer.id}`,
+          `clientJobId=${clientJobId}`,
+          `printed=${Number(resolvedResult?.printedCount || 0)}`,
+          `needsConfirmation=${Boolean(resolvedResult?.needsConfirmation)}`
+        );
         indicator.settle('success');
         return resolvedResult;
       } catch (error) {
+        debugIdLog('upload failed', `printer=${printer.id}`, `clientJobId=${clientJobId}`, error.message);
         indicator.settle('error');
         throw new Error(`${printer.displayName}: ${error.message}`);
       }
@@ -1449,6 +1538,18 @@
 
         if (payload?.type === 'printers-updated') {
           queuePrinterStateRefresh();
+          return;
+        }
+
+        if (payload?.type === 'job-queue-updated' || payload?.type === 'job-queue-sync') {
+          appState.activeJobs = Array.isArray(payload.jobs) ? payload.jobs : [];
+          debugIdLog(
+            'job sync',
+            `type=${payload.type}`,
+            `count=${appState.activeJobs.length}`,
+            appState.activeJobs.map(job => `${job.id}:${job.printerId}:${job.state}`).join(', ') || 'none'
+          );
+          appState.confirmSystem?.syncJobs?.(appState.activeJobs);
           return;
         }
 

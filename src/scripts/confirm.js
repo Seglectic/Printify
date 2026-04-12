@@ -6,6 +6,7 @@
   const CONFIRM_INDICATOR_SIZE = 72;      // Confirm canvas in CSS px
   const CONFIRM_INDICATOR_RING_SIZE = 12; // How many indicators fit in one orbit around a card
   const CONFIRM_INDICATOR_RING_GAP = 30;  // Spacing between each orbit around the card
+  const ID_DEBUG_PREFIX = '[id-debug]';
 
   const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
   const lerp = (start, end, progress) => start + ((end - start) * progress);
@@ -16,11 +17,18 @@
     return 1 + ((overshoot + 1) * (shifted ** 3)) + (overshoot * (shifted ** 2));
   };
 
+  const isWorkingState = state => ['queued', 'uploading', 'processing', 'printing'].includes(state);
+  const debugIdLog = (...args) => {
+    if (typeof console !== 'undefined' && typeof console.debug === 'function') {
+      console.debug(ID_DEBUG_PREFIX, ...args);
+    }
+  };
+
   const drawWorkingDots = (context, now) => {
     const center = CONFIRM_INDICATOR_SIZE / 2;
     const dotCount = 5;
     const orbitalRadiusX = 12;
-    const orbitalRadiusY = orbitalRadiusX*0.8;
+    const orbitalRadiusY = orbitalRadiusX * 0.8;
     const dotRadius = 2.8;
     const time = now / 260;
 
@@ -70,10 +78,12 @@
     getPrinterCardElement,
   } = {}) => {
     const state = {
-      indicators: [],
+      indicatorsById: new Map(),
       frame: null,
       sequence: 0,
     };
+
+    const getIndicators = () => Array.from(state.indicatorsById.values());
 
     const getPrinterCardCenter = printerId => {
       const card = getPrinterCardElement?.(printerId);
@@ -93,7 +103,7 @@
     };
 
     const positionIndicator = indicator => {
-      const samePrinterIndicators = state.indicators
+      const samePrinterIndicators = getIndicators()
         .filter(entry => entry.printerId === indicator.printerId)
         .sort((left, right) => left.order - right.order);
       const index = samePrinterIndicators.findIndex(entry => entry.id === indicator.id);
@@ -171,6 +181,17 @@
       context.restore();
     };
 
+    const markIndicatorRemoving = indicator => {
+      if (!indicator || indicator.state === 'removing') {
+        return;
+      }
+
+      const currentState = indicator.state;
+      indicator.state = 'removing';
+      indicator.removingAt = performance.now();
+      indicator.resultState = indicator.resultState || (currentState === 'error' ? 'error' : 'success');
+    };
+
     const drawIndicator = (indicator, now) => {
       const context = indicator.context;
       const visualState = indicator.state === 'removing'
@@ -242,7 +263,7 @@
         context.fill();
       }
 
-      if (visualState === 'uploading') {
+      if (isWorkingState(visualState)) {
         drawWorkingDots(context, now);
       }
 
@@ -255,8 +276,9 @@
       context.restore();
 
       const holdDurationMs = isError ? 1800 : 900;
+      const shouldAutoRemove = isSettled && !indicator.managedByServer;
 
-      if (isSettled && settledAge >= holdDurationMs && indicator.state !== 'removing') {
+      if (shouldAutoRemove && settledAge >= holdDurationMs && indicator.state !== 'removing') {
         indicator.state = 'removing';
         indicator.removingAt = now;
       }
@@ -265,19 +287,18 @@
     };
 
     const stepIndicators = now => {
-      state.indicators.forEach(positionIndicator);
+      getIndicators().forEach(positionIndicator);
 
-      state.indicators = state.indicators.filter(indicator => {
+      getIndicators().forEach(indicator => {
         const shouldKeep = drawIndicator(indicator, now);
 
         if (!shouldKeep) {
           indicator.canvas.remove();
+          state.indicatorsById.delete(indicator.id);
         }
-
-        return shouldKeep;
       });
 
-      if (!state.indicators.length) {
+      if (!state.indicatorsById.size) {
         state.frame = null;
         return;
       }
@@ -293,57 +314,246 @@
       state.frame = window.requestAnimationFrame(stepIndicators);
     };
 
+    const ensureIndicator = (printerId, indicatorId) => {
+      const normalizedId = String(indicatorId || '').trim() || `confirm-${Date.now()}-${state.sequence}`;
+      const existingIndicator = state.indicatorsById.get(normalizedId);
+
+      if (existingIndicator) {
+        if (printerId) {
+          existingIndicator.printerId = printerId;
+        }
+
+        return existingIndicator;
+      }
+
+      if (!confirmLayer) {
+        return null;
+      }
+
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      const pixelRatio = window.devicePixelRatio || 1;
+
+      canvas.className = 'printify-confirm__indicator';
+      canvas.width = Math.round(CONFIRM_INDICATOR_SIZE * pixelRatio);
+      canvas.height = Math.round(CONFIRM_INDICATOR_SIZE * pixelRatio);
+      canvas.style.width = `${CONFIRM_INDICATOR_SIZE}px`;
+      canvas.style.height = `${CONFIRM_INDICATOR_SIZE}px`;
+      context.scale(pixelRatio, pixelRatio);
+      confirmLayer.appendChild(canvas);
+
+      const indicator = {
+        id: normalizedId,
+        order: state.sequence,
+        printerId,
+        canvas,
+        context,
+        state: 'uploading',
+        resultState: null,
+        createdAt: performance.now(),
+        settledAt: null,
+        removingAt: null,
+        progress: 0.02,
+        displayProgress: 0.02,
+        managedByServer: false,
+      };
+
+      state.sequence += 1;
+      state.indicatorsById.set(indicator.id, indicator);
+      debugIdLog('indicator registered', `id=${indicator.id}`, `printer=${printerId || 'none'}`, 'managedByServer=false');
+      ensureLoop();
+      return indicator;
+    };
+
+    const createController = indicator => ({
+      setProgress(value) {
+        if (!indicator) {
+          return;
+        }
+
+        indicator.progress = clamp(value, 0.02, 1);
+      },
+      setState(nextState, nextProgress) {
+        if (!indicator) {
+          return;
+        }
+
+        indicator.state = nextState;
+        indicator.resultState = nextState === 'success' || nextState === 'error'
+          ? nextState
+          : indicator.resultState;
+
+        if (Number.isFinite(nextProgress)) {
+          indicator.progress = clamp(nextProgress, 0.02, 1);
+        }
+
+        if (nextState === 'success' || nextState === 'error') {
+          indicator.progress = 1;
+          indicator.settledAt = performance.now();
+        }
+
+        ensureLoop();
+      },
+      isManagedByServer() {
+        return Boolean(indicator?.managedByServer);
+      },
+      settle(nextState) {
+        if (!indicator) {
+          return;
+        }
+
+        indicator.progress = 1;
+        indicator.state = nextState;
+        indicator.resultState = nextState;
+        indicator.settledAt = performance.now();
+        ensureLoop();
+      },
+    });
+
+    const getServerIndicatorId = job => {
+      const groupId = String(job?.groupId || job?.clientJobId || '').trim();
+      const jobId = String(job?.id || '').trim();
+      return groupId || jobId || null;
+    };
+
+    const mergeJobGroup = jobs => {
+      const groupedJobs = Array.isArray(jobs) ? jobs.filter(Boolean) : [];
+
+      if (!groupedJobs.length) {
+        return null;
+      }
+
+      const hasError = groupedJobs.some(job => String(job?.state || '').trim().toLowerCase() === 'error');
+      const hasWorkingJob = groupedJobs.some(job => {
+        const stateName = String(job?.statusIcon || job?.state || '').trim().toLowerCase();
+        return isWorkingState(stateName);
+      });
+      const allSettled = groupedJobs.every(job => {
+        const stateName = String(job?.state || '').trim().toLowerCase();
+        return stateName === 'success' || stateName === 'error';
+      });
+      const progressValues = groupedJobs
+        .map(job => Number(job?.progress))
+        .filter(Number.isFinite);
+      const statusIcon = hasError
+        ? 'error'
+        : (hasWorkingJob ? 'working' : (allSettled ? 'success' : 'processing'));
+
+      return {
+        id: getServerIndicatorId(groupedJobs[0]),
+        printerId: groupedJobs.find(job => job?.printerId)?.printerId || null,
+        statusIcon,
+        state: hasError
+          ? 'error'
+          : (hasWorkingJob ? 'printing' : (allSettled ? 'success' : 'processing')),
+        progress: progressValues.length ? Math.max(...progressValues) : null,
+      };
+    };
+
     return {
-      createIndicator(printerId) {
-        if (!confirmLayer) {
+      createIndicator(printerId, options = {}) {
+        const indicator = ensureIndicator(printerId, options.id);
+
+        if (!indicator) {
           return {
             setProgress() {},
+            setState() {},
             settle() {},
           };
         }
 
-        const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d');
-        const pixelRatio = window.devicePixelRatio || 1;
+        indicator.printerId = printerId;
 
-        canvas.className = 'printify-confirm__indicator';
-        canvas.width = Math.round(CONFIRM_INDICATOR_SIZE * pixelRatio);
-        canvas.height = Math.round(CONFIRM_INDICATOR_SIZE * pixelRatio);
-        canvas.style.width = `${CONFIRM_INDICATOR_SIZE}px`;
-        canvas.style.height = `${CONFIRM_INDICATOR_SIZE}px`;
-        context.scale(pixelRatio, pixelRatio);
-        confirmLayer.appendChild(canvas);
+        if (options.state) {
+          indicator.state = options.state;
+        }
 
-        const indicator = {
-          id: `confirm-${Date.now()}-${state.sequence}`,
-          order: state.sequence,
-          printerId,
-          canvas,
-          context,
-          state: 'uploading',
-          resultState: null,
-          createdAt: performance.now(),
-          settledAt: null,
-          removingAt: null,
-          progress: 0.02,
-          displayProgress: 0.02,
-        };
+        if (Number.isFinite(options.progress)) {
+          indicator.progress = clamp(options.progress, 0.02, 1);
+          indicator.displayProgress = indicator.progress;
+        }
 
-        state.sequence += 1;
-        state.indicators.push(indicator);
+        if (options.managedByServer) {
+          indicator.managedByServer = true;
+        }
+
         ensureLoop();
+        return createController(indicator);
+      },
+      syncJobs(jobs) {
+        const visibleJobIds = new Set();
+        const groupedJobs = new Map();
 
-        return {
-          setProgress(value) {
-            indicator.progress = clamp(value, 0.02, 1);
-          },
-          settle(nextState) {
-            indicator.progress = 1;
-            indicator.state = nextState;
+        (Array.isArray(jobs) ? jobs : []).forEach(job => {
+          const indicatorId = getServerIndicatorId(job);
+
+          if (!indicatorId) {
+            return;
+          }
+
+          if (!groupedJobs.has(indicatorId)) {
+            groupedJobs.set(indicatorId, []);
+          }
+
+          groupedJobs.get(indicatorId).push(job);
+        });
+
+        Array.from(groupedJobs.entries()).forEach(([indicatorId, groupedEntries]) => {
+          const mergedJob = mergeJobGroup(groupedEntries);
+
+          if (!mergedJob) {
+            return;
+          }
+
+          const existingIndicator = state.indicatorsById.get(indicatorId);
+          const indicator = existingIndicator || ensureIndicator(mergedJob.printerId || null, indicatorId);
+
+          if (!indicator) {
+            return;
+          }
+
+          visibleJobIds.add(indicator.id);
+          indicator.printerId = mergedJob.printerId || indicator.printerId || null;
+          indicator.managedByServer = true;
+          debugIdLog(
+            'indicator sync',
+            `jobId=${indicatorId}`,
+            `printer=${indicator.printerId || 'none'}`,
+            `existing=${Boolean(existingIndicator)}`,
+            `state=${mergedJob.state || 'unknown'}`,
+            `groupSize=${groupedEntries.length}`
+          );
+          const jobProgress = Number(mergedJob.progress);
+          if (Number.isFinite(jobProgress)) {
+            indicator.progress = clamp(jobProgress, 0.02, 1);
+          }
+
+          const nextState = String(mergedJob.statusIcon || mergedJob.state || 'uploading').trim().toLowerCase();
+          if (nextState === 'success' || nextState === 'error') {
+            if (indicator.resultState !== nextState) {
+              indicator.settledAt = performance.now();
+            }
+
             indicator.resultState = nextState;
-            indicator.settledAt = performance.now();
-          },
-        };
+            if (indicator.state !== 'removing') {
+              indicator.state = nextState;
+            }
+            indicator.progress = 1;
+          } else {
+            indicator.state = isWorkingState(nextState) ? nextState : 'processing';
+            indicator.resultState = null;
+            indicator.settledAt = null;
+          }
+        });
+
+        getIndicators()
+          .filter(indicator => indicator.managedByServer && !visibleJobIds.has(indicator.id))
+          .forEach(indicator => {
+            debugIdLog('indicator unsynced', `id=${indicator.id}`, `printer=${indicator.printerId || 'none'}`);
+            markIndicatorRemoving(indicator);
+          });
+
+        ensureLoop();
       },
       uploadFormDataWithProgress({ routePath, formData, onProgress }) {
         return new Promise((resolve, reject) => {

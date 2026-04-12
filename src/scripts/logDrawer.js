@@ -68,7 +68,10 @@
   // │  Shared drawer markup    │
   // ╰──────────────────────────╯
   const buildDrawerMarkup = () => `
-    <button class="printify-log-drawer__toggle" type="button" data-role="toggle">Logs</button>
+    <button class="printify-log-drawer__toggle" type="button" data-role="toggle">
+      <span class="printify-log-drawer__toggle-label">Logs</span>
+      <span class="printify-log-drawer__toggle-icon" aria-hidden="true"></span>
+    </button>
     <div class="printify-log-drawer__scrim" data-role="scrim"></div>
     <aside class="printify-log-drawer__panel" data-role="panel">
       <div class="printify-log-drawer__header">
@@ -77,7 +80,10 @@
           <button class="printify-log-drawer__close" type="button" data-role="close">Close</button>
         </div>
         <div class="printify-log-drawer__toolbar">
-          <p class="printify-log-drawer__subhead" data-role="subhead">Recent print logs from the last 60 minutes.</p>
+          <div class="printify-log-drawer__toolbar-copy">
+            <p class="printify-log-drawer__subhead" data-role="subhead">Recent print logs from the last 60 minutes.</p>
+            <p class="printify-log-drawer__hint">Press Tab to toggle.</p>
+          </div>
           <div class="printify-log-drawer__window-picker">
             <button class="printify-log-drawer__window-button" type="button" data-role="window-button">60 minutes</button>
             <div class="printify-log-drawer__window-menu" data-role="window-menu" hidden></div>
@@ -359,7 +365,7 @@
     const getCurrentWindowMinutes = () => LOOKBACK_OPTIONS[currentWindowIndex] || 60;
     const isDrawerOpen = () => panel.classList.contains('is-open');
     const formatWindowLabel = windowMinutes => {
-      if (windowMinutes < 60) return `${windowMinutes} minutes`;
+      if (windowMinutes < 60) return `${windowMinutes} mins`;
       if (windowMinutes === 60) return 'hour';
       if (windowMinutes === 1440) return 'day';
       if (windowMinutes === 2880) return '2 days';

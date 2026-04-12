@@ -85,7 +85,6 @@
   const dragDepth = new Map();
   const appShell = document.querySelector('.printify-app');
   const printerGrid = document.getElementById('printerGrid');
-  const footer = document.getElementById('footer');
   const feedback = document.getElementById('feedback');
   const confirmLayer = document.getElementById('confirmLayer');
   const promptLayer = document.getElementById('promptLayer');
@@ -97,6 +96,9 @@
   const promptCancel = document.getElementById('promptCancel');
   const promptConfirm = document.getElementById('promptConfirm');
   const themeToggle = document.getElementById('themeToggle');
+  const footerDrawer = window.createPrintifyFooterDrawer?.('#printifyFooterDrawer', {
+    footerSelector: '#footer',
+  }) || null;
   const setClientOverlayActive = (layerName, isActive) => {
     window.printifyClientOverlay?.setActive?.(layerName, isActive);
   };
@@ -104,14 +106,6 @@
   // ╭──────────────────────────╮
   // │  Formatting helpers      │
   // ╰──────────────────────────╯
-  const typeWrite = (element, text, speed) => {
-    for (let index = 0; index < text.length; index += 1) {
-      window.setTimeout(() => {
-        element.textContent += text.charAt(index);
-      }, speed * index);
-    }
-  };
-
   const escapeHtml = value => String(value || '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -449,7 +443,7 @@
 
     if (themeToggle) {
       const isDark = nextTheme === 'dark';
-      themeToggle.textContent = isDark ? '☀︎' : '☾';
+      themeToggle.dataset.icon = isDark ? 'sun' : 'moon';
       themeToggle.setAttribute('aria-pressed', String(isDark));
       themeToggle.setAttribute('aria-label', isDark ? 'Switch to light mode' : 'Switch to dark mode');
       themeToggle.setAttribute('title', isDark ? 'Switch to light mode' : 'Switch to dark mode');
@@ -525,11 +519,7 @@
     }
 
     if (updateFooter) {
-      footer.textContent = '';
-      typeWrite(footer, `Client v${APP_VERSION}`, 40);
-      window.setTimeout(() => {
-        typeWrite(footer, ` | Server v${serverData.version}`, 40);
-      }, 1200);
+      footerDrawer?.setVersionText?.(APP_VERSION, serverData.version);
     }
 
     appState.confirmSystem?.syncJobs?.(appState.activeJobs);

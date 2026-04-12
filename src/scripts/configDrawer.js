@@ -2,6 +2,7 @@
   const setClientOverlayActive = (layerName, isActive) => {
     window.printifyClientOverlay?.setActive?.(layerName, isActive);
   };
+  const configToggle = document.getElementById('configToggle');
 
   // ╭──────────────────────────╮
   // │  Shared drawer markup    │
@@ -14,7 +15,7 @@
           <h2 class="printify-config-drawer__title">Printify Config</h2>
           <button class="printify-config-drawer__close" type="button" data-role="close">Close</button>
         </div>
-        <p class="printify-config-drawer__subhead">Direct access to the live config. Save writes back to <code>config/config.yaml</code>.<br> Printify must be restarted for changes to apply.</p>
+        <p class="printify-config-drawer__subhead">Direct access to the live config. Save writes back to <code>config/config.yaml</code> and updates the running system right away.</p>
       </div>
       <div class="printify-config-drawer__body">
         <div class="printify-config-drawer__toolbar">
@@ -73,6 +74,14 @@
       if (status) status.textContent = message || '';
     };
 
+    const showConfigToggle = () => {
+      if (!configToggle) return;
+      configToggle.hidden = false;
+      window.requestAnimationFrame(() => {
+        configToggle.classList.add('is-visible');
+      });
+    };
+
     const setOpenState = nextOpenState => {
       isOpen = nextOpenState;
       panel?.classList.toggle('is-open', nextOpenState);
@@ -124,7 +133,7 @@
           throw new Error(payload.error || 'Config save failed');
         }
 
-        setStatus('Saved config/config.yaml. Restart Printify to apply changes.');
+        setStatus('Saved config/config.yaml. Changes are live now.');
       } catch (error) {
         setStatus(error.message);
       } finally {
@@ -139,6 +148,7 @@
 
     const openDrawer = () => {
       playKonamiAudio();
+      showConfigToggle();
       setOpenState(true);
       loadConfig();
     };
@@ -175,6 +185,17 @@
 
     save?.addEventListener('click', () => {
       saveConfig();
+    });
+
+    configToggle?.addEventListener('click', () => {
+      if (isOpen) {
+        setOpenState(false);
+        return;
+      }
+
+      showConfigToggle();
+      setOpenState(true);
+      loadConfig();
     });
 
     document.addEventListener('keydown', event => {

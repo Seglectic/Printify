@@ -51,49 +51,101 @@
 .printify-log-drawer__toggle {
   position: fixed;
   top: 20px;
-  left: 20px;
+  left: 0;
   z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
   border: 1px solid var(--pld-line);
-  border-radius: 999px;
-  min-height: 48px;
-  padding: 0 18px;
+  border-left: 0;
+  border-radius: 0 999px 999px 0;
+  min-height: 52px;
+  min-width: 60px;
+  padding: 0 12px 0 18px;
   background: var(--pld-button);
   color: var(--pld-ink);
-  box-shadow: var(--pld-shadow);
+  box-shadow:
+    0 18px 32px rgba(10, 14, 18, 0.16),
+    0 0 0 1px rgba(255, 255, 255, 0.03) inset;
   cursor: pointer;
   font: inherit;
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.14em;
+  white-space: nowrap;
   text-transform: uppercase;
   backdrop-filter: blur(10px);
   opacity: 1;
   visibility: visible;
-  transform: translateY(0);
+  overflow: hidden;
+  transform: translateX(-22%) translateY(0);
   transition:
     opacity 180ms ease,
     visibility 180ms ease,
-    transform 240ms ease,
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
     background 160ms ease,
     border-color 160ms ease,
     box-shadow 160ms ease;
 }
 
+.printify-log-drawer__toggle-label {
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateX(-6px);
+  transition:
+    max-width 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 140ms ease,
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.printify-log-drawer__toggle-icon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  background: currentColor;
+  -webkit-mask-image: url('/media/icon-logs.svg');
+  -webkit-mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  mask-image: url('/media/icon-logs.svg');
+  mask-position: center;
+  mask-repeat: no-repeat;
+  mask-size: contain;
+}
+
 .printify-log-drawer__toggle:hover,
 .printify-log-drawer__toggle:focus-visible {
   background: var(--pld-button-hover);
-  border-color: rgba(100, 212, 123, 0.35);
-  transform: translateY(-1px);
+  border-color: rgba(234, 240, 236, 0.42);
+  box-shadow:
+    0 22px 38px rgba(10, 14, 18, 0.2),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+  transform: translateX(-4%) translateY(-1px);
 }
 
-.printify-log-drawer__toggle:active {
-  transform: translateY(0) scale(0.97);
+.printify-log-drawer__toggle:hover .printify-log-drawer__toggle-label,
+.printify-log-drawer__toggle:focus-visible .printify-log-drawer__toggle-label {
+  max-width: 72px;
+  opacity: 1;
+  transform: translateX(0);
 }
 
 .printify-log-drawer__toggle.is-hidden {
   opacity: 0;
   visibility: hidden;
-  transform: translateY(-12px);
+  transform: translateX(-128%) translateY(0);
+}
+
+:root[data-theme='light'] .printify-log-drawer__toggle:hover,
+:root[data-theme='light'] .printify-log-drawer__toggle:focus-visible {
+  border-color: rgba(24, 33, 43, 0.28);
+}
+
+.printify-log-drawer button {
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .printify-log-drawer__scrim {
@@ -126,7 +178,7 @@
   box-shadow: var(--pld-shadow);
   border-right: 1px solid var(--pld-line);
   transform: translateX(calc(-100% - 24px));
-  transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
   backdrop-filter: blur(12px);
 }
 
@@ -602,6 +654,12 @@
   margin-top: 10px;
 }
 
+.printify-log-drawer__toolbar-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
 .printify-log-drawer__window-picker {
   position: relative;
   flex-shrink: 0;
@@ -613,6 +671,14 @@
   color: var(--pld-muted);
   font-size: 14px;
   line-height: 1.5;
+}
+
+.printify-log-drawer__hint {
+  margin: 2px 0 0;
+  color: var(--pld-muted);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  line-height: 1.4;
 }
 
 .printify-log-drawer__window-button {

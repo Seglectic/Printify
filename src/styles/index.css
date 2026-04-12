@@ -195,19 +195,23 @@ img {
 
 .printify-shell {
   width: 100%;
-  max-width: 1720px;
+  max-width: 2140px;
   margin: 0 auto;
 }
 
 .printify-printers {
   display: grid;
   align-items: start;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  justify-content: center;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 340px));
   gap: 22px;
 }
 
 .printer-card {
   position: relative;
+  width: 100%;
+  max-width: 340px;
+  justify-self: center;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
@@ -1552,10 +1556,12 @@ img {
   }
 
   .printify-printers {
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     gap: 16px;
   }
 
   .printer-card {
+    max-width: none;
     min-height: 280px;
     border-radius: 22px;
   }

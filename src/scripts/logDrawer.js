@@ -288,7 +288,11 @@
     const highlightedJobKeys = new Map();
     const highlightDurationMs = 1800;
     let pendingBatchReprint = null;
+    let hasBootstrappedData = false;
+    let hasPendingRefresh = false;
+    let previewImageObserver = null;
     const getCurrentWindowMinutes = () => LOOKBACK_OPTIONS[currentWindowIndex] || 60;
+    const isDrawerOpen = () => panel.classList.contains('is-open');
     const formatWindowLabel = windowMinutes => {
       if (windowMinutes < 60) return `${windowMinutes} minutes`;
       if (windowMinutes === 60) return 'hour';
@@ -854,9 +858,9 @@
                   </div>
                 </div>
               </div>
-              ${job.previewUrl ? `
+              ${job.thumbnailUrl ? `
                 <div class="printify-log-drawer__preview-stack">
-                  <button class="printify-log-drawer__preview-trigger${isPreviewSelected ? ' is-active' : ''}" type="button" data-role="preview-trigger" aria-expanded="${isPreviewSelected ? 'true' : 'false'}"><img class="printify-log-drawer__preview" src="${escapeHtml(job.previewUrl)}" alt="Preview for ${escapeHtml(formatJobFilename(job) || 'print job')}" loading="lazy"></button>
+                  <button class="printify-log-drawer__preview-trigger${isPreviewSelected ? ' is-active' : ''}" type="button" data-role="preview-trigger" aria-expanded="${isPreviewSelected ? 'true' : 'false'}"><img class="printify-log-drawer__preview" data-role="preview-image-thumb" data-preview-src="${escapeHtml(job.thumbnailUrl)}" alt="Preview for ${escapeHtml(formatJobFilename(job) || 'print job')}" loading="lazy"></button>
                   ${isReprintJob(job)
                     ? '<button class="printify-log-drawer__reprint-stamp" type="button" data-role="original-jump" title="Jump to original print">REPRINTED</button>'
                     : ''}
@@ -871,6 +875,7 @@
       }).join('');
 
       previousJobKeys = nextJobKeys;
+      observePreviewImages();
       syncBatchUi();
     };
 
@@ -885,6 +890,82 @@
         printerIconsById = {};
       });
 
+    const renderCurrentJobsIfOpen = () => {
+      if (!isDrawerOpen()) {
+        return;
+      }
+
+      renderLogs(currentJobs);
+      syncPreviewPane();
+    };
+
+    const disconnectPreviewImageObserver = () => {
+      if (previewImageObserver) {
+        previewImageObserver.disconnect();
+        previewImageObserver = null;
+      }
+    };
+
+    const unloadRenderedDrawerMedia = () => {
+      disconnectPreviewImageObserver();
+
+      if (previewImage) {
+        previewImage.removeAttribute('src');
+        previewImage.alt = '';
+      }
+
+      list.innerHTML = '';
+    };
+
+    const loadPreviewImage = image => {
+      if (!image || image.dataset.previewLoaded === 'true') {
+        return;
+      }
+
+      const previewSrc = image.getAttribute('data-preview-src');
+
+      if (!previewSrc) {
+        return;
+      }
+
+      image.src = previewSrc;
+      image.dataset.previewLoaded = 'true';
+    };
+
+    const observePreviewImages = () => {
+      disconnectPreviewImageObserver();
+
+      const previewImages = Array.from(list.querySelectorAll('[data-role="preview-image-thumb"]'));
+
+      if (!previewImages.length) {
+        return;
+      }
+
+      if (!('IntersectionObserver' in window)) {
+        previewImages.forEach(loadPreviewImage);
+        return;
+      }
+
+      previewImageObserver = new window.IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (!entry.isIntersecting) {
+            return;
+          }
+
+          loadPreviewImage(entry.target);
+          previewImageObserver?.unobserve(entry.target);
+        });
+      }, {
+        root: list,
+        rootMargin: '120px 0px',
+        threshold: 0.01,
+      });
+
+      previewImages.forEach(image => {
+        previewImageObserver.observe(image);
+      });
+    };
+
     const loadRecentLogs = () => {
       const url = new URL(settings.recentLogsUrl, window.location.origin);
       url.searchParams.set('lookBack', String(getCurrentWindowMinutes()));
@@ -892,11 +973,16 @@
       return fetch(url.toString())
       .then(response => response.json())
       .then(payload => {
-        renderLogs(payload.jobs || []);
-        syncPreviewPane();
+        currentJobs = payload.jobs || [];
+        previousJobKeys = new Set(currentJobs.map(getJobKey));
+        hasBootstrappedData = true;
+        hasPendingRefresh = false;
+        renderCurrentJobsIfOpen();
       })
       .catch(() => {
-        list.innerHTML = '<div class="printify-log-drawer__empty">Could not load recent log data from the server.</div>';
+        if (isDrawerOpen()) {
+          list.innerHTML = '<div class="printify-log-drawer__empty">Could not load recent log data from the server.</div>';
+        }
       });
     };
 
@@ -905,6 +991,10 @@
 
       reloadTimer = window.setTimeout(() => {
         reloadTimer = null;
+        if (!isDrawerOpen()) {
+          hasPendingRefresh = true;
+          return;
+        }
         loadRecentLogs();
       }, 500);
     };
@@ -919,7 +1009,7 @@
         expandedChecksumJobKeys.clear();
         selectedChecksumJobKeys.clear();
         closePreviewPane();
-        renderLogs(currentJobs);
+        unloadRenderedDrawerMedia();
         closeConfirmPane();
       }
     };
@@ -927,7 +1017,13 @@
     const openDrawer = () => {
       closeWindowMenu();
       setOpenState(true);
-      return loadPrinters().finally(loadRecentLogs);
+
+      if (!hasBootstrappedData || hasPendingRefresh) {
+        return loadPrinters().finally(loadRecentLogs);
+      }
+
+      renderCurrentJobsIfOpen();
+      return loadPrinters();
     };
 
     const scheduleReconnect = () => {
@@ -956,11 +1052,19 @@
         }
 
         if (payload?.type === 'printers-updated') {
-          loadPrinters().finally(loadRecentLogs);
+          if (isDrawerOpen()) {
+            loadPrinters().finally(loadRecentLogs);
+          } else {
+            hasPendingRefresh = true;
+          }
           return;
         }
 
-        loadRecentLogs();
+        if (isDrawerOpen()) {
+          loadRecentLogs();
+        } else {
+          hasPendingRefresh = true;
+        }
       });
 
       logSocket.addEventListener('close', () => {
@@ -1277,7 +1381,6 @@
     syncWindowUi();
     closeWindowMenu();
     syncBatchUi();
-    loadRecentLogs();
     connectLogSocket();
 
     return {

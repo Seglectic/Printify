@@ -26,6 +26,13 @@
     'application/octet-stream',
   ]);
   const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'tif', 'tiff', 'webp']);
+  const IMAGE_MIME_TYPES = new Set([
+    'image/png',
+    'image/jpeg',
+    'image/jpg',
+    'image/tiff',
+    'image/webp',
+  ]);
   const ZIP_EXTENSIONS = new Set(['zip']);
   const OVERSIZE_WARNING_RATIO = 1.5;
   const THEME_STORAGE_KEY = 'printify-theme';
@@ -819,7 +826,7 @@
     const extension = getFileExtension(file.name);
 
     if (mimeType === 'application/pdf' || extension === 'pdf') return 'pdf';
-    if (mimeType.startsWith('image/') || IMAGE_EXTENSIONS.has(extension)) return 'image';
+    if (IMAGE_MIME_TYPES.has(mimeType) || IMAGE_EXTENSIONS.has(extension)) return 'image';
     if (ZIP_MIME_TYPES.has(mimeType) || ZIP_EXTENSIONS.has(extension)) return 'zip';
 
     return null;
@@ -861,6 +868,45 @@
     return {
       width: (viewport.width * density) / 72,
       height: (viewport.height * density) / 72,
+    };
+  };
+
+  const getTapeUploadMeta = async (printer, file) => {
+    if (!printer?.isTape) {
+      return {};
+    }
+
+    const density = Number.parseFloat(printer.density);
+
+    if (!Number.isFinite(density) || density <= 0) {
+      return {};
+    }
+
+    const fileKind = detectFileKind(file);
+    let dimensions = null;
+
+    if (fileKind === 'image') {
+      dimensions = await loadImageDimensions(file);
+    } else if (fileKind === 'pdf') {
+      dimensions = await loadPdfDimensions(file, density);
+    }
+
+    if (!dimensions) {
+      return {};
+    }
+
+    const widthMm = (dimensions.width / density) * 25.4;
+    const heightMm = (dimensions.height / density) * 25.4;
+    const shorterSideMm = Math.min(widthMm, heightMm);
+    const longerSideMm = Math.max(widthMm, heightMm);
+
+    if (!Number.isFinite(shorterSideMm) || !Number.isFinite(longerSideMm) || shorterSideMm <= 0 || longerSideMm <= 0) {
+      return {};
+    }
+
+    return {
+      tapeWidthMm: Math.round(shorterSideMm),
+      lengthMm: Math.round(longerSideMm),
     };
   };
 
@@ -1132,12 +1178,16 @@
     const settledUploads = await Promise.allSettled(uploadJobs.map(async ({ fileKind, file, indicator, clientJobId }) => {
       const routePath = `/${printer.id}/${fileKind}`;
       const formData = new FormData();
+      const uploadFields = {
+        ...(await getTapeUploadMeta(printer, file)),
+        ...extraFields,
+      };
 
       formData.append(PRINTIFY_FILE_KINDS[fileKind].fieldName, file, file.name);
       formData.append('clientJobId', clientJobId);
       debugIdLog('upload start', `printer=${printer.id}`, `route=${routePath}`, `clientJobId=${clientJobId}`, `file=${file.name}`);
 
-      Object.entries(extraFields).forEach(([fieldName, fieldValue]) => {
+      Object.entries(uploadFields).forEach(([fieldName, fieldValue]) => {
         if (fieldValue !== null && fieldValue !== undefined && fieldValue !== '') {
           formData.append(fieldName, fieldValue);
         }
@@ -1326,7 +1376,7 @@
         return;
       }
 
-      if (mimeType.startsWith('image/')) {
+      if (IMAGE_MIME_TYPES.has(mimeType)) {
         detectedKinds.add('image');
         return;
       }

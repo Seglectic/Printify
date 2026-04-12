@@ -75,6 +75,7 @@
     <div class="printify-log-drawer__scrim" data-role="scrim"></div>
     <aside class="printify-log-drawer__panel" data-role="panel">
       <div class="printify-log-drawer__header">
+        <p class="printify-log-drawer__hint">Press Tab to toggle.</p>
         <div class="printify-log-drawer__header-top">
           <h2 class="printify-log-drawer__title">Printify Logs</h2>
           <button class="printify-log-drawer__close" type="button" data-role="close">Close</button>
@@ -82,7 +83,6 @@
         <div class="printify-log-drawer__toolbar">
           <div class="printify-log-drawer__toolbar-copy">
             <p class="printify-log-drawer__subhead" data-role="subhead">Recent print logs from the last 60 minutes.</p>
-            <p class="printify-log-drawer__hint">Press Tab to toggle.</p>
           </div>
           <div class="printify-log-drawer__window-picker">
             <button class="printify-log-drawer__window-button" type="button" data-role="window-button">60 minutes</button>

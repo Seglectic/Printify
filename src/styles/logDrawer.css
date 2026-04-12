@@ -599,6 +599,7 @@
 }
 
 .printify-log-drawer__header {
+  position: relative;
   padding: 28px 24px 18px;
   border-bottom: 1px solid var(--pld-line);
 }
@@ -674,7 +675,10 @@
 }
 
 .printify-log-drawer__hint {
-  margin: 2px 0 0;
+  position: absolute;
+  top: 10px;
+  left: 14px;
+  margin: 0;
   color: var(--pld-muted);
   font-size: 11px;
   letter-spacing: 0.04em;

@@ -15,14 +15,15 @@ port: 8020
 testing: true
 assistant: Links
 # imPath: ""
-clientPlugins:
-  - emu
-
-clientPluginConfig:
+Plugins:
   emu:
+    enabled: true
     rom: "tetris.gb"
     save: "tetris.sav"
     triggerCode: "123"
+  ptouch:
+    enabled: true
+    intervalSeconds: 5
 
 # ╭───────────────────────────────────────────────────────────╮
 # │  Printer options                                          │
@@ -102,7 +103,7 @@ printers:
     density: "200"
     acceptedKinds: [ "pdf", "image", "zip" ]
     monochrome: true
-    monochromeBit: 1
+    monochromeBit: 8
     monochromeDither: "floydsteinberg"
     labelBuilder: true
     bundleCopies: true

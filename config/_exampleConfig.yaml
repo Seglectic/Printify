@@ -15,20 +15,21 @@ testing: true
 assistant: none
 fileWatchReload: true
 # imPath: ""
-clientPlugins: []
 
-# Optional browser-only modules that stay unloaded until explicitly triggered.
+# Optional plugin config lives under Plugins.
 # Available plugins:
 # - emu: lazy-loads a Game Boy popup with a locally hosted ROM + save file
+# - ptouch: polls "ptouch-print --info" and keeps online/tape width in sync
 #
-# clientPlugins:
-#   - emu
-#
-# clientPluginConfig:
+# Plugins:
 #   emu:
+#     enabled: false
 #     rom: "tetris.gb"
 #     save: "tetris.sav"
 #     triggerCode: "123"
+#   ptouch:
+#     enabled: true
+#     intervalSeconds: 5
 
 # ╭───────────────────────────────────────────────────────────╮
 # │  Printer options                                          │

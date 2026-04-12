@@ -37,10 +37,9 @@ const {
   port,
   testing,
   assistant,
-  clientPlugins,
   imPath,
 } = require('./lib/configurator');
-const { createPluginLoader } = require('./lib/pluginLoader');
+const { createPluginManager } = require('./lib/pluginLoader');
 const { createRuntimeConfig }    = require('./lib/runtimeConfig');
 const { createConverter }        = require('./lib/converter');
 const { createPreviewer }        = require('./lib/previewer');
@@ -70,13 +69,6 @@ const { registerRoutes }          = require('./lib/routes');
 const app = express();                                   // Main Express app instance
 const httpServer = http.createServer(app);
 const runtimeConfig = createRuntimeConfig();
-const pluginLoader = createPluginLoader({
-  rootDir,
-  enabledPluginIds: clientPlugins,
-  parsedConfig: runtimeConfig.readParsedConfig(),
-  logStamp,
-  errorLogStamp,
-});
 const logStore = createLogStore({
   logsDir,
   errorLogStamp,
@@ -151,7 +143,16 @@ const notifyRecentLogUpdate = () => {
   notifySocketClients({ type: 'print-jobs-updated' });
 };
 
-const printerManager = createPrinterManager({
+let printerManager = null;
+const pluginManager = createPluginManager({
+  rootDir,
+  runtimeConfig,
+  serverSave,
+  reloadPrinters: reason => printerManager?.reload(reason),
+  logStamp,
+  errorLogStamp,
+});
+printerManager = createPrinterManager({
   runtimeConfig,
   printingService,
   serverSave,
@@ -159,6 +160,7 @@ const printerManager = createPrinterManager({
   logStamp,
   errorLogStamp,
   onReload: payload => {
+    pluginManager.syncFromConfig();
     notifySocketClients(payload);
   },
 });
@@ -176,7 +178,7 @@ app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use((req, res, next) => {
   // Optional plugins can declare when they need cross-origin isolation.
-  if (pluginLoader.shouldApplyIsolationHeaders(req.path)) {
+  if (pluginManager.shouldApplyIsolationHeaders(req.path)) {
     res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
     res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
     res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
@@ -185,6 +187,7 @@ app.use((req, res, next) => {
   next();
 });
 app.use(express.static(staticDir));
+pluginManager.registerStaticRoutes(app);
 app.use('/fonts', express.static(path.join(staticDir, 'fonts')));
 app.use('/icons', express.static(iconsDir));
 app.use('/fonts', express.static(fontsDir));
@@ -207,7 +210,7 @@ registerRoutes({
   logStore,
   version,
   assistant,
-  pluginLoader,
+  pluginLoader: pluginManager,
   runtimeConfig,
   reloadPrinters: reason => printerManager.reload(reason),
   errorLogStamp,

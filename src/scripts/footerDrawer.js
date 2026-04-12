@@ -7,12 +7,12 @@
     <div class="printify-footer-drawer__scrim" data-role="scrim"></div>
     <aside class="printify-footer-drawer__panel" data-role="panel" aria-hidden="true">
       <div class="printify-footer-drawer__header">
-        <p class="printify-footer-drawer__eyebrow">Hidden Panel</p>
+        <p class="printify-footer-drawer__eyebrow">Footer Panel</p>
         <button class="printify-footer-drawer__close" type="button" data-role="close">Close</button>
       </div>
       <div class="printify-footer-drawer__body">
         <h2 class="printify-footer-drawer__title">Footer drawer standby</h2>
-        <p class="printify-footer-drawer__copy">Reserved for future tools and status details.</p>
+        <p class="printify-footer-drawer__copy">Reserved for future projects.</p>
       </div>
     </aside>
   `;
@@ -35,6 +35,12 @@
     const scrim = root.querySelector('[data-role="scrim"]');
     const panel = root.querySelector('[data-role="panel"]');
     const close = root.querySelector('[data-role="close"]');
+    footer.innerHTML = `
+      <div class="printify-footer__left" data-role="left" aria-hidden="true"></div>
+      <div class="printify-footer__right" data-role="right"></div>
+    `;
+    const footerLeft = footer.querySelector('[data-role="left"]');
+    const footerRight = footer.querySelector('[data-role="right"]');
     let isOpen = false;
     let typeTimers = [];
 
@@ -46,7 +52,7 @@
     const typeWrite = (text, delayMs) => {
       String(text || '').split('').forEach((char, index) => {
         const timerId = window.setTimeout(() => {
-          footer.textContent += char;
+          footerRight.textContent += char;
         }, delayMs + (settings.typeSpeed * index));
         typeTimers.push(timerId);
       });
@@ -62,7 +68,7 @@
 
     const setVersionText = (clientVersion, serverVersion) => {
       clearTypeTimers();
-      footer.textContent = '';
+      footerRight.textContent = '';
 
       const clientText = clientVersion ? `Client v${clientVersion}` : '';
       const serverText = serverVersion ? ` | Server v${serverVersion}` : '';
@@ -72,6 +78,19 @@
       if (serverText) {
         typeWrite(serverText, settings.secondaryDelayMs);
       }
+    };
+
+    const setSequencePreview = tokens => {
+      if (!footerLeft) return;
+
+      const normalizedTokens = Array.isArray(tokens)
+        ? tokens.map(token => String(token || '').trim().toLowerCase()).filter(Boolean)
+        : [];
+
+      footerLeft.innerHTML = normalizedTokens.map(token => `
+        <span class="printify-footer__input-icon printify-footer__input-icon--${token}" aria-hidden="true"></span>
+      `).join('');
+      footerLeft.classList.toggle('is-visible', normalizedTokens.length > 0);
     };
 
     footer.addEventListener('dblclick', event => {
@@ -97,10 +116,12 @@
       open: () => setOpenState(true),
       close: () => setOpenState(false),
       setVersionText,
+      setSequencePreview,
       isOpen: () => isOpen,
     };
 
     root.__printifyFooterDrawerInstance = api;
+    window.printifyFooterDrawer = api;
 
     return api;
   }

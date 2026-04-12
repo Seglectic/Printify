@@ -1425,8 +1425,8 @@
       if (isBuilderOpen && event.key !== 'Escape') return;
       if (isTypingTarget && event.key !== 'Escape') return;
 
-      if (event.key === 'ArrowLeft' || event.key === 'Tab') {
-        if (event.key === 'Tab') event.preventDefault();
+      if (event.key === 'Tab') {
+        event.preventDefault();
         const shouldOpen = !panel.classList.contains('is-open');
 
         if (shouldOpen) {

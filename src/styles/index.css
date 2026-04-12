@@ -1521,15 +1521,90 @@ img {
   bottom: 0;
   left: 0;
   z-index: 12;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
   padding: 8px 14px;
   background: var(--printify-footer-bg);
   color: var(--printify-footer-ink);
   font-family: "Lucida Console", Courier, monospace;
   font-size: 12px;
-  text-align: right;
   cursor: default;
   -webkit-user-select: none;
   user-select: none;
+}
+
+.printify-footer__left,
+.printify-footer__right {
+  min-width: 0;
+}
+
+.printify-footer__left {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.printify-footer__left.is-visible {
+  opacity: 1;
+}
+
+.printify-footer__right {
+  margin-left: auto;
+  text-align: right;
+}
+
+.printify-footer__input-icon {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  background-color: currentColor;
+  opacity: 0.92;
+  mask-position: center;
+  mask-repeat: no-repeat;
+  mask-size: contain;
+  -webkit-mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+}
+
+.printify-footer__input-icon--up {
+  mask-image: url('/media/input-up.svg');
+  -webkit-mask-image: url('/media/input-up.svg');
+}
+
+.printify-footer__input-icon--down {
+  mask-image: url('/media/input-down.svg');
+  -webkit-mask-image: url('/media/input-down.svg');
+}
+
+.printify-footer__input-icon--left {
+  mask-image: url('/media/input-left.svg');
+  -webkit-mask-image: url('/media/input-left.svg');
+}
+
+.printify-footer__input-icon--right {
+  mask-image: url('/media/input-right.svg');
+  -webkit-mask-image: url('/media/input-right.svg');
+}
+
+.printify-footer__input-icon--a {
+  mask-image: url('/media/input-a.svg');
+  -webkit-mask-image: url('/media/input-a.svg');
+}
+
+.printify-footer__input-icon--b {
+  mask-image: url('/media/input-b.svg');
+  -webkit-mask-image: url('/media/input-b.svg');
+}
+
+.printify-footer__input-icon--start {
+  width: 42px;
+  mask-image: url('/media/input-start.svg');
+  -webkit-mask-image: url('/media/input-start.svg');
 }
 
 .printify-footer-drawer__scrim {

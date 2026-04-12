@@ -34,7 +34,7 @@
     'image/webp',
   ]);
   const ZIP_EXTENSIONS = new Set(['zip']);
-  const OVERSIZE_WARNING_RATIO = 1.5;
+  const ASPECT_RATIO_WARNING_MIN_AREA_FRACTION = 0.72;
   const THEME_STORAGE_KEY = 'printify-theme';
   const PRINTER_OPTION_STATE_STORAGE_KEY = 'printify-printer-option-state';
   const DUPLICATE_WHITELIST_STORAGE_KEY = 'printify-duplicate-whitelist';
@@ -941,10 +941,38 @@
     };
   };
 
-  const getBestOversizeRatio = (dimensions, target) => {
-    const directRatio = Math.max(dimensions.width / target.width, dimensions.height / target.height);
-    const rotatedRatio = Math.max(dimensions.width / target.height, dimensions.height / target.width);
-    return Math.min(directRatio, rotatedRatio);
+  const getAreaFillFractionForFit = (dimensions, target) => {
+    if (
+      !dimensions?.width
+      || !dimensions?.height
+      || !target?.width
+      || !target?.height
+    ) {
+      return 1;
+    }
+
+    const sourceRatio = dimensions.width / dimensions.height;
+    const targetRatio = target.width / target.height;
+
+    if (!Number.isFinite(sourceRatio) || !Number.isFinite(targetRatio) || sourceRatio <= 0 || targetRatio <= 0) {
+      return 1;
+    }
+
+    return Math.min(sourceRatio / targetRatio, targetRatio / sourceRatio);
+  };
+
+  const getBestAspectRatioWarning = (dimensions, target) => {
+    const directAreaFraction = getAreaFillFractionForFit(dimensions, target);
+    const rotatedAreaFraction = getAreaFillFractionForFit(dimensions, {
+      width: target.height,
+      height: target.width,
+    });
+    const bestAreaFraction = Math.max(directAreaFraction, rotatedAreaFraction);
+
+    return {
+      printableAreaFraction: bestAreaFraction,
+      printableAreaLoss: 1 - bestAreaFraction,
+    };
   };
 
   const buildOversizeWarnings = async (printer, files) => {
@@ -970,14 +998,15 @@
 
         if (!dimensions) continue;
 
-        const oversizeRatio = getBestOversizeRatio(dimensions, targetSize);
+        const aspectRatioWarning = getBestAspectRatioWarning(dimensions, targetSize);
 
-        if (oversizeRatio >= OVERSIZE_WARNING_RATIO) {
+        if (aspectRatioWarning.printableAreaFraction <= ASPECT_RATIO_WARNING_MIN_AREA_FRACTION) {
           warnings.push({
             fileName: file.name,
             dimensions,
             targetSize,
-            oversizeRatio,
+            printableAreaFraction: aspectRatioWarning.printableAreaFraction,
+            printableAreaLoss: aspectRatioWarning.printableAreaLoss,
           });
         }
       } catch (error) {
@@ -993,16 +1022,16 @@
     if (!warnings.length) return true;
 
     const largestWarning = warnings.reduce((currentLargest, warning) => (
-      !currentLargest || warning.oversizeRatio > currentLargest.oversizeRatio
+      !currentLargest || warning.printableAreaLoss > currentLargest.printableAreaLoss
         ? warning
         : currentLargest
     ), null);
 
     const extraWarningCount = warnings.length - 1;
-    const oversizePercent = formatPercent((largestWarning.oversizeRatio - 1) * 100);
+    const printableAreaLossPercent = formatPercent(largestWarning.printableAreaLoss * 100);
     const warningMessage = [
-      `File resolution is ${oversizePercent}% larger than the configured pixel area for the ${printer.displayName} (${formatPixels(largestWarning.dimensions)} vs ${formatPixels(largestWarning.targetSize)})`,
-      extraWarningCount > 0 ? `${extraWarningCount} more file${extraWarningCount === 1 ? '' : 's'} also exceed that target.` : null,
+      `Aspect ratio mismatch would shrink the printed content area by about ${printableAreaLossPercent}% on ${printer.displayName} (${formatPixels(largestWarning.dimensions)} vs ${formatPixels(largestWarning.targetSize)}).`,
+      extraWarningCount > 0 ? `${extraWarningCount} more file${extraWarningCount === 1 ? '' : 's'} would also lose significant printable area.` : null,
       '',
       'Print anyway?',
     ].filter(Boolean).join('\n');
@@ -1010,7 +1039,7 @@
     return showPromptCard({
       tone: 'warning',
       eyebrow: '🚨 Warning',
-      title: 'Print Size Mismatch',
+      title: 'Print Aspect Ratio Mismatch',
       message: warningMessage,
       confirmLabel: 'Send It',
       cancelLabel: 'Cancel',

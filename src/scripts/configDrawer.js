@@ -38,24 +38,25 @@
     const settings = Object.assign({
       configUrl: '/config',
       audioUrl: '/media/nami.mp3',
-      konamiCode: [
-        ['arrowup', 'w'],
-        ['arrowup', 'w'],
-        ['arrowdown', 's'],
-        ['arrowdown', 's'],
-        ['arrowleft', 'a'],
-        ['arrowright', 'd'],
-        ['arrowleft', 'a'],
-        ['arrowright', 'd'],
-        ['b'],
-        ['a'],
-        ['enter'],
+      accessSequence: [
+        { keys: ['arrowup', 'w'], display: 'up' },
+        { keys: ['arrowup', 'w'], display: 'up' },
+        { keys: ['arrowdown', 's'], display: 'down' },
+        { keys: ['arrowdown', 's'], display: 'down' },
+        { keys: ['arrowleft', 'a'], display: 'left' },
+        { keys: ['arrowright', 'd'], display: 'right' },
+        { keys: ['arrowleft', 'a'], display: 'left' },
+        { keys: ['arrowright', 'd'], display: 'right' },
+        { keys: ['b'], display: 'b' },
+        { keys: ['a'], display: 'a' },
+        { keys: ['enter'], display: 'start' },
       ],
     }, options || {});
 
     const root = document.querySelector(rootSelector);
 
     if (!root) return null;
+    if (root.__printifyConfigDrawerInstance) return root.__printifyConfigDrawerInstance;
     if (!root.innerHTML.trim()) root.innerHTML = buildConfigMarkup();
 
     const scrim = root.querySelector('[data-role="scrim"]');
@@ -68,8 +69,7 @@
     const audio = new window.Audio(settings.audioUrl);
     audio.volume = 0.2;
     let isOpen = false;
-    let konamiProgress = 0;
-    let konamiResetTimer = null;
+    let accessHandle = null;
 
     const setStatus = message => {
       if (status) status.textContent = message || '';
@@ -154,50 +154,6 @@
       loadConfig();
     };
 
-    const normalizeKey = key => String(key || '').toLowerCase();
-
-    const resetKonamiProgress = () => {
-      konamiProgress = 0;
-
-      if (konamiResetTimer) {
-        window.clearTimeout(konamiResetTimer);
-        konamiResetTimer = null;
-      }
-    };
-
-    const handleKonamiKey = event => {
-      if (event.altKey || event.ctrlKey || event.metaKey || event.repeat) return;
-
-      const normalizedKey = normalizeKey(event.key);
-      const expectedKeys = settings.konamiCode[konamiProgress] || [];
-      const matchesExpected = expectedKeys.includes(normalizedKey);
-      const matchesStart = (settings.konamiCode[0] || []).includes(normalizedKey);
-
-      if (matchesExpected) {
-        konamiProgress += 1;
-      } else if (matchesStart) {
-        konamiProgress = 1;
-      } else {
-        resetKonamiProgress();
-        return;
-      }
-
-      if (konamiProgress >= settings.konamiCode.length) {
-        resetKonamiProgress();
-        openDrawer();
-        return;
-      }
-
-      if (konamiResetTimer) {
-        window.clearTimeout(konamiResetTimer);
-      }
-
-      konamiResetTimer = window.setTimeout(() => {
-        konamiResetTimer = null;
-        konamiProgress = 0;
-      }, 1600);
-    };
-
     scrim?.addEventListener('click', () => {
       setOpenState(false);
     });
@@ -228,18 +184,32 @@
     document.addEventListener('keydown', event => {
       if (event.key === 'Escape' && isOpen) {
         setOpenState(false);
-        return;
       }
-
-      handleKonamiKey(event);
     });
 
-    return {
+    accessHandle = window.printifyInput?.registerSequence?.({
+      id: 'config-drawer-access',
+      steps: settings.accessSequence,
+      onMatch: () => {
+        window.printifyFooterDrawer?.setSequencePreview?.([]);
+        openDrawer();
+      },
+      onProgress: state => {
+        window.printifyFooterDrawer?.setSequencePreview?.(state?.matchedSteps || []);
+      },
+    }) || null;
+
+    const api = {
       open: openDrawer,
       close: () => setOpenState(false),
       reload: loadConfig,
       save: saveConfig,
+      destroy: () => accessHandle?.unregister?.(),
     };
+
+    root.__printifyConfigDrawerInstance = api;
+
+    return api;
   }
 
   window.createPrintifyConfigDrawer = createPrintifyConfigDrawer;

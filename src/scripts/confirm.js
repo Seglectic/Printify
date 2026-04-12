@@ -5,7 +5,10 @@
   // Printer-local upload indicators:
   const CONFIRM_INDICATOR_SIZE = 72;      // Confirm canvas in CSS px
   const CONFIRM_INDICATOR_RING_SIZE = 12; // How many indicators fit in one orbit around a card
-  const CONFIRM_INDICATOR_RING_GAP = 30;  // Spacing between each orbit around the card
+  const CONFIRM_INDICATOR_CARD_RADIUS_RATIO = 0.32; // How tightly indicators orbit the card footprint
+  const CONFIRM_INDICATOR_BASE_RING_OFFSET = 12;    // Extra padding between the card edge and first ring
+  const CONFIRM_INDICATOR_RING_GAP = 38;            // Spacing between each orbit around the card
+  const CONFIRM_INDICATOR_ROTATION_BIAS = 0.5;      // Fraction of the previous ring's slot angle used to stagger the next ring
   const ID_DEBUG_PREFIX = '[id-debug]';
 
   const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
@@ -22,6 +25,36 @@
     if (typeof console !== 'undefined' && typeof console.debug === 'function') {
       console.debug(ID_DEBUG_PREFIX, ...args);
     }
+  };
+  const getRingRadius = (center, ringIndex) => (
+    (Math.max(center.width, center.height) * CONFIRM_INDICATOR_CARD_RADIUS_RATIO)
+    + CONFIRM_INDICATOR_BASE_RING_OFFSET
+    + (ringIndex * CONFIRM_INDICATOR_RING_GAP)
+  );
+  const getRingSlotCount = (indicatorCount, ringIndex) => Math.min(
+    CONFIRM_INDICATOR_RING_SIZE,
+    Math.max(0, indicatorCount - (ringIndex * CONFIRM_INDICATOR_RING_SIZE))
+  );
+  const getRingRotationOffset = (center, indicatorCount, ringIndex) => {
+    if (ringIndex <= 0) {
+      return 0;
+    }
+
+    const previousRingIndex = ringIndex - 1;
+    const previousSlotCount = getRingSlotCount(indicatorCount, previousRingIndex);
+
+    if (previousSlotCount <= 0) {
+      return 0;
+    }
+
+    const previousRingRadius = getRingRadius(center, previousRingIndex);
+    const previousSlotAngle = (Math.PI * 2) / previousSlotCount;
+    const indicatorDiameterAngle = previousRingRadius > 0
+      ? (2 * Math.asin(Math.min(1, (CONFIRM_INDICATOR_SIZE / 2) / previousRingRadius)))
+      : 0;
+    const staggerAngle = previousSlotAngle * CONFIRM_INDICATOR_ROTATION_BIAS;
+
+    return Math.max(staggerAngle, indicatorDiameterAngle / 2);
   };
 
   const drawWorkingDots = (context, now) => {
@@ -115,9 +148,10 @@
 
       const ringIndex = Math.floor(index / CONFIRM_INDICATOR_RING_SIZE);
       const slotIndex = index % CONFIRM_INDICATOR_RING_SIZE;
-      const slotCount = Math.min(CONFIRM_INDICATOR_RING_SIZE, samePrinterIndicators.length - (ringIndex * CONFIRM_INDICATOR_RING_SIZE));
-      const angle = (-Math.PI / 2) + ((slotIndex / Math.max(slotCount, 1)) * Math.PI * 2);
-      const radius = (Math.max(center.width, center.height) * 0.36) + 22 + (ringIndex * CONFIRM_INDICATOR_RING_GAP);
+      const slotCount = getRingSlotCount(samePrinterIndicators.length, ringIndex);
+      const rotationOffset = getRingRotationOffset(center, samePrinterIndicators.length, ringIndex);
+      const angle = (-Math.PI / 2) + rotationOffset + ((slotIndex / Math.max(slotCount, 1)) * Math.PI * 2);
+      const radius = getRingRadius(center, ringIndex);
 
       indicator.canvas.style.left = `${center.x + (Math.cos(angle) * radius)}px`;
       indicator.canvas.style.top = `${center.y + (Math.sin(angle) * radius)}px`;

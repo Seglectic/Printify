@@ -12,3 +12,4 @@ src/plugins/emu/ROM/*
 !src/plugins/emu/ROM/.gitkeep
 src/plugins/emu/SAVES/*
 !src/plugins/emu/SAVES/.gitkeep
+.vscode

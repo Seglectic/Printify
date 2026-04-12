@@ -20,7 +20,6 @@
 		"qs": "6.15.1"
 	},
 	"scripts": {
-		"start": "node Printify.js",
-		"test:reprint-source": "node scripts/reprint-source-regression.js"
+		"start": "node Printify.js"
 	}
 }

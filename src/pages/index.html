@@ -68,11 +68,21 @@
             Length (mm)
             <input id="labelBuilderTapeLength" type="number" min="1" step="1" value="60" inputmode="numeric">
           </label>
-          <label class="printify-builder__field printify-builder__field--checkbox" for="labelBuilderTapeAutoLength">
-            <input id="labelBuilderTapeAutoLength" type="checkbox" checked>
-            <span class="printify-builder__toggle" aria-hidden="true"></span>
-            <span>Auto Fit Length</span>
-          </label>
+          <div class="printify-builder__tape-toggles">
+            <label class="printify-builder__field printify-builder__field--checkbox" for="labelBuilderTapeAutoLength">
+              <input id="labelBuilderTapeAutoLength" type="checkbox" checked>
+              <span class="printify-builder__toggle" aria-hidden="true"></span>
+              <span>Auto Fit Length</span>
+            </label>
+            <span class="printify-builder__tooltip-wrap" id="labelBuilderInvertWrap" hidden>
+              <label class="printify-builder__field printify-builder__field--checkbox" for="labelBuilderInvertPrint">
+                <input id="labelBuilderInvertPrint" type="checkbox">
+                <span class="printify-builder__toggle" aria-hidden="true"></span>
+                <span>Invert Print</span>
+              </label>
+              <span class="printify-builder__tooltip" role="tooltip">Use preview to see inverted image.</span>
+            </span>
+          </div>
         </div>
 
         <div class="printify-builder__control-stack">
@@ -83,12 +93,19 @@
             <div class="printify-builder__text-card-controls">
               <div class="printify-builder__text-card-column">
                 <div class="printify-builder__text-card-row">
-                  <div class="printify-builder__field printify-builder__field--stacked">
+                  <div class="printify-builder__field printify-builder__field--stacked printify-builder__field--grouped">
                     <span>Justify</span>
                     <div class="printify-builder__segmented" role="group" aria-label="Text alignment">
                       <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAlignLeft" type="button">Left</button>
                       <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAlignCenter" type="button">Center</button>
                       <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAlignRight" type="button">Right</button>
+                    </div>
+                  </div>
+                  <div class="printify-builder__field printify-builder__field--stacked printify-builder__field--grouped">
+                    <span>Box</span>
+                    <div class="printify-builder__segmented" role="group" aria-label="Textbox frame layout">
+                      <button class="printer-card__button printer-card__button--secondary" id="labelBuilderBoxCenter" type="button">Center</button>
+                      <button class="printer-card__button printer-card__button--secondary" id="labelBuilderBoxFill" type="button">Fill</button>
                     </div>
                   </div>
                   <label class="printify-builder__field printify-builder__field--stacked" for="labelBuilderFont">
@@ -128,7 +145,7 @@
                       </label>
                       <label class="printify-builder__field printify-builder__field--stacked printify-builder__field--serial" for="labelBuilderTextSerialDigits">
                         Digits
-                        <input class="printify-builder__serial-current-input" id="labelBuilderTextSerialDigits" type="number" min="1" step="1" value="2" aria-label="Serial digit count" title="Serial digit count. Updates all {x...} placeholders in this textbox to the selected width.">
+                        <input class="printify-builder__serial-current-input" id="labelBuilderTextSerialDigits" type="number" min="1" max="12" step="1" value="2" aria-label="Serial digit count" title="Serial digit count. Updates all {x...} placeholders in this textbox to the selected width.">
                       </label>
                       <button class="printer-card__button printer-card__button--secondary printify-builder__preview-button" data-role="label-builder-preview" type="button">Hold To Preview</button>
                     </div>
@@ -180,7 +197,7 @@
                     </label>
                     <label class="printify-builder__field printify-builder__field--stacked printify-builder__field--serial" for="labelBuilderCodeSerialDigits">
                       Digits
-                      <input class="printify-builder__serial-current-input" id="labelBuilderCodeSerialDigits" type="number" min="1" step="1" value="2" aria-label="Serial digit count" title="Serial digit count. Updates all {x...} placeholders in this code text to the selected width.">
+                      <input class="printify-builder__serial-current-input" id="labelBuilderCodeSerialDigits" type="number" min="1" max="12" step="1" value="2" aria-label="Serial digit count" title="Serial digit count. Updates all {x...} placeholders in this code text to the selected width.">
                     </label>
                     <button class="printer-card__button printer-card__button--secondary printify-builder__preview-button" data-role="label-builder-preview" type="button">Hold To Preview</button>
                   </span>
@@ -191,17 +208,21 @@
         </div>
 
         <div class="printify-builder__footer">
-          <div class="printify-builder__actions">
-            <button class="printer-card__button printer-card__button--primary" id="labelBuilderPrint" type="button">Print Label</button>
-            <button class="printer-card__button printer-card__button--secondary" id="labelBuilderReset" type="button">Reset</button>
-            <button class="printer-card__button printer-card__button--secondary" id="labelBuilderCancel" type="button">Cancel</button>
+          <div class="printify-builder__footer-row printify-builder__footer-row--primary">
+            <div class="printify-builder__actions">
+              <button class="printer-card__button printer-card__button--primary" id="labelBuilderPrint" type="button">Print Label</button>
+              <button class="printer-card__button printer-card__button--secondary" id="labelBuilderReset" type="button">Reset</button>
+              <button class="printer-card__button printer-card__button--secondary" id="labelBuilderCancel" type="button">Cancel</button>
+            </div>
+            <div class="printify-builder__meta">
+              <label class="printify-builder__field printify-builder__field--copies" for="labelBuilderCopies">
+                Copies
+                <input id="labelBuilderCopies" type="number" min="1" value="1">
+              </label>
+              <button class="printer-card__button printer-card__button--secondary printify-builder__preview-button" id="labelBuilderMonochromePreview" type="button" hidden>Hold To Preview</button>
+            </div>
           </div>
-          <div class="printify-builder__meta">
-            <label class="printify-builder__field printify-builder__field--copies" for="labelBuilderCopies">
-              Copies
-              <input id="labelBuilderCopies" type="number" min="1" value="1">
-            </label>
-            <button class="printer-card__button printer-card__button--secondary printify-builder__preview-button" id="labelBuilderMonochromePreview" type="button" hidden>Hold To Preview</button>
+          <div class="printify-builder__footer-row printify-builder__footer-row--secondary">
             <span class="printify-builder__size" id="labelBuilderSize">425 x 200 px</span>
           </div>
         </div>

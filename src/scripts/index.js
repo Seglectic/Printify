@@ -82,6 +82,7 @@
     hiddenTriggerBuffer: '',
     hiddenTriggerTimer: null,
     openPrinterId: null,
+    printerOptionState: {},
     statsSocket: null,
     statsSocketReconnectTimer: null,
     statsRefreshTimer: null,
@@ -610,14 +611,16 @@
       <p class="printer-card__page-total" aria-label="Successful pages printed: ${escapeHtml(formatWholeNumber(getPrinterDisplayPageCount(printer)))}" title="${escapeHtml(buildPrinterCounterTooltip(printer))}" data-counter-tooltip="${escapeHtml(buildPrinterCounterTooltip(printer))}">${buildPrinterCounterMarkup(getPrinterDisplayPageCount(printer))}</p>
     </div>
     <div class="printer-card__details">
-      <p class="printer-card__hint">Drop files anywhere on this card</p>
       <div class="printer-card__kind-bubbles">
         ${(printer.acceptedKinds || []).map(fileKind => `
           <span class="printer-card__kind-bubble ${getFileKindToneClass(fileKind)}">${escapeHtml(PRINTIFY_FILE_KINDS[fileKind]?.label || fileKind.toUpperCase())}</span>
         `).join('')}
       </div>
       <div class="printer-card__actions">
-        <button class="printer-card__button printer-card__button--primary" type="button" data-role="choose-files" data-printer-id="${printer.id}">Choose Files</button>
+        <span class="printify-builder__tooltip-wrap printer-card__tooltip-wrap printer-card__tooltip-wrap--primary">
+          <button class="printer-card__button printer-card__button--primary" type="button" data-role="choose-files" data-printer-id="${printer.id}">Choose Files</button>
+          <span class="printify-builder__tooltip printer-card__tooltip" role="tooltip">You can also drag files directly to this card.</span>
+        </span>
         ${printer.labelBuilder ? `<button class="printer-card__button printer-card__button--secondary" type="button" data-role="label-builder" data-printer-id="${printer.id}">Label Builder</button>` : ''}
       </div>
     </div>
@@ -660,6 +663,14 @@
     card.classList.toggle('is-drop-clearing', preservedClasses.clearing);
     card.classList.toggle('is-entering', preservedClasses.entering);
     card.classList.toggle('is-removing', preservedClasses.removing);
+  };
+
+  const getPrinterUploadOptions = printerId => {
+    const printerOptions = appState.printerOptionState?.[printerId] || {};
+
+    return {
+      invertPrint: printerOptions.invertPrint ? '1' : null,
+    };
   };
 
   const createPrinterCardElement = (printer, index, { instant = false } = {}) => {
@@ -1180,6 +1191,7 @@
       const formData = new FormData();
       const uploadFields = {
         ...(await getTapeUploadMeta(printer, file)),
+        ...getPrinterUploadOptions(printer.id),
         ...extraFields,
       };
 
@@ -1629,6 +1641,15 @@
     appState.labelBuilder = window.createPrintifyLabelBuilder({
       onPrint: (printer, files, extraFields) => handlePrinterFiles(printer.id, files, extraFields),
       onError: error => showFeedback(error.message),
+      getMonochromePreviewFields: printer => getPrinterUploadOptions(printer?.id),
+      getInvertPrintEnabled: printerId => Boolean(appState.printerOptionState?.[printerId]?.invertPrint),
+      setInvertPrintEnabled: (printerId, enabled) => {
+        if (!printerId) return;
+        appState.printerOptionState[printerId] = {
+          ...(appState.printerOptionState[printerId] || {}),
+          invertPrint: Boolean(enabled),
+        };
+      },
       closeOnPrint: false,
     });
   };

@@ -13,6 +13,7 @@
   const DEFAULT_CODE_FALLBACK_LABEL = 'Printify';
   const DEFAULT_TEXTBOX_PLACEHOLDER = 'Click to Edit';
   const DEFAULT_SERIAL_DIGITS = 2;
+  const MAX_SERIAL_DIGITS = 12;
   const DEFAULT_TAPE_LENGTH_MM = 60;
   const MIN_TAPE_LENGTH_MM = 8;
   const TAPE_EXPORT_PADDING_MM = 4;
@@ -127,13 +128,20 @@
       tapeWidthSelector: '#labelBuilderTapeWidth',
       tapeLengthSelector: '#labelBuilderTapeLength',
       tapeAutoLengthSelector: '#labelBuilderTapeAutoLength',
+      invertWrapSelector: '#labelBuilderInvertWrap',
+      invertPrintSelector: '#labelBuilderInvertPrint',
       fitImageHeightSelector: '#labelBuilderFitImageHeight',
       alignLeftSelector: '#labelBuilderAlignLeft',
       alignCenterSelector: '#labelBuilderAlignCenter',
       alignRightSelector: '#labelBuilderAlignRight',
+      boxCenterSelector: '#labelBuilderBoxCenter',
+      boxFillSelector: '#labelBuilderBoxFill',
       canvasId: 'labelCanvas',
       onPrint: async () => {},
       onError: () => {},
+      getMonochromePreviewFields: () => ({}),
+      getInvertPrintEnabled: () => false,
+      setInvertPrintEnabled: () => {},
       closeOnPrint: true,
     }, options || {});
 
@@ -177,10 +185,14 @@
     const tapeWidthSelect = root?.querySelector(settings.tapeWidthSelector);
     const tapeLengthInput = root?.querySelector(settings.tapeLengthSelector);
     const tapeAutoLengthInput = root?.querySelector(settings.tapeAutoLengthSelector);
+    const invertWrap = root?.querySelector(settings.invertWrapSelector);
+    const invertPrintInput = root?.querySelector(settings.invertPrintSelector);
     const fitImageHeightButton = root?.querySelector(settings.fitImageHeightSelector);
     const alignLeftButton = root?.querySelector(settings.alignLeftSelector);
     const alignCenterButton = root?.querySelector(settings.alignCenterSelector);
     const alignRightButton = root?.querySelector(settings.alignRightSelector);
+    const boxCenterButton = root?.querySelector(settings.boxCenterSelector);
+    const boxFillButton = root?.querySelector(settings.boxFillSelector);
 
     if (!root || !window.fabric) return null;
 
@@ -210,6 +222,7 @@
     let currentTapeLengthMm = DEFAULT_TAPE_LENGTH_MM;
     let tapeMinimumLengthMm = DEFAULT_TAPE_LENGTH_MM;
     let tapeAutoLengthEnabled = true;
+    let invertPrintEnabled = false;
     let currentViewportScale = 1;
     let closeAnimationTimer = null;
     let openAnimationFrame = null;
@@ -366,6 +379,11 @@
         tapeControls.style.display = tapeMode ? '' : 'none';
       }
 
+      if (invertWrap) {
+        const showInvertToggle = tapeMode && Boolean(printer?.monochrome) && Number(printer?.monochromeBit) === 1;
+        invertWrap.hidden = !showInvertToggle;
+      }
+
       if (!tapeMode) {
         return;
       }
@@ -388,6 +406,10 @@
 
       if (tapeAutoLengthInput) {
         tapeAutoLengthInput.checked = tapeAutoLengthEnabled;
+      }
+
+      if (invertPrintInput) {
+        invertPrintInput.checked = invertPrintEnabled;
       }
     };
 
@@ -573,12 +595,14 @@
 
     const normalizeSerialDigits = value => {
       const parsedValue = Number.parseInt(value, 10);
-      return Number.isFinite(parsedValue) ? Math.max(1, parsedValue) : DEFAULT_SERIAL_DIGITS;
+      return Number.isFinite(parsedValue)
+        ? Math.max(1, Math.min(MAX_SERIAL_DIGITS, parsedValue))
+        : DEFAULT_SERIAL_DIGITS;
     };
 
     const getSerialTokenDigits = sourceText => {
       const match = String(sourceText || '').match(/\{(x+)\}/i);
-      return match ? match[1].length : DEFAULT_SERIAL_DIGITS;
+      return match ? normalizeSerialDigits(match[1].length) : DEFAULT_SERIAL_DIGITS;
     };
 
     const replaceSerialTokenDigits = (sourceText, digits) => String(sourceText || '').replace(/\{x+\}/gi, `{${'x'.repeat(normalizeSerialDigits(digits))}}`);
@@ -785,6 +809,14 @@
       });
     };
 
+    const syncTextboxLayoutButtons = textObject => {
+      [boxCenterButton, boxFillButton].forEach(button => {
+        if (!button) return;
+        button.disabled = !(textObject instanceof window.fabric.Textbox);
+        button.classList.remove('is-active');
+      });
+    };
+
     const syncCodeInputs = codeObject => {
       if (!qrTextInput || !qrFormatSelect) return;
 
@@ -812,8 +844,38 @@
       syncAutoFitInput(textObject);
       syncTextSerialInputs(textObject);
       syncAlignmentButtons(textObject);
+      syncTextboxLayoutButtons(textObject);
       syncCodeInputs(codeObject);
       syncCodeSerialInputs(codeObject);
+    };
+
+    const applyTextboxLayoutPreset = layoutMode => {
+      const textObject = getTextboxForControls();
+      if (!(textObject instanceof window.fabric.Textbox)) return;
+
+      const builderCanvas = ensureCanvas();
+      const nextFrameHeight = Math.max(32, Math.round(textObject.frameHeight || textObject.height || 0));
+      const nextFrameWidth = layoutMode === 'fill'
+        ? Math.round(builderCanvas.getWidth() * 0.84)
+        : Math.round(builderCanvas.getWidth() * 0.58);
+      const nextLeft = Math.round((builderCanvas.getWidth() - nextFrameWidth) / 2);
+      const nextTop = layoutMode === 'center'
+        ? Math.max(0, Math.round((builderCanvas.getHeight() - nextFrameHeight) / 2))
+        : Math.round(textObject.top || 0);
+
+      textObject.set({
+        left: nextLeft,
+        top: nextTop,
+        width: nextFrameWidth,
+        frameWidth: nextFrameWidth,
+      });
+
+      if (textObject.autoFitText) fitTextboxFontToFrame(textObject);
+      textObject.initDimensions();
+      textObject.setCoords();
+      syncTextControls(textObject);
+      builderCanvas.requestRenderAll();
+      void syncAutoFitTapeCanvas();
     };
 
     const fitTextboxFontToFrame = textObject => {
@@ -940,8 +1002,8 @@
     const buildTextbox = (canvasWidth, canvasHeight, overrides = {}) => attachTextboxFrameBehavior(applyBuilderObjectDefaults(new window.fabric.Textbox(Object.prototype.hasOwnProperty.call(overrides, 'text') ? overrides.text : '', {
       left: Math.round(canvasWidth * 0.08),
       top: Math.round(canvasHeight * 0.08),
-      width: Math.round(canvasWidth * 0.76),
-      fontSize: 35,
+      width: Math.round(canvasWidth * 0.58),
+      fontSize: 28,
       fontFamily: 'Arial',
       fontWeight: '700',
       fill: '#111111',
@@ -956,7 +1018,7 @@
       borderColor: '#1f6f43',
       borderScaleFactor: 2,
       padding: 10,
-      frameHeight: Math.max(56, Math.round(canvasHeight * 0.82)),
+      frameHeight: Math.max(48, Math.round(canvasHeight * 0.46)),
       ...overrides,
     })));
 
@@ -1004,8 +1066,12 @@
       const textboxCount = builderCanvas.getObjects().filter(object => object instanceof window.fabric.Textbox).length;
       const fontSize = Math.max(24, Math.round(builderCanvas.getHeight() * 0.18));
       const topStep = Math.max(34, Math.round(fontSize * 1.35));
+      const frameWidth = Math.round(builderCanvas.getWidth() * 0.58);
       const textbox = buildTextbox(builderCanvas.getWidth(), builderCanvas.getHeight(), {
         text: '',
+        left: Math.round((builderCanvas.getWidth() - frameWidth) / 2),
+        width: frameWidth,
+        frameWidth,
         top: Math.round(builderCanvas.getHeight() * 0.12) + (textboxCount * topStep),
         fontSize,
         frameHeight: Math.max(48, Math.round(builderCanvas.getHeight() * 0.34)),
@@ -1487,7 +1553,13 @@
 
     const requestMonochromePreview = async file => {
       const formData = new FormData();
+      const previewFields = settings.getMonochromePreviewFields(currentPrinter) || {};
       formData.append('imgFile', file, file.name);
+      Object.entries(previewFields).forEach(([fieldName, fieldValue]) => {
+        if (fieldValue !== null && fieldValue !== undefined && fieldValue !== '') {
+          formData.append(fieldName, fieldValue);
+        }
+      });
 
       const response = await fetch(`/printers/${encodeURIComponent(currentPrinter.id)}/preview/monochrome`, {
         method: 'POST',
@@ -1634,7 +1706,15 @@
       builderCanvas.setDimensions({ width, height });
       builderCanvas.backgroundColor = '#ffffff';
 
-      defaultTextbox = applyTextboxPlaceholder(buildTextbox(width, height));
+      const defaultTextboxWidth = Math.round(width * 0.9);
+      const defaultTextboxHeight = Math.max(48, Math.round(height * 0.8));
+      defaultTextbox = applyTextboxPlaceholder(buildTextbox(width, height, {
+        left: Math.round((width - defaultTextboxWidth) / 2),
+        top: Math.round((height - defaultTextboxHeight) / 2),
+        width: defaultTextboxWidth,
+        frameWidth: defaultTextboxWidth,
+        frameHeight: defaultTextboxHeight,
+      }));
       lastSelectedTextObject = defaultTextbox;
       lastSelectedCodeObject = null;
       builderCanvas.add(defaultTextbox);
@@ -1708,6 +1788,7 @@
         currentTapeLengthMm = DEFAULT_TAPE_LENGTH_MM;
         tapeMinimumLengthMm = DEFAULT_TAPE_LENGTH_MM;
         tapeAutoLengthEnabled = true;
+        invertPrintEnabled = Boolean(settings.getInvertPrintEnabled(printer?.id));
       }
 
       if (title) title.textContent = `${printer.displayName} Builder`;
@@ -1761,6 +1842,7 @@
             printCount: requestedPrintCount,
             tapeWidthMm: isTapePrinter(currentPrinter) ? currentTapeWidthMm : null,
             lengthMm: isTapePrinter(currentPrinter) ? getTapeExportLengthMm(currentPrinter) : null,
+            invertPrint: invertPrintEnabled ? '1' : null,
           });
 
           if (hasSerialObjects) {
@@ -2017,6 +2099,8 @@
     alignLeftButton?.addEventListener('click', () => updateSelectedTextbox({ textAlign: 'left' }));
     alignCenterButton?.addEventListener('click', () => updateSelectedTextbox({ textAlign: 'center' }));
     alignRightButton?.addEventListener('click', () => updateSelectedTextbox({ textAlign: 'right' }));
+    boxCenterButton?.addEventListener('click', () => applyTextboxLayoutPreset('center'));
+    boxFillButton?.addEventListener('click', () => applyTextboxLayoutPreset('fill'));
     tapeWidthSelect?.addEventListener('change', async () => {
       if (!currentPrinter || !isTapePrinter(currentPrinter)) return;
 
@@ -2045,6 +2129,10 @@
         : tapeMinimumLengthMm;
       refreshBuilderMeta();
       void syncAutoFitTapeCanvas();
+    });
+    invertPrintInput?.addEventListener('change', () => {
+      invertPrintEnabled = Boolean(invertPrintInput.checked);
+      settings.setInvertPrintEnabled(currentPrinter?.id, invertPrintEnabled);
     });
     qrTextInput?.addEventListener('input', () => {
       if (isSyncingQrInput) return;
@@ -2139,6 +2227,7 @@
         currentTapeLengthMm = DEFAULT_TAPE_LENGTH_MM;
         tapeMinimumLengthMm = DEFAULT_TAPE_LENGTH_MM;
         tapeAutoLengthEnabled = true;
+        invertPrintEnabled = Boolean(settings.getInvertPrintEnabled(currentPrinter?.id));
         resetCanvas(currentPrinter);
         lastBuilderStatePrinterKey = getPrinterStateKey(currentPrinter);
       }

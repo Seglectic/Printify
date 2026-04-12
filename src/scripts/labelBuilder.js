@@ -131,17 +131,23 @@
       invertWrapSelector: '#labelBuilderInvertWrap',
       invertPrintSelector: '#labelBuilderInvertPrint',
       fitImageHeightSelector: '#labelBuilderFitImageHeight',
+      imageBoxCenterSelector: '#labelBuilderImageBoxCenter',
+      imageBoxFillSelector: '#labelBuilderImageBoxFill',
       alignLeftSelector: '#labelBuilderAlignLeft',
       alignCenterSelector: '#labelBuilderAlignCenter',
       alignRightSelector: '#labelBuilderAlignRight',
       boxCenterSelector: '#labelBuilderBoxCenter',
       boxFillSelector: '#labelBuilderBoxFill',
+      codeBoxCenterSelector: '#labelBuilderCodeBoxCenter',
+      codeBoxFillSelector: '#labelBuilderCodeBoxFill',
       canvasId: 'labelCanvas',
       onPrint: async () => {},
       onError: () => {},
       getMonochromePreviewFields: () => ({}),
       getInvertPrintEnabled: () => false,
       setInvertPrintEnabled: () => {},
+      getSavedFontFamily: () => '',
+      setSavedFontFamily: () => {},
       closeOnPrint: true,
     }, options || {});
 
@@ -188,11 +194,15 @@
     const invertWrap = root?.querySelector(settings.invertWrapSelector);
     const invertPrintInput = root?.querySelector(settings.invertPrintSelector);
     const fitImageHeightButton = root?.querySelector(settings.fitImageHeightSelector);
+    const imageBoxCenterButton = root?.querySelector(settings.imageBoxCenterSelector);
+    const imageBoxFillButton = root?.querySelector(settings.imageBoxFillSelector);
     const alignLeftButton = root?.querySelector(settings.alignLeftSelector);
     const alignCenterButton = root?.querySelector(settings.alignCenterSelector);
     const alignRightButton = root?.querySelector(settings.alignRightSelector);
     const boxCenterButton = root?.querySelector(settings.boxCenterSelector);
     const boxFillButton = root?.querySelector(settings.boxFillSelector);
+    const codeBoxCenterButton = root?.querySelector(settings.codeBoxCenterSelector);
+    const codeBoxFillButton = root?.querySelector(settings.codeBoxFillSelector);
 
     if (!root || !window.fabric) return null;
 
@@ -226,6 +236,11 @@
     let currentViewportScale = 1;
     let closeAnimationTimer = null;
     let openAnimationFrame = null;
+
+    const getPreferredFontFamily = printerId => {
+      const savedFontFamily = String(settings.getSavedFontFamily(printerId) || '').trim();
+      return savedFontFamily || 'Arial';
+    };
 
     const ensureCanvas = () => {
       if (canvas) return canvas;
@@ -817,6 +832,21 @@
       });
     };
 
+    const syncMediaLayoutButtons = activeObject => {
+      const mediaLayoutButtons = [
+        [imageBoxCenterButton, isImageObject(activeObject)],
+        [imageBoxFillButton, isImageObject(activeObject)],
+        [codeBoxCenterButton, isCodeObject(activeObject)],
+        [codeBoxFillButton, isCodeObject(activeObject)],
+      ];
+
+      mediaLayoutButtons.forEach(([button, enabled]) => {
+        if (!button) return;
+        button.disabled = !enabled;
+        button.classList.remove('is-active');
+      });
+    };
+
     const syncCodeInputs = codeObject => {
       if (!qrTextInput || !qrFormatSelect) return;
 
@@ -845,6 +875,7 @@
       syncTextSerialInputs(textObject);
       syncAlignmentButtons(textObject);
       syncTextboxLayoutButtons(textObject);
+      syncMediaLayoutButtons(activeObject);
       syncCodeInputs(codeObject);
       syncCodeSerialInputs(codeObject);
     };
@@ -859,9 +890,7 @@
         ? Math.round(builderCanvas.getWidth() * 0.84)
         : Math.round(builderCanvas.getWidth() * 0.58);
       const nextLeft = Math.round((builderCanvas.getWidth() - nextFrameWidth) / 2);
-      const nextTop = layoutMode === 'center'
-        ? Math.max(0, Math.round((builderCanvas.getHeight() - nextFrameHeight) / 2))
-        : Math.round(textObject.top || 0);
+      const nextTop = Math.max(0, Math.round((builderCanvas.getHeight() - nextFrameHeight) / 2));
 
       textObject.set({
         left: nextLeft,
@@ -1033,7 +1062,7 @@
       top: Math.round(canvasHeight * 0.08),
       width: Math.round(canvasWidth * 0.58),
       fontSize: 28,
-      fontFamily: 'Arial',
+      fontFamily: getPreferredFontFamily(currentPrinter?.id),
       fontWeight: '700',
       fill: '#111111',
       textAlign: 'center',
@@ -1066,6 +1095,22 @@
       builderCanvas.setActiveObject(object);
       syncTextControls(object || null);
       builderCanvas.requestRenderAll();
+    };
+
+    const keepWorkingOnActiveObject = expectedType => {
+      const activeObject = ensureCanvas().getActiveObject();
+      if (!activeObject || activeObject instanceof window.fabric.ActiveSelection) return false;
+
+      const typeMatches = (
+        (expectedType === 'text' && activeObject instanceof window.fabric.Textbox) ||
+        (expectedType === 'image' && isImageObject(activeObject)) ||
+        (expectedType === 'code' && isCodeObject(activeObject))
+      );
+
+      if (!typeMatches) return false;
+
+      focusObject(activeObject);
+      return true;
     };
 
     const beginTextboxEditing = textObject => {
@@ -1181,6 +1226,34 @@
         scaleY: scale,
       });
       object.setCoords();
+    };
+
+    const applyVisualObjectLayoutPreset = layoutMode => {
+      const builderCanvas = ensureCanvas();
+      const activeObject = builderCanvas.getActiveObject();
+
+      if (!isImageObject(activeObject) && !isCodeObject(activeObject)) return;
+
+      const intrinsicWidth = activeObject.width || 1;
+      const intrinsicHeight = activeObject.height || 1;
+      const widthRatio = layoutMode === 'fill' ? 0.84 : 0.58;
+      const heightRatio = layoutMode === 'fill' ? 0.84 : 0.58;
+      const availableWidth = builderCanvas.getWidth() * widthRatio;
+      const availableHeight = builderCanvas.getHeight() * heightRatio;
+      const nextScale = Math.min(availableWidth / intrinsicWidth, availableHeight / intrinsicHeight, 1);
+      const renderedWidth = intrinsicWidth * nextScale;
+      const renderedHeight = intrinsicHeight * nextScale;
+
+      activeObject.set({
+        scaleX: nextScale,
+        scaleY: nextScale,
+        left: Math.round((builderCanvas.getWidth() - renderedWidth) / 2),
+        top: Math.round((builderCanvas.getHeight() - renderedHeight) / 2),
+      });
+      activeObject.setCoords();
+      syncTextControls(activeObject);
+      builderCanvas.requestRenderAll();
+      void syncAutoFitTapeCanvas();
     };
 
     const addImageFromFile = async file => {
@@ -1401,28 +1474,6 @@
         preserveWhenBlank: true,
         skipIncompatibleInput: true,
       });
-    };
-
-    const fitSelectedImageToLabelHeight = () => {
-      const builderCanvas = ensureCanvas();
-      const imageObject = builderCanvas.getActiveObject();
-
-      if (!isImageObject(imageObject)) return;
-
-      const intrinsicWidth = imageObject.width || 1;
-      const intrinsicHeight = imageObject.height || 1;
-      const nextScale = builderCanvas.getHeight() / intrinsicHeight;
-      const renderedWidth = intrinsicWidth * nextScale;
-
-      imageObject.set({
-        scaleX: nextScale,
-        scaleY: nextScale,
-        top: 0,
-        left: Math.round((builderCanvas.getWidth() - renderedWidth) / 2),
-      });
-      imageObject.setCoords();
-      builderCanvas.requestRenderAll();
-      void syncAutoFitTapeCanvas();
     };
 
     const bakeTextboxScale = event => {
@@ -1758,7 +1809,7 @@
       if (copy) {
         copy.textContent = isTapePrinter(printer)
           ? `Build a tape label for ${printer.displayName}. Tape width sets label height, and length can expand to fit the content.`
-          : `Build a label sized for ${printer.displayName}, then send it through the standard image print flow.`;
+          : `Build a label sized for ${printer.displayName}, then print it when you're ready.`;
       }
       clearEnterPrintPrompt();
       syncPreviewButton();
@@ -1779,7 +1830,7 @@
       if (copy) {
         copy.textContent = isTapePrinter(printer)
           ? `Build a tape label for ${printer.displayName}. Tape width sets label height, and length can expand to fit the content.`
-          : `Build a label sized for ${printer.displayName}, then send it through the standard image print flow.`;
+          : `Build a label sized for ${printer.displayName}, then print it when you're ready.`;
       }
       clearEnterPrintPrompt();
       syncPreviewButton();
@@ -2022,8 +2073,10 @@
 
     fontSelect?.addEventListener('change', () => {
       if (isSyncingFontInput) return;
+      const nextFontFamily = fontSelect.value || 'Arial';
+      settings.setSavedFontFamily(currentPrinter?.id, nextFontFamily);
       updateSelectedTextbox({
-        fontFamily: fontSelect.value || 'Arial',
+        fontFamily: nextFontFamily,
       });
     });
 
@@ -2118,6 +2171,7 @@
     });
 
     addImageButton?.addEventListener('click', () => {
+      if (keepWorkingOnActiveObject('image')) return;
       imageInput?.click();
     });
     imageInput?.addEventListener('change', async () => {
@@ -2126,14 +2180,23 @@
       imageInput.value = '';
     });
 
-    addTextButton?.addEventListener('click', addTextbox);
-    addQrButton?.addEventListener('click', addQrCode);
-    fitImageHeightButton?.addEventListener('click', fitSelectedImageToLabelHeight);
+    addTextButton?.addEventListener('click', () => {
+      if (keepWorkingOnActiveObject('text')) return;
+      addTextbox();
+    });
+    addQrButton?.addEventListener('click', () => {
+      if (keepWorkingOnActiveObject('code')) return;
+      addQrCode();
+    });
     alignLeftButton?.addEventListener('click', () => updateSelectedTextbox({ textAlign: 'left' }));
     alignCenterButton?.addEventListener('click', () => updateSelectedTextbox({ textAlign: 'center' }));
     alignRightButton?.addEventListener('click', () => updateSelectedTextbox({ textAlign: 'right' }));
     boxCenterButton?.addEventListener('click', () => applyTextboxLayoutPreset('center'));
     boxFillButton?.addEventListener('click', () => applyTextboxLayoutPreset('fill'));
+    imageBoxCenterButton?.addEventListener('click', () => applyVisualObjectLayoutPreset('center'));
+    imageBoxFillButton?.addEventListener('click', () => applyVisualObjectLayoutPreset('fill'));
+    codeBoxCenterButton?.addEventListener('click', () => applyVisualObjectLayoutPreset('center'));
+    codeBoxFillButton?.addEventListener('click', () => applyVisualObjectLayoutPreset('fill'));
     tapeWidthSelect?.addEventListener('change', async () => {
       if (!currentPrinter || !isTapePrinter(currentPrinter)) return;
 
@@ -2327,6 +2390,11 @@
     window.visualViewport?.addEventListener('resize', () => {
       if (!root.classList.contains('is-open')) return;
       applyCanvasViewportScale();
+    });
+    root.addEventListener('mousedown', event => {
+      if (!root.classList.contains('is-open')) return;
+      if (event.target !== root) return;
+      close();
     });
     document.addEventListener('keydown', event => {
       if (!root.classList.contains('is-open')) return;

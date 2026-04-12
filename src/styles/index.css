@@ -945,8 +945,8 @@ img {
 }
 
 .printify-builder__text-card-controls--code {
-  flex-direction: column;
-  align-items: stretch;
+  flex-direction: row;
+  align-items: flex-start;
 }
 
 .printify-builder__text-card-controls--image {
@@ -1264,6 +1264,27 @@ img {
   flex: 1 1 280px;
 }
 
+.printify-builder__text-card-controls--image,
+.printify-builder__text-card-controls--code {
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.printify-builder__code-main {
+  display: grid;
+  gap: 10px;
+  flex: 0 1 min(320px, 48%);
+  min-width: min(320px, 48%);
+}
+
+.printify-builder__text-card-controls--code > .printify-builder__field--grouped {
+  flex: 0 0 auto;
+}
+
+.printify-builder__text-card-controls--code > .printify-builder__serial-row {
+  flex: 1 0 100%;
+}
+
 .printify-builder__field input,
 .printify-builder__field select {
   width: 72px;
@@ -1279,6 +1300,13 @@ img {
 }
 
 .printify-builder__text-card-controls--code .printify-builder__field--stacked select {
+  width: 100%;
+  min-width: 0;
+}
+
+.printify-builder__code-main .printify-builder__field--wide,
+.printify-builder__code-main .printify-builder__field--wide input,
+.printify-builder__code-main .printify-builder__field--wide select {
   width: 100%;
   min-width: 0;
 }
@@ -1653,5 +1681,10 @@ img {
   .printify-builder__meta {
     width: 100%;
     justify-content: space-between;
+  }
+
+  .printify-builder__code-main {
+    flex-basis: 100%;
+    min-width: 0;
   }
 }

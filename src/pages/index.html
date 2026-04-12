@@ -35,7 +35,7 @@
           <div>
             <p class="printify-builder__eyebrow">Printer Label Builder</p>
             <h2 class="printify-builder__title" id="labelBuilderTitle">Label Builder</h2>
-            <p class="printify-builder__copy" id="labelBuilderCopy">Build a label to match this printer's target size, then send it through the standard image route.</p>
+            <p class="printify-builder__copy" id="labelBuilderCopy">Build a label sized for this printer, then print it when you're ready.</p>
           </div>
           <button class="printify-builder__close" id="labelBuilderClose" type="button">Close</button>
         </div>
@@ -160,7 +160,13 @@
               <p class="printify-builder__text-card-eyebrow">Image</p>
             </div>
             <div class="printify-builder__text-card-controls printify-builder__text-card-controls--image">
-              <button class="printer-card__button printer-card__button--secondary" id="labelBuilderFitImageHeight" type="button">Fit To Label Height</button>
+              <div class="printify-builder__field printify-builder__field--stacked printify-builder__field--grouped">
+                <span>Box</span>
+                <div class="printify-builder__segmented" role="group" aria-label="Image frame layout">
+                  <button class="printer-card__button printer-card__button--secondary" id="labelBuilderImageBoxCenter" type="button">Center</button>
+                  <button class="printer-card__button printer-card__button--secondary" id="labelBuilderImageBoxFill" type="button">Fill</button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -169,20 +175,29 @@
               <p class="printify-builder__text-card-eyebrow">Code</p>
             </div>
             <div class="printify-builder__text-card-controls printify-builder__text-card-controls--code">
-              <label class="printify-builder__field printify-builder__field--stacked printify-builder__field--wide" for="labelBuilderQrFormat">
-                <select id="labelBuilderQrFormat">
-                  <option value="qrcode" selected>QR Code</option>
-                  <option value="datamatrix">Data Matrix</option>
-                  <option value="code128">Code 128</option>
-                  <option value="code39">Code 39</option>
-                  <option value="pdf417">PDF417</option>
-                  <option value="ean13">EAN-13</option>
-                  <option value="upca">UPC-A</option>
-                </select>
-              </label>
-              <label class="printify-builder__field printify-builder__field--stacked printify-builder__field--wide" for="labelBuilderQrText">
-                <input class="printify-builder__input printify-builder__input--code" id="labelBuilderQrText" type="text" placeholder="Enter text or a URL">
-              </label>
+              <div class="printify-builder__code-main">
+                <label class="printify-builder__field printify-builder__field--stacked printify-builder__field--wide" for="labelBuilderQrFormat">
+                  <select id="labelBuilderQrFormat">
+                    <option value="qrcode" selected>QR Code</option>
+                    <option value="datamatrix">Data Matrix</option>
+                    <option value="code128">Code 128</option>
+                    <option value="code39">Code 39</option>
+                    <option value="pdf417">PDF417</option>
+                    <option value="ean13">EAN-13</option>
+                    <option value="upca">UPC-A</option>
+                  </select>
+                </label>
+                <label class="printify-builder__field printify-builder__field--stacked printify-builder__field--wide" for="labelBuilderQrText">
+                  <input class="printify-builder__input printify-builder__input--code" id="labelBuilderQrText" type="text" placeholder="Enter text or a URL">
+                </label>
+              </div>
+              <div class="printify-builder__field printify-builder__field--stacked printify-builder__field--grouped">
+                <span>Box</span>
+                <div class="printify-builder__segmented" role="group" aria-label="Code frame layout">
+                  <button class="printer-card__button printer-card__button--secondary" id="labelBuilderCodeBoxCenter" type="button">Center</button>
+                  <button class="printer-card__button printer-card__button--secondary" id="labelBuilderCodeBoxFill" type="button">Fill</button>
+                </div>
+              </div>
               <div class="printify-builder__serial-row">
                 <label class="printify-builder__field printify-builder__field--checkbox" for="labelBuilderCodeSerialEnabled">
                   <input id="labelBuilderCodeSerialEnabled" type="checkbox">

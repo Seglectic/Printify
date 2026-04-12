@@ -36,6 +36,7 @@
   const ZIP_EXTENSIONS = new Set(['zip']);
   const OVERSIZE_WARNING_RATIO = 1.5;
   const THEME_STORAGE_KEY = 'printify-theme';
+  const PRINTER_OPTION_STATE_STORAGE_KEY = 'printify-printer-option-state';
   const DUPLICATE_WHITELIST_STORAGE_KEY = 'printify-duplicate-whitelist';
   const DUPLICATE_WHITELIST_DURATION_MS = 24 * 60 * 60 * 1000;
   const DUPLICATE_PROMPTS = [
@@ -51,6 +52,25 @@
   const UUID_GREGORIAN_OFFSET_100NS = 122192928000000000n;
   const UUID_100NS_PER_MILLISECOND = 10000n;
   let lastClientJobTimestamp = 0n;
+
+  const loadPrinterOptionState = () => {
+    try {
+      const rawValue = window.localStorage.getItem(PRINTER_OPTION_STATE_STORAGE_KEY);
+      if (!rawValue) return {};
+      const parsedValue = JSON.parse(rawValue);
+      return parsedValue && typeof parsedValue === 'object' ? parsedValue : {};
+    } catch (error) {
+      return {};
+    }
+  };
+
+  const persistPrinterOptionState = () => {
+    try {
+      window.localStorage.setItem(PRINTER_OPTION_STATE_STORAGE_KEY, JSON.stringify(appState.printerOptionState || {}));
+    } catch (error) {
+      // Keep printer option persistence best-effort so the UI stays responsive.
+    }
+  };
 
   const appState = {
     printers: [],
@@ -82,7 +102,7 @@
     hiddenTriggerBuffer: '',
     hiddenTriggerTimer: null,
     openPrinterId: null,
-    printerOptionState: {},
+    printerOptionState: loadPrinterOptionState(),
     statsSocket: null,
     statsSocketReconnectTimer: null,
     statsRefreshTimer: null,
@@ -1469,6 +1489,11 @@
       setOpenPrinter(appState.openPrinterId === printerId ? null : printerId);
     });
 
+    printerGrid.addEventListener('contextmenu', event => {
+      if (!event.target.closest('[data-role="printer-card"]')) return;
+      event.preventDefault();
+    });
+
     document.addEventListener('click', event => {
       if (!appState.openPrinterId) return;
       if (document.body.classList.contains('printify-client-overlay-open')) return;
@@ -1643,12 +1668,22 @@
       onError: error => showFeedback(error.message),
       getMonochromePreviewFields: printer => getPrinterUploadOptions(printer?.id),
       getInvertPrintEnabled: printerId => Boolean(appState.printerOptionState?.[printerId]?.invertPrint),
+      getSavedFontFamily: printerId => appState.printerOptionState?.[printerId]?.fontFamily || '',
       setInvertPrintEnabled: (printerId, enabled) => {
         if (!printerId) return;
         appState.printerOptionState[printerId] = {
           ...(appState.printerOptionState[printerId] || {}),
           invertPrint: Boolean(enabled),
         };
+        persistPrinterOptionState();
+      },
+      setSavedFontFamily: (printerId, fontFamily) => {
+        if (!printerId) return;
+        appState.printerOptionState[printerId] = {
+          ...(appState.printerOptionState[printerId] || {}),
+          fontFamily: String(fontFamily || '').trim() || 'Arial',
+        };
+        persistPrinterOptionState();
       },
       closeOnPrint: false,
     });

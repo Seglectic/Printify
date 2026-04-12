@@ -68,7 +68,8 @@
     const audio = new window.Audio(settings.audioUrl);
     audio.volume = 0.2;
     let isOpen = false;
-    let keyBuffer = [];
+    let konamiProgress = 0;
+    let konamiResetTimer = null;
 
     const setStatus = message => {
       if (status) status.textContent = message || '';
@@ -155,20 +156,46 @@
 
     const normalizeKey = key => String(key || '').toLowerCase();
 
+    const resetKonamiProgress = () => {
+      konamiProgress = 0;
+
+      if (konamiResetTimer) {
+        window.clearTimeout(konamiResetTimer);
+        konamiResetTimer = null;
+      }
+    };
+
     const handleKonamiKey = event => {
-      if (event.altKey || event.ctrlKey || event.metaKey) return;
+      if (event.altKey || event.ctrlKey || event.metaKey || event.repeat) return;
 
       const normalizedKey = normalizeKey(event.key);
-      keyBuffer = [...keyBuffer, normalizedKey].slice(-settings.konamiCode.length);
+      const expectedKeys = settings.konamiCode[konamiProgress] || [];
+      const matchesExpected = expectedKeys.includes(normalizedKey);
+      const matchesStart = (settings.konamiCode[0] || []).includes(normalizedKey);
 
-      const matches = settings.konamiCode.every((acceptedKeys, index) => (
-        acceptedKeys.includes(keyBuffer[index])
-      ));
-
-      if (matches) {
-        keyBuffer = [];
-        openDrawer();
+      if (matchesExpected) {
+        konamiProgress += 1;
+      } else if (matchesStart) {
+        konamiProgress = 1;
+      } else {
+        resetKonamiProgress();
+        return;
       }
+
+      if (konamiProgress >= settings.konamiCode.length) {
+        resetKonamiProgress();
+        openDrawer();
+        return;
+      }
+
+      if (konamiResetTimer) {
+        window.clearTimeout(konamiResetTimer);
+      }
+
+      konamiResetTimer = window.setTimeout(() => {
+        konamiResetTimer = null;
+        konamiProgress = 0;
+      }, 1600);
     };
 
     scrim?.addEventListener('click', () => {

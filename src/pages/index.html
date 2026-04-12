@@ -210,9 +210,7 @@
 
     <div class="printify-feedback" id="feedback" aria-live="polite"></div>
 
-    <div class="printify-confirm" id="confirmLayer">
-      <video class="printify-confirm__video" id="confirmVideo" src="/media/checkMark.mp4" muted></video>
-    </div>
+    <div class="printify-confirm" id="confirmLayer" aria-hidden="true"></div>
 
     <div class="printify-prompt" id="promptLayer" hidden>
       <div class="printify-prompt__card printify-prompt__card--warning" id="promptCard" role="alertdialog" aria-modal="true" aria-labelledby="promptTitle" aria-describedby="promptMessage">
@@ -236,6 +234,7 @@
     <script src="/scripts/logDrawer.js"></script>
     <script src="/scripts/configDrawer.js"></script>
     <script src="/scripts/labelBuilder.js"></script>
+    <script src="/scripts/confirm.js"></script>
     <script src="/scripts/index.js"></script>
   </body>
 </html>

@@ -74,6 +74,7 @@
     statsSocket: null,
     statsSocketReconnectTimer: null,
     statsRefreshTimer: null,
+    confirmSystem: null,
   };
 
   const dragDepth = new Map();
@@ -82,7 +83,6 @@
   const footer = document.getElementById('footer');
   const feedback = document.getElementById('feedback');
   const confirmLayer = document.getElementById('confirmLayer');
-  const confirmVideo = document.getElementById('confirmVideo');
   const promptLayer = document.getElementById('promptLayer');
   const promptCard = document.getElementById('promptCard');
   const promptEyebrow = document.getElementById('promptEyebrow');
@@ -271,19 +271,29 @@
 
   const showConfirm = message => {
     showFeedback(message);
-
-    if (!confirmVideo) return;
-
-    confirmLayer.classList.add('is-visible');
-    confirmVideo.currentTime = 0;
-    confirmVideo.playbackRate = 2;
-    confirmVideo.play().catch(() => {});
-
-    window.setTimeout(() => {
-      confirmLayer.classList.remove('is-visible');
-    }, 700);
-
   };
+
+  appState.confirmSystem = typeof window.createPrintifyConfirmSystem === 'function'
+    ? window.createPrintifyConfirmSystem({
+      confirmLayer,
+      getPrinterCardElement: printerId => printerGrid?.querySelector(`[data-role="printer-card"][data-printer-id="${printerId}"]`) || null,
+    })
+    : null;
+
+  const uploadFormDataWithProgress = options => (
+    appState.confirmSystem?.uploadFormDataWithProgress
+      ? appState.confirmSystem.uploadFormDataWithProgress(options)
+      : fetch(options.routePath, {
+        method: 'POST',
+        body: options.formData,
+      }).then(async response => {
+        if (!response.ok) {
+          throw new Error(`Upload failed (${response.status})`);
+        }
+
+        return response.json();
+      })
+  );
 
   const showPromptCard = ({
     tone = 'warning',
@@ -1026,21 +1036,30 @@
 
   const uploadGroupedFiles = async (printer, groupedFiles, extraFields = {}) => {
     const groupEntries = Object.entries(groupedFiles);
-    const uploadResults = [];
+    const uploadJobs = [];
 
     if (!groupEntries.length) {
       throw new Error('No valid files were supplied.');
     }
 
     for (const [fileKind, files] of groupEntries) {
-      const routePath = files.length > 1
-        ? `/${printer.id}/${fileKind}/multi`
-        : `/${printer.id}/${fileKind}`;
+      files.forEach(file => {
+        uploadJobs.push({
+          fileKind,
+          file,
+          indicator: appState.confirmSystem?.createIndicator(printer.id) || {
+            setProgress() {},
+            settle() {},
+          },
+        });
+      });
+    }
+
+    const settledUploads = await Promise.allSettled(uploadJobs.map(async ({ fileKind, file, indicator }) => {
+      const routePath = `/${printer.id}/${fileKind}`;
       const formData = new FormData();
 
-      files.forEach(file => {
-        formData.append(PRINTIFY_FILE_KINDS[fileKind].fieldName, file, file.name);
-      });
+      formData.append(PRINTIFY_FILE_KINDS[fileKind].fieldName, file, file.name);
 
       Object.entries(extraFields).forEach(([fieldName, fieldValue]) => {
         if (fieldValue !== null && fieldValue !== undefined && fieldValue !== '') {
@@ -1048,16 +1067,36 @@
         }
       });
 
-      const response = await fetch(routePath, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error(`Upload failed for ${printer.displayName} (${fileKind})`);
+      try {
+        const uploadResult = await uploadFormDataWithProgress({
+          routePath,
+          formData,
+          onProgress: progress => indicator.setProgress(progress),
+        });
+        const resolvedResult = await resolvePendingDuplicates(printer, uploadResult);
+        indicator.settle('success');
+        return resolvedResult;
+      } catch (error) {
+        indicator.settle('error');
+        throw new Error(`${printer.displayName}: ${error.message}`);
       }
+    }));
 
-      uploadResults.push(await resolvePendingDuplicates(printer, await response.json()));
+    const uploadResults = settledUploads
+      .filter(result => result.status === 'fulfilled')
+      .map(result => result.value);
+    const uploadErrors = settledUploads
+      .filter(result => result.status === 'rejected')
+      .map(result => result.reason);
+
+    if (uploadErrors.length) {
+      const batchError = new Error(
+        uploadErrors.length === 1
+          ? uploadErrors[0].message
+          : `${uploadErrors[0].message} (+${uploadErrors.length - 1} more)`
+      );
+      batchError.uploadResults = uploadResults;
+      throw batchError;
     }
 
     return uploadResults;
@@ -1072,7 +1111,20 @@
     if (!shouldContinue) return;
 
     const groupedFiles = groupFilesByKind(printer, files);
-    const uploadResults = await uploadGroupedFiles(printer, groupedFiles, extraFields);
+    let uploadResults = [];
+
+    try {
+      uploadResults = await uploadGroupedFiles(printer, groupedFiles, extraFields);
+    } catch (error) {
+      uploadResults = Array.isArray(error?.uploadResults) ? error.uploadResults : [];
+
+      if (uploadResults.length) {
+        await refreshServerState();
+      }
+
+      throw error;
+    }
+
     await refreshServerState();
     const skippedCount = uploadResults.reduce((total, result) => (
       total + Number(result?.skippedCount || 0)

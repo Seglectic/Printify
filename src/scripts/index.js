@@ -97,6 +97,9 @@
   const promptCancel = document.getElementById('promptCancel');
   const promptConfirm = document.getElementById('promptConfirm');
   const themeToggle = document.getElementById('themeToggle');
+  const setClientOverlayActive = (layerName, isActive) => {
+    window.printifyClientOverlay?.setActive?.(layerName, isActive);
+  };
 
   // ╭──────────────────────────╮
   // │  Formatting helpers      │
@@ -378,6 +381,7 @@
       settled = true;
 
       promptLayer.hidden = true;
+      setClientOverlayActive('prompt', false);
       promptCard.classList.remove('printify-prompt__card--warning');
       document.removeEventListener('keydown', handleKeyDown);
       promptCancel.removeEventListener('click', cancel);
@@ -422,6 +426,7 @@
     promptCancel.textContent = cancelLabel;
     promptConfirm.textContent = confirmLabel;
     promptLayer.hidden = false;
+    setClientOverlayActive('prompt', true);
 
     document.addEventListener('keydown', handleKeyDown);
     promptCancel.addEventListener('click', cancel);
@@ -1414,6 +1419,7 @@
 
     document.addEventListener('click', event => {
       if (!appState.openPrinterId) return;
+      if (document.body.classList.contains('printify-client-overlay-open')) return;
       if (event.target.closest('[data-role="printer-card"]')) return;
       setOpenPrinter(null);
     });

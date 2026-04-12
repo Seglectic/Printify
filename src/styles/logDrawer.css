@@ -113,14 +113,6 @@
   pointer-events: auto;
 }
 
-body.printify-log-drawer-open .printify-theme-toggle,
-body.printify-log-drawer-open .clippy,
-body.printify-log-drawer-open .clippy-balloon {
-  -webkit-filter: blur(1.5px);
-  filter: blur(1.5px);
-  transition: filter 280ms ease;
-}
-
 .printify-log-drawer__panel {
   position: fixed;
   top: 0;

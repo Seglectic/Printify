@@ -1,4 +1,8 @@
 (function () {
+  const setClientOverlayActive = (layerName, isActive) => {
+    window.printifyClientOverlay?.setActive?.(layerName, isActive);
+  };
+
   // ╭──────────────────────────╮
   // │  Shared builder state    │
   // ╰──────────────────────────╯
@@ -1678,6 +1682,7 @@
       isSerialPreviewActive = false;
       void stopMonochromePreview();
       syncPreviewButton();
+      setClientOverlayActive('label-builder', false);
       window.clearTimeout(closeAnimationTimer);
       if (openAnimationFrame) {
         window.cancelAnimationFrame(openAnimationFrame);
@@ -1710,6 +1715,7 @@
       window.clearTimeout(closeAnimationTimer);
       root.classList.remove('is-closing');
       root.classList.add('is-mounted');
+      setClientOverlayActive('label-builder', true);
       if (isRestoringSamePrinter) {
         restoreBuilderSession(printer);
       } else {

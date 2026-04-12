@@ -67,6 +67,24 @@ body {
   background: var(--printify-page);
 }
 
+.printify-app,
+.printify-footer,
+.printify-theme-toggle,
+.printify-feedback,
+.printify-confirm {
+  transition: filter 180ms cubic-bezier(0.22, 1, 0.36, 1), opacity 180ms ease;
+  will-change: filter;
+}
+
+body.printify-client-overlay-open .printify-app,
+body.printify-client-overlay-open .printify-footer,
+body.printify-client-overlay-open .printify-theme-toggle,
+body.printify-client-overlay-open .printify-feedback,
+body.printify-client-overlay-open .printify-confirm {
+  filter: blur(8px) saturate(0.86);
+  pointer-events: none;
+}
+
 button,
 input,
 textarea {

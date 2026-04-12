@@ -1,4 +1,8 @@
 (function () {
+  const setClientOverlayActive = (layerName, isActive) => {
+    window.printifyClientOverlay?.setActive?.(layerName, isActive);
+  };
+
   // ╭──────────────────────────╮
   // │  Shared drawer markup    │
   // ╰──────────────────────────╯
@@ -73,6 +77,7 @@
       isOpen = nextOpenState;
       panel?.classList.toggle('is-open', nextOpenState);
       scrim?.classList.toggle('is-open', nextOpenState);
+      setClientOverlayActive('config-drawer', nextOpenState);
 
       if (nextOpenState) {
         window.setTimeout(() => {

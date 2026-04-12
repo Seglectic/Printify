@@ -10,6 +10,10 @@
     }
   };
 
+  const setClientOverlayActive = (layerName, isActive) => {
+    window.printifyClientOverlay?.setActive?.(layerName, isActive);
+  };
+
   const createClientJobId = () => {
     if (!window.crypto?.getRandomValues) {
       const fallbackId = `reprint-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
@@ -1070,6 +1074,7 @@
       scrim.classList.toggle('is-open', isOpen);
       toggle.classList.toggle('is-hidden', isOpen);
       document.body.classList.toggle('printify-log-drawer-open', isOpen);
+      setClientOverlayActive('log-drawer', isOpen);
 
       if (!isOpen) {
         expandedChecksumJobKeys.clear();

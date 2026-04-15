@@ -17,10 +17,16 @@ assistant: Clippy
 # imPath: ""
 plugins:
   dmg:
+    # Tiny cartridge shelf.
     enabled: true
     code: "123"
   ptouch:
+    # Watches ptouch-print for the tape printer and keeps tape width fresh.
     enabled: true
+    intervalSeconds: 5
+  presence:
+    # Linux USB presence. Add printerId: "regex from lsusb" to hide it when absent.
+    enabled: false
     intervalSeconds: 5
 
 # ╭───────────────────────────────────────────────────────────╮

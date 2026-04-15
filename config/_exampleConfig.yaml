@@ -1,66 +1,40 @@
-# ╭─────────────────────────────────────────╮
-# │  _exampleConfig.yaml                    │
-# │  Copy to config.yaml on first boot      │
-# │  if no local machine config exists.     │
-# ╰─────────────────────────────────────────╯
+# ╭────────────────────────────────────────────────────────────────────────────────────────╮
+# │  _exampleConfig.yaml                                                                   │
+# │  Copy to config.yaml on first boot if no local machine config exists.                  │
+# ╰────────────────────────────────────────────────────────────────────────────────────────╯
 
-# ╭──────────────────╮
-# │  Global Options  │
-# ╰──────────────────╯
+# ╭────────────────────────────────────────────────────────────────────────────────────────╮
+# │  Global Options                                                                        │
+# ╰────────────────────────────────────────────────────────────────────────────────────────╯
 # assistant: choose the desktop mascot for status text and boot chatter
-# Available assistants: none, Bonzi, Clippy, F1, Genie, Genius, Links,
-# Merlin, Peedy, Rocky, Rover
+#   Available assistants: none, Bonzi, Clippy, F1, Genie, Genius, Links, Merlin, Peedy, Rocky, Rover
 port: 8020
 testing: true
 assistant: none
 fileWatchReload: true
 # imPath: ""
 
-# Optional plugin config lives under plugins.
-# Available plugins:
-# - dmg: lazy-loads a gen 1 Game Boy popup with locally hosted ROMs and save slots
-# - ptouch: polls "ptouch-print --info" and keeps online/tape width in sync
-#
-# plugins:
-#   dmg:
-#     enabled: false
-#     code: "123"
-#   ptouch:
-#     enabled: true
-#     intervalSeconds: 5
-
-# ╭───────────────────────────────────────────────────────────╮
-# │  Printer options                                          │
-# │  - displayName: UI label shown in the app                 │
-# │  - printMode: "driver" or "cli"                           │
-# │      "driver" uses "lp" on linux and pdf-to-printer       │
-# │       elsewhere                                           │
-# │  - driverName: printer / queue name for                   │
-# │    driver mode                                            │
-# │  - size: print target size in decimal form,               │
-# │    such as "4x6" or "3.8x5.8"                             │
-# │    or "tape" for variable-length tape labels              │
-# │  - units: inch, mm, cm, or px                             │
-# │  - density: ImageMagick density used to convert           │
-# │    physical size to effective pixels                      │
-# │  - tapes: supported tape widths in mm for                 │
-# │    size: "tape" printers                                  │
-# │  - defaultTape: optional default tape width               │
-# │  - output: required for cli mode; "png" or "pdf"          │
-# │  - acceptedKinds: any of pdf, image, zip                  │
-# │  - monochrome: force image prep to black/white            │
-# │  - monochromeBit: 1 for true black/white output           │
-# │    or 8 for grayscale                                     │
-# │  - monochromeDither: floydsteinberg,                      │
-# │    riemersma, or none                                     │
-# │  - labelBuilder: enables the label builder                │
-# │  - bundleCopies: bundle image copies into                 │
-# │    one PDF before printing                                │
-# │  - cliCommand: command used for cli mode                  │
-# │  - cliArgs: args for cli mode; supports                   │
-# │    the {file}, {tapeWidthMm}, and {lengthMm} placeholders │
-# │  - tape width controls print height; length is job-driven │
-# ╰───────────────────────────────────────────────────────────╯
+# ╭────────────────────────────────────────────────────────────────────────────────────────╮
+# │  Printer Options                                                                       │
+# │  - displayName: UI label shown in the app.                                             │
+# │  - printMode: "driver" or "cli"; driver uses "lp" on Linux, pdf-to-printer elsewhere.  │
+# │  - driverName: printer / queue name for driver mode.                                   │
+# │  - size: print target size, such as "4x6", "3.8x5.8", or "tape" for variable labels.   │
+# │  - units: inch, mm, cm, or px.                                                         │
+# │  - density: ImageMagick density used to convert physical size to effective pixels.     │
+# │  - tapes: supported tape widths in mm for size: "tape" printers.                       │
+# │  - defaultTape: optional default tape width.                                           │
+# │  - output: required for cli mode; "png" or "pdf".                                      │
+# │  - acceptedKinds: any of pdf, image, zip.                                              │
+# │  - monochrome: force image prep to black/white.                                        │
+# │  - monochromeBit: 1 for true black/white output or 8 for grayscale.                    │
+# │  - monochromeDither: floydsteinberg, riemersma, or none.                               │
+# │  - labelBuilder: enables the label builder.                                            │
+# │  - bundleCopies: bundle image copies into one PDF before printing.                     │
+# │  - cliCommand: command used for cli mode.                                              │
+# │  - cliArgs: args for cli mode; supports {file}, {tapeWidthMm}, and {lengthMm}.         │
+# │  - tape width controls print height; length is job-driven.                             │
+# ╰────────────────────────────────────────────────────────────────────────────────────────╯
 
 #  Example printer object with every supported key.
 #  Uncomment and adapt as needed.

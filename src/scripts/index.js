@@ -99,8 +99,7 @@
     logDrawer: null,
     clientPluginsById: {},
     clientPluginModules: {},
-    hiddenTriggerBuffer: '',
-    hiddenTriggerTimer: null,
+    clientPluginInputHandles: [],
     openPrinterId: null,
     printerOptionState: loadPrinterOptionState(),
     statsSocket: null,
@@ -579,6 +578,8 @@
 
         return pluginMap;
       }, {});
+
+      syncClientPluginTriggers();
     });
 
   const refreshServerState = () => loadVersion({ patchPrinterStats: true });
@@ -1718,35 +1719,6 @@
     });
   };
 
-  const isTypingContext = target => {
-    if (!target || !(target instanceof Element)) return false;
-
-    if (target.closest('input, textarea, select, [contenteditable="true"]')) {
-      return true;
-    }
-
-    return target.getAttribute('contenteditable') === 'true';
-  };
-
-  const resetHiddenTriggerBuffer = () => {
-    appState.hiddenTriggerBuffer = '';
-
-    if (appState.hiddenTriggerTimer) {
-      window.clearTimeout(appState.hiddenTriggerTimer);
-      appState.hiddenTriggerTimer = null;
-    }
-  };
-
-  const queueHiddenTriggerReset = () => {
-    if (appState.hiddenTriggerTimer) {
-      window.clearTimeout(appState.hiddenTriggerTimer);
-    }
-
-    appState.hiddenTriggerTimer = window.setTimeout(() => {
-      resetHiddenTriggerBuffer();
-    }, 1200);
-  };
-
   const loadClientPluginModule = async pluginConfig => {
     const scriptUrl = String(pluginConfig?.scriptUrl || '').trim();
 
@@ -1779,40 +1751,54 @@
     });
   };
 
-  const bindClientPluginTriggers = () => {
-    document.addEventListener('keydown', async event => {
-      if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return;
-      if (isTypingContext(event.target)) return;
+  const buildClientPluginCodeSteps = code => Array.from(String(code || '').trim())
+    .map(character => ({
+      keys: [character],
+      display: '',
+    }));
 
-      const key = String(event.key || '');
+  const syncClientPluginTriggers = () => {
+    appState.clientPluginInputHandles.forEach(handle => handle?.unregister?.());
+    appState.clientPluginInputHandles = [];
 
-      if (key.length !== 1) {
+    if (!window.printifyInput?.registerSequence) {
+      return;
+    }
+
+    Object.values(appState.clientPluginsById).forEach(pluginConfig => {
+      const code = String(pluginConfig?.code || '').trim();
+      const steps = buildClientPluginCodeSteps(code);
+
+      if (!steps.length) {
         return;
       }
 
-      const nextBuffer = `${appState.hiddenTriggerBuffer}${key}`.slice(-12);
-      appState.hiddenTriggerBuffer = nextBuffer;
-      queueHiddenTriggerReset();
+      const handle = window.printifyInput.registerSequence({
+        id: `client-plugin-${pluginConfig.id}-code`,
+        steps,
+        timeoutMs: 1200,
+        onMatch: async event => {
+          event.preventDefault();
 
-      const enabledPlugins = Object.values(appState.clientPluginsById);
-      const matchedPlugin = enabledPlugins.find(pluginConfig => (
-        pluginConfig?.triggerCode
-        && nextBuffer.endsWith(String(pluginConfig.triggerCode))
-      ));
+          try {
+            await activateClientPlugin(pluginConfig.id);
+          } catch (error) {
+            showFeedback(error.message || 'Could not open client plugin.');
+            console.error(error);
+          }
+        },
+      });
 
-      if (!matchedPlugin) {
-        return;
-      }
-
-      resetHiddenTriggerBuffer();
-
-      try {
-        await activateClientPlugin(matchedPlugin.id);
-      } catch (error) {
-        showFeedback(error.message || 'Could not open client plugin.');
-        console.error(error);
-      }
+      appState.clientPluginInputHandles.push(handle);
     });
+  };
+
+  const bindClientPluginTriggers = () => {
+    if (appState.clientPluginInputHandles.length) {
+      return;
+    }
+
+    syncClientPluginTriggers();
   };
 
   const bootClippy = () => {

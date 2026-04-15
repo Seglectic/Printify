@@ -31,7 +31,10 @@ Primary responsibilities:
 - `src/styles/index.css`: index-page styling
 - `src/scripts/logDrawer.js`: Recent Logs drawer behavior
 - `src/scripts/clippy.js`: clippy mascot UI
+- `src/scripts/input.js`: shared hidden input sequence manager for config and client-plugin activation codes
 - `lib/previewer.js`: preview-cache generation and checksum-keyed thumbnail lookup
+- `lib/pluginLoader.js`: discovers plugins and exposes enabled client plugins to the browser
+- `lib/plugins/dmg/`: optional gen 1 Game Boy client plugin with ROM library and save slots
 - `lib/previewCache/`: generated log thumbnail cache keyed by checksum
 - `src/dymo.html`: legacy Dymo-specific browser UI, if still present
 - `serverData.json`: persisted counters for page hits and print count
@@ -100,6 +103,9 @@ Current server endpoints in `Printify.js` include:
 - Keep the app runnable with `npm start`.
 - Prefer minimal edits over broad refactors.
 - Do not remove `testing` mode unless explicitly requested.
+- Client plugins should use a `code` config field for hidden activation sequences and register through the shared `window.printifyInput` path instead of adding one-off keydown buffers.
+- Keep client plugin ids, config keys, public plugin URLs, and `/client-plugins/:pluginId` API paths aligned. The gen 1 Game Boy plugin id is `dmg`; reserve broader emulator names for future backends.
+- For `lib/plugins/dmg/`, ROM selection is browser-driven from the discovered `ROM/` library. Do not reintroduce per-ROM `rom` or `save` config fields unless the user asks for a startup-default feature.
 - Be careful with filesystem writes in `uploads/` and `serverData.json`.
 - Treat `lib/previewCache/` as generated cache output, not hand-edited source.
 - Keep preview filenames checksum-keyed and prefer direct file existence checks over scanning historical logs for dedupe.

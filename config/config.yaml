@@ -13,14 +13,12 @@
 # Merlin, Peedy, Rocky, Rover
 port: 8020
 testing: true
-assistant: Links
+assistant: Clippy
 # imPath: ""
 plugins:
-  emu:
+  dmg:
     enabled: true
-    rom: "tetris.gb"
-    save: "tetris.sav"
-    triggerCode: "123"
+    code: "123"
   ptouch:
     enabled: true
     intervalSeconds: 5

@@ -18,15 +18,13 @@ fileWatchReload: true
 
 # Optional plugin config lives under plugins.
 # Available plugins:
-# - emu: lazy-loads a Game Boy popup with a locally hosted ROM + save file
+# - dmg: lazy-loads a gen 1 Game Boy popup with locally hosted ROMs and save slots
 # - ptouch: polls "ptouch-print --info" and keeps online/tape width in sync
 #
 # plugins:
-#   emu:
+#   dmg:
 #     enabled: false
-#     rom: "tetris.gb"
-#     save: "tetris.sav"
-#     triggerCode: "123"
+#     code: "123"
 #   ptouch:
 #     enabled: true
 #     intervalSeconds: 5

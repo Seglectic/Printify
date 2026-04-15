@@ -6,7 +6,7 @@ serverData.json
 yarn.lock
 lib/previewCache/*.png
 logs/*.ndjson
-config/config.yaml
+config.yaml
 config/config.yaml
 src/plugins/emu/ROM/*
 !src/plugins/emu/ROM/.gitkeep

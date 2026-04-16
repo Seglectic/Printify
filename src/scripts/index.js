@@ -2,8 +2,6 @@
   // ╭──────────────────────────╮
   // │  Shared constants        │
   // ╰──────────────────────────╯
-  // Keep this as the primary client version source.
-  // Other pages read it through the server metadata endpoints.
   const APP_VERSION = '2.7.1';
   window.PRINTIFY_CLIENT_VERSION = APP_VERSION;
   const PRINTIFY_LOG_ROUTE = '#printifyLogDrawer';
@@ -194,22 +192,35 @@
       : actualAreaSquareMm;
   };
 
-  const formatAreaSquareMm = value => {
+  const formatAreaSquareMeters = value => {
     const numericValue = Number(value);
 
     if (!Number.isFinite(numericValue)) {
       return '0';
     }
 
-    return Math.round(numericValue).toLocaleString();
+    const areaSquareMeters = numericValue / 1_000_000;
+
+    if (areaSquareMeters > 0 && areaSquareMeters < 0.01) {
+      return '<0.01';
+    }
+
+    const maximumFractionDigits = areaSquareMeters < 10
+      ? 2
+      : (areaSquareMeters < 100 ? 1 : 0);
+
+    return areaSquareMeters.toLocaleString(undefined, {
+      minimumFractionDigits: 0,
+      maximumFractionDigits,
+    });
   };
 
   const buildPrinterCounterTooltip = printer => {
     const numericPageCount = Math.max(0, Math.floor(Number(getPrinterDisplayPageCount(printer)) || 0));
     const pageCount = formatWholeNumber(numericPageCount);
     const pageLabel = numericPageCount === 1 ? 'page' : 'pages';
-    const areaSquareMm = formatAreaSquareMm(getPrinterDisplayAreaSquareMm(printer));
-    return `${pageCount} ${pageLabel} printed\n(${areaSquareMm}mm²)`;
+    const areaSquareMeters = formatAreaSquareMeters(getPrinterDisplayAreaSquareMm(printer));
+    return `${pageCount} ${pageLabel} printed\n(${areaSquareMeters} m²)`;
   };
 
   const getFileExtension = fileName => {
@@ -507,7 +518,6 @@
       pageTotal.innerHTML = buildPrinterCounterMarkup(displayCount);
       pageTotal.setAttribute('aria-label', `Successful pages printed: ${formatWholeNumber(displayCount)}`);
       pageTotal.setAttribute('title', buildPrinterCounterTooltip(printer));
-      pageTotal.setAttribute('data-counter-tooltip', buildPrinterCounterTooltip(printer));
     });
   };
 
@@ -631,7 +641,7 @@
     <p class="printer-card__name">${escapeHtml(printer.displayName)}</p>
     <div class="printer-card__body">
       <img class="printer-card__icon" src="${printer.iconUrl || '/favicon.ico'}" alt="${escapeHtml(printer.displayName)}">
-      <p class="printer-card__page-total" aria-label="Successful pages printed: ${escapeHtml(formatWholeNumber(getPrinterDisplayPageCount(printer)))}" title="${escapeHtml(buildPrinterCounterTooltip(printer))}" data-counter-tooltip="${escapeHtml(buildPrinterCounterTooltip(printer))}">${buildPrinterCounterMarkup(getPrinterDisplayPageCount(printer))}</p>
+      <p class="printer-card__page-total" aria-label="Successful pages printed: ${escapeHtml(formatWholeNumber(getPrinterDisplayPageCount(printer)))}" title="${escapeHtml(buildPrinterCounterTooltip(printer))}">${buildPrinterCounterMarkup(getPrinterDisplayPageCount(printer))}</p>
     </div>
     <div class="printer-card__details">
       <div class="printer-card__kind-bubbles">

@@ -408,9 +408,6 @@ img {
   border: 1px solid color-mix(in srgb, var(--printify-line) 92%, transparent);
   border-radius: 14px;
   background: color-mix(in srgb, var(--printify-card) 88%, transparent);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    0 8px 18px rgba(11, 14, 13, 0.12);
   font-family: "Droid Sans Mono", "Lucida Console", Courier, monospace;
   line-height: 1;
   transition: max-height 220ms ease, opacity 180ms ease, margin-top 220ms ease;
@@ -420,37 +417,6 @@ img {
   max-height: 42px;
   margin-top: 6px;
   opacity: 1;
-}
-
-.printer-card.is-open .printer-card__page-total::after {
-  content: attr(data-counter-tooltip);
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% + 10px);
-  transform: translate(-50%, 8px);
-  min-width: 148px;
-  padding: 8px 10px;
-  border-radius: 12px;
-  border: 1px solid color-mix(in srgb, var(--printify-line) 88%, transparent);
-  background: color-mix(in srgb, var(--printify-card) 96%, var(--printify-page));
-  color: var(--printify-ink);
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.45;
-  letter-spacing: 0.01em;
-  text-align: center;
-  white-space: pre-line;
-  box-shadow: 0 10px 28px rgba(17, 24, 39, 0.22);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 120ms ease, transform 120ms ease;
-  z-index: 1;
-}
-
-.printer-card.is-open .printer-card__page-total:hover::after,
-.printer-card.is-open .printer-card__page-total:focus-visible::after {
-  opacity: 1;
-  transform: translate(-50%, 0);
 }
 
 .printer-card__counter-digit {

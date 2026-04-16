@@ -220,8 +220,7 @@
 
     <script src="/scripts/labelBuilder.js"></script>
     <script>
-      (function () {
-        window.PRINTIFY_CLIENT_VERSION = '2.6.1';
+      (async function () {
         const select = document.getElementById('builderPrinterSelect');
         const openButton = document.getElementById('openBuilderButton');
         const feedback = document.getElementById('feedback');
@@ -255,6 +254,16 @@
           window.setTimeout(() => {
             feedback.classList.remove('is-visible');
           }, 2200);
+        };
+
+        const loadClientVersion = async () => {
+          try {
+            const response = await fetch('/client-version');
+            const payload = await response.json();
+            window.PRINTIFY_CLIENT_VERSION = String(payload?.clientVersion || '').trim();
+          } catch (error) {
+            window.PRINTIFY_CLIENT_VERSION = '';
+          }
         };
 
         const builder = window.createPrintifyLabelBuilder({
@@ -294,7 +303,8 @@
         });
 
         footer.textContent = 'Label Builder Lab';
-        loadPrinters().catch(error => {
+        await loadClientVersion();
+        await loadPrinters().catch(error => {
           console.error(error);
           showFeedback('Could not load builder printers.');
         });

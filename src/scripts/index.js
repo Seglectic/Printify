@@ -2,6 +2,8 @@
   // ╭──────────────────────────╮
   // │  Shared constants        │
   // ╰──────────────────────────╯
+  // Keep this as the primary client version source.
+  // Other pages read it through the server metadata endpoints.
   const APP_VERSION = '2.7.1';
   window.PRINTIFY_CLIENT_VERSION = APP_VERSION;
   const PRINTIFY_LOG_ROUTE = '#printifyLogDrawer';

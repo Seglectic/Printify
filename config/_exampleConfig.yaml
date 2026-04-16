@@ -15,6 +15,12 @@ fileWatchReload: true
 # imPath: ""
 
 # ╭────────────────────────────────────────────────────────────────────────────────────────╮
+# │  Plugin Options                                                                        │
+# │  Optional plugin settings live here. Add per-plugin keys under "plugins".             │
+# ╰────────────────────────────────────────────────────────────────────────────────────────╯
+plugins:
+
+# ╭────────────────────────────────────────────────────────────────────────────────────────╮
 # │  Printer Options                                                                       │
 # │  - displayName: UI label shown in the app.                                             │
 # │  - printMode: "driver" or "cli"; driver uses "lp" on Linux, pdf-to-printer elsewhere.  │

@@ -472,6 +472,8 @@
     }, 0);
   });
 
+  window.printifyShowPromptCard = showPromptCard;
+
   const applyTheme = theme => {
     const nextTheme = theme === 'light' ? 'light' : 'dark';
 

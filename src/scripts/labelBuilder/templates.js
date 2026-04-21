@@ -385,6 +385,77 @@
 
         return response.json();
       },
+
+      async delete(templatePath) {
+        const response = await fetch(`/label-builder/templates/remote/file?path=${encodeURIComponent(templatePath)}`, {
+          method: 'DELETE',
+        });
+
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          throw new Error(payload.error || 'Could not delete remote template.');
+        }
+
+        return response.json();
+      },
+
+      async deleteFolder(directoryPath) {
+        const response = await fetch(`/label-builder/templates/remote/folders?path=${encodeURIComponent(directoryPath)}`, {
+          method: 'DELETE',
+        });
+
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          throw new Error(payload.error || 'Could not delete remote folder.');
+        }
+
+        return response.json();
+      },
+    };
+
+    const confirmTemplateDelete = async (item, options = {}) => {
+      const itemName = item?.name || options.fallbackName || 'this item';
+      const itemLabel = options.itemLabel || 'Template';
+      const promptFn = typeof window.printifyShowPromptCard === 'function'
+        ? window.printifyShowPromptCard
+        : async options => window.confirm(options.message || options.title || 'Delete template?');
+
+      return promptFn({
+        tone: 'warning',
+        eyebrow: `${itemLabel} Delete`,
+        title: `Delete ${itemLabel}?`,
+        message: `Delete ${itemName}? This can't be undone.`,
+        subtext: options.subtext || (state.templateModalTab === 'local'
+          ? 'This removes the template from this browser only.'
+          : 'This removes the template file from the server template folder.'),
+        confirmLabel: 'Delete',
+        cancelLabel: 'Cancel',
+      });
+    };
+
+    const deleteLocalTemplate = async template => {
+      const templates = getLocalTemplates().filter(entry => {
+        if (template.id && entry.id) {
+          return entry.id !== template.id;
+        }
+
+        return String(entry.name || '') !== String(template.name || '');
+      });
+      persistLocalTemplates(templates);
+      await refreshTemplateListing();
+      setTemplateFeedback(`Deleted ${template.name || 'template'}.`);
+    };
+
+    const deleteRemoteTemplate = async template => {
+      await remoteTemplateApi.delete(template.path);
+      await refreshTemplateListing();
+      setTemplateFeedback(`Deleted ${template.name || 'template'}.`);
+    };
+
+    const deleteRemoteFolder = async folder => {
+      await remoteTemplateApi.deleteFolder(folder.path);
+      await refreshTemplateListing();
+      setTemplateFeedback(`Deleted ${folder.name || 'folder'}.`);
     };
 
     const setTemplateFeedback = (message, isError = false) => {
@@ -402,13 +473,22 @@
     };
 
     const syncTemplateTabButtons = () => {
+      const isRemoteTab = state.templateModalTab === 'remote';
+
       refs.templateLocalTabButton?.classList.toggle('is-active', state.templateModalTab === 'local');
-      refs.templateRemoteTabButton?.classList.toggle('is-active', state.templateModalTab === 'remote');
+      refs.templateRemoteTabButton?.classList.toggle('is-active', isRemoteTab);
       if (refs.templateRemoteTools) {
-        refs.templateRemoteTools.hidden = state.templateModalTab !== 'remote';
+        refs.templateRemoteTools.hidden = !isRemoteTab;
+        refs.templateRemoteTools.style.display = isRemoteTab ? '' : 'none';
+      }
+      if (refs.templateSaveLocalButton) {
+        refs.templateSaveLocalButton.hidden = isRemoteTab;
+        refs.templateSaveLocalButton.style.display = isRemoteTab ? 'none' : '';
       }
       if (refs.templateSaveRemoteButton) {
-        refs.templateSaveRemoteButton.disabled = state.templateModalTab !== 'remote';
+        refs.templateSaveRemoteButton.hidden = !isRemoteTab;
+        refs.templateSaveRemoteButton.style.display = isRemoteTab ? '' : 'none';
+        refs.templateSaveRemoteButton.disabled = !isRemoteTab;
       }
       if (refs.templatePathLabel) {
         refs.templatePathLabel.textContent = state.remoteTemplatePath ? `/${state.remoteTemplatePath}` : '/';
@@ -426,17 +506,38 @@
         const folderCard = document.createElement('article');
         folderCard.className = 'printify-builder__template-card printify-builder__template-card--folder';
         folderCard.innerHTML = `
+          <div class="printify-builder__template-corner-icon" aria-hidden="true">
+            <img class="printify-builder__template-corner-icon-image" src="/assets/icons/folder.svg" alt="">
+          </div>
           <div class="printify-builder__template-meta">
             <p class="printify-builder__template-name">${folder.name}</p>
             <p class="printify-builder__template-subcopy">Folder</p>
           </div>
-          <div class="printify-builder__actions">
-            <button class="printer-card__button printer-card__button--secondary" type="button">Open</button>
+          <div class="printify-builder__template-actions">
+            <button class="printify-builder__template-icon-button" type="button" data-role="delete-folder" aria-label="Delete folder" title="Delete folder">
+              <img class="printify-builder__template-icon" src="/assets/icons/trash.svg" alt="">
+            </button>
+            <button class="printer-card__button printer-card__button--secondary" type="button" data-role="open-folder">Open</button>
           </div>
         `;
-        folderCard.querySelector('button')?.addEventListener('click', async () => {
+        folderCard.querySelector('[data-role="open-folder"]')?.addEventListener('click', async () => {
           state.remoteTemplatePath = folder.path;
           await refreshTemplateListing();
+        });
+        folderCard.querySelector('[data-role="delete-folder"]')?.addEventListener('click', async () => {
+          try {
+            const accepted = await confirmTemplateDelete(folder, {
+              itemLabel: 'Folder',
+              subtext: 'This removes the folder and any templates or subfolders inside it from the server.',
+            });
+            if (!accepted) {
+              return;
+            }
+
+            await deleteRemoteFolder(folder);
+          } catch (error) {
+            settings.onError(new Error(error.message || 'Could not delete folder.'));
+          }
         });
         refs.templateGrid.append(folderCard);
       });
@@ -448,25 +549,44 @@
         templateCard.innerHTML = `
           <div class="printify-builder__template-thumb">
             ${template.thumbnailDataUrl ? `<img src="${template.thumbnailDataUrl}" alt="">` : ''}
+            <p class="printify-builder__template-thumb-name" title="${template.name || 'Untitled Template'}">${template.name || 'Untitled Template'}</p>
           </div>
           <div class="printify-builder__template-meta">
-            <p class="printify-builder__template-name">${template.name || 'Untitled Template'}</p>
             <p class="printify-builder__template-subcopy">${template.printerDisplayName || 'Any printer'} · ${updatedLabel}</p>
           </div>
-          <div class="printify-builder__actions">
-            <button class="printer-card__button printer-card__button--secondary" type="button">Restore</button>
+          <div class="printify-builder__template-actions">
+            <button class="printify-builder__template-icon-button" type="button" data-role="delete-template" aria-label="Delete template" title="Delete template">
+              <img class="printify-builder__template-icon" src="/assets/icons/trash.svg" alt="">
+            </button>
+            <button class="printer-card__button printer-card__button--secondary" type="button" data-role="restore-template">Load</button>
           </div>
         `;
-        templateCard.querySelector('button')?.addEventListener('click', async () => {
+        templateCard.querySelector('[data-role="restore-template"]')?.addEventListener('click', async () => {
           try {
             const payload = state.templateModalTab === 'local'
               ? template
               : await remoteTemplateApi.load(template.path);
             await hydrateCanvasFromDocument(payload.document || payload, ctx);
             closeTemplateModal();
-            setTemplateFeedback(`Restored ${template.name || 'template'}.`);
+            setTemplateFeedback(`Loaded ${template.name || 'template'}.`);
           } catch (error) {
             settings.onError(new Error(error.message || 'Could not restore template.'));
+          }
+        });
+        templateCard.querySelector('[data-role="delete-template"]')?.addEventListener('click', async () => {
+          try {
+            const accepted = await confirmTemplateDelete(template);
+            if (!accepted) {
+              return;
+            }
+
+            if (state.templateModalTab === 'local') {
+              await deleteLocalTemplate(template);
+            } else {
+              await deleteRemoteTemplate(template);
+            }
+          } catch (error) {
+            settings.onError(new Error(error.message || 'Could not delete template.'));
           }
         });
         refs.templateGrid.append(templateCard);

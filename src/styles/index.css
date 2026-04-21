@@ -1157,7 +1157,7 @@ img {
   opacity: 0;
   pointer-events: none;
   transition: opacity 90ms ease, transform 90ms ease;
-  z-index: 3;
+  z-index: 8;
 }
 
 .printify-builder__tooltip-wrap:hover .printify-builder__tooltip,
@@ -1443,6 +1443,7 @@ img {
   border-radius: 22px;
   background: color-mix(in srgb, var(--printify-card) 94%, transparent);
   box-shadow: 0 24px 54px rgba(17, 24, 39, 0.2);
+  overflow: hidden;
 }
 
 .printify-builder__templates-header {
@@ -1511,11 +1512,14 @@ img {
 
 .printify-builder__templates-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(164px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(164px, 188px));
+  justify-content: start;
+  align-content: start;
   gap: 12px;
   min-height: 140px;
   max-height: min(42vh, 420px);
   overflow: auto;
+  overflow-x: hidden;
   padding-right: 4px;
 }
 
@@ -1525,6 +1529,7 @@ img {
 }
 
 .printify-builder__template-card {
+  position: relative;
   display: grid;
   gap: 10px;
   align-content: start;
@@ -1533,14 +1538,17 @@ img {
   border: 1px solid color-mix(in srgb, var(--printify-line) 88%, transparent);
   border-radius: 18px;
   background: color-mix(in srgb, var(--printify-card) 82%, transparent);
+  overflow: hidden;
 }
 
 .printify-builder__template-card--folder {
-  min-height: 120px;
+  min-height: 132px;
+  padding-top: 18px;
   justify-items: start;
 }
 
 .printify-builder__template-thumb {
+  position: relative;
   width: 100%;
   aspect-ratio: 1.5 / 1;
   border-radius: 12px;
@@ -1549,6 +1557,25 @@ img {
     linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(246, 247, 248, 0.96)),
     repeating-linear-gradient(45deg, rgba(17, 24, 39, 0.04), rgba(17, 24, 39, 0.04) 8px, transparent 8px, transparent 16px);
   overflow: hidden;
+}
+
+.printify-builder__template-thumb-name {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  margin: 0;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--printify-card) 88%, rgba(12, 16, 19, 0.74));
+  color: var(--printify-ink);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: border-radius 160ms ease, white-space 160ms ease;
 }
 
 .printify-builder__template-thumb img {
@@ -1570,6 +1597,10 @@ img {
   font-size: 14px;
   font-weight: 800;
   letter-spacing: 0.01em;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .printify-builder__template-subcopy {
@@ -1581,6 +1612,68 @@ img {
 
 .printify-builder__template-card .printify-builder__actions {
   justify-content: flex-start;
+}
+
+.printify-builder__template-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.printify-builder__template-actions .printer-card__button {
+  min-width: 0;
+}
+
+.printify-builder__template-icon-button {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  color: color-mix(in srgb, var(--printify-ink) 62%, transparent);
+  border: 1px solid color-mix(in srgb, var(--printify-line) 88%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--printify-card) 84%, transparent);
+  cursor: pointer;
+  transition: color 160ms ease, border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.printify-builder__template-icon-button:hover,
+.printify-builder__template-icon-button:focus-visible {
+  color: #d65a5a;
+  border-color: color-mix(in srgb, #d65a5a 44%, var(--printify-line));
+  background: color-mix(in srgb, #d65a5a 10%, var(--printify-card));
+  transform: translateY(-1px);
+}
+
+.printify-builder__template-icon {
+  width: 17px;
+  height: 17px;
+}
+
+.printify-builder__template-corner-icon {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  color: color-mix(in srgb, var(--printify-ink) 56%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--printify-card) 78%, transparent);
+}
+
+.printify-builder__template-corner-icon-image {
+  width: 17px;
+  height: 17px;
+}
+
+.printify-builder__template-card:hover .printify-builder__template-thumb-name,
+.printify-builder__template-card:focus-within .printify-builder__template-thumb-name {
+  white-space: normal;
+  border-radius: 14px;
 }
 
 .printify-builder__snap-guide {
@@ -1972,7 +2065,7 @@ img {
   }
 
   .printify-builder__templates-grid {
-    grid-template-columns: repeat(auto-fit, minmax(144px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(144px, 168px));
     max-height: min(36vh, 320px);
   }
 }

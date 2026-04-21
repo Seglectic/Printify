@@ -33,6 +33,8 @@
     TEMPLATE_SCHEMA_VERSION: '1.0',
     LOCAL_TEMPLATE_STORAGE_KEY: 'printify-label-builder-templates',
     SNAP_THRESHOLD_PX: 8,
+    SNAP_RELEASE_DISTANCE_PX: 15,
+    SNAP_GUIDE_INSET_PX: 4,
     SNAP_GUIDE_COLOR: 'rgba(31, 111, 67, 0.78)',
   };
 }());

@@ -1035,6 +1035,10 @@ img {
   margin-top: 14px;
 }
 
+.printify-builder__templates-launch {
+  margin-left: auto;
+}
+
 .printify-builder__controls--tape {
   justify-content: flex-start;
   align-items: center;

@@ -10,40 +10,181 @@
   namespace.register('snapping', ctx => {
     const { constants, state } = ctx;
 
-    const resetSnapGuides = () => {
-      state.snapGuides.vertical = null;
-      state.snapGuides.horizontal = null;
+    const clearSnapLocks = () => {
+      state.snapLocks.vertical = null;
+      state.snapLocks.horizontal = null;
     };
 
-    const renderSnapGuides = () => {
-      const builderCanvas = ctx.ensureCanvas();
-      const { vertical, horizontal } = state.snapGuides;
-      const topContext = builderCanvas.contextTop;
-
-      if (!topContext || (!vertical && !horizontal)) {
+    const clearSnapOverlay = () => {
+      if (!state.snapOverlayCanvas || !state.snapOverlayContext) {
         return;
       }
 
-      topContext.save();
-      topContext.strokeStyle = constants.SNAP_GUIDE_COLOR;
-      topContext.lineWidth = 1;
-      topContext.setLineDash([5, 5]);
+      state.snapOverlayContext.clearRect(0, 0, state.snapOverlayCanvas.width, state.snapOverlayCanvas.height);
+    };
+
+    const resetSnapGuides = () => {
+      state.snapGuides.vertical = null;
+      state.snapGuides.horizontal = null;
+      clearSnapLocks();
+      clearSnapOverlay();
+      state.canvas?.requestRenderAll?.();
+    };
+
+    const renderSnapGuides = () => {
+      ctx.syncSnapOverlayViewport();
+      const { vertical, horizontal } = state.snapGuides;
+      const overlayCanvas = state.snapOverlayCanvas;
+      const overlayContext = state.snapOverlayContext;
+
+      if (!overlayCanvas || !overlayContext) {
+        return;
+      }
+
+      clearSnapOverlay();
+
+      if (vertical === null && horizontal === null) {
+        return;
+      }
+
+      overlayContext.save();
+      overlayContext.strokeStyle = constants.SNAP_GUIDE_COLOR;
+      overlayContext.lineWidth = 1;
+      overlayContext.setLineDash([5, 5]);
+
+      const getRenderPosition = (position, maxPosition) => {
+        const inset = constants.SNAP_GUIDE_INSET_PX;
+        const safeMax = Math.max(1, maxPosition);
+        const edgePosition = Math.max(inset, safeMax - inset);
+
+        if (position <= 0) return inset;
+        if (position >= safeMax) return edgePosition;
+        return position;
+      };
 
       if (vertical !== null) {
-        topContext.beginPath();
-        topContext.moveTo(vertical, 0);
-        topContext.lineTo(vertical, builderCanvas.getHeight());
-        topContext.stroke();
+        const verticalPosition = getRenderPosition(vertical, overlayCanvas.width);
+        overlayContext.beginPath();
+        overlayContext.moveTo(verticalPosition, 0);
+        overlayContext.lineTo(verticalPosition, overlayCanvas.height);
+        overlayContext.stroke();
       }
 
-      if (horizontal !== null) {
-        topContext.beginPath();
-        topContext.moveTo(0, horizontal);
-        topContext.lineTo(builderCanvas.getWidth(), horizontal);
-        topContext.stroke();
+      if (horizontal !== null && horizontal > 0 && horizontal < overlayCanvas.height) {
+        const horizontalPosition = getRenderPosition(horizontal, overlayCanvas.height);
+        overlayContext.beginPath();
+        overlayContext.moveTo(0, horizontalPosition);
+        overlayContext.lineTo(overlayCanvas.width, horizontalPosition);
+        overlayContext.stroke();
       }
 
-      topContext.restore();
+      overlayContext.restore();
+    };
+
+    const getRenderedObjectMetrics = object => {
+      const centerPoint = object.getCenterPoint();
+      const boundingRect = object.getBoundingRect();
+      const renderedWidth = Math.max(
+        1,
+        Number.isFinite(boundingRect?.width)
+          ? boundingRect.width
+          : (Number.isFinite(object.getScaledWidth?.())
+            ? object.getScaledWidth()
+            : ((object.width || 1) * (object.scaleX || 1)))
+      );
+      const renderedHeight = Math.max(
+        1,
+        Number.isFinite(boundingRect?.height)
+          ? boundingRect.height
+          : (Number.isFinite(object.getScaledHeight?.())
+            ? object.getScaledHeight()
+            : ((object.height || 1) * (object.scaleY || 1)))
+      );
+
+      return {
+        centerX: centerPoint.x,
+        centerY: centerPoint.y,
+        renderedWidth,
+        renderedHeight,
+      };
+    };
+
+    const getGuideCandidates = object => {
+      const builderCanvas = ctx.ensureCanvas();
+      const canvasWidth = builderCanvas.getWidth();
+      const canvasHeight = builderCanvas.getHeight();
+      const {
+        centerX,
+        centerY,
+        renderedWidth,
+        renderedHeight,
+      } = getRenderedObjectMetrics(object);
+
+      const buildAxisCandidates = (guides, points) => guides.flatMap(guide => points.map(point => ({
+        key: `${guide.key}:${point.key}`,
+        position: guide.position,
+        point: point.value,
+      })));
+
+      const verticalGuides = [
+        { key: 'left-guide', position: 0 },
+        { key: 'center-guide', position: canvasWidth / 2 },
+        { key: 'right-guide', position: canvasWidth },
+      ];
+      const verticalPoints = [
+        { key: 'left-edge', value: centerX - (renderedWidth / 2) },
+        { key: 'center-point', value: centerX },
+        { key: 'right-edge', value: centerX + (renderedWidth / 2) },
+      ];
+      const horizontalGuides = [
+        { key: 'top-guide', position: 0 },
+        { key: 'middle-guide', position: canvasHeight / 2 },
+        { key: 'bottom-guide', position: canvasHeight },
+      ];
+      const horizontalPoints = [
+        { key: 'top-edge', value: centerY - (renderedHeight / 2) },
+        { key: 'middle-point', value: centerY },
+        { key: 'bottom-edge', value: centerY + (renderedHeight / 2) },
+      ];
+
+      return {
+        verticalCandidates: buildAxisCandidates(verticalGuides, verticalPoints),
+        horizontalCandidates: buildAxisCandidates(horizontalGuides, horizontalPoints),
+      };
+    };
+
+    const getNearestGuide = (candidates, threshold) => {
+      let nearestGuide = null;
+      let nearestDistance = Number.POSITIVE_INFINITY;
+
+      candidates.forEach(candidate => {
+        const distance = Math.abs(candidate.position - candidate.point);
+        if (distance <= threshold && distance < nearestDistance) {
+          nearestGuide = candidate;
+          nearestDistance = distance;
+        }
+      });
+
+      return nearestGuide;
+    };
+
+    const previewCanvasGuides = object => {
+      if (!object || object instanceof window.fabric.ActiveSelection) {
+        resetSnapGuides();
+        return;
+      }
+
+      const guideThreshold = constants.SNAP_THRESHOLD_PX;
+      const {
+        verticalCandidates,
+        horizontalCandidates,
+      } = getGuideCandidates(object);
+
+      const nearestVerticalGuide = getNearestGuide(verticalCandidates, guideThreshold);
+      const nearestHorizontalGuide = getNearestGuide(horizontalCandidates, guideThreshold);
+
+      state.snapGuides.vertical = nearestVerticalGuide ? nearestVerticalGuide.position : null;
+      state.snapGuides.horizontal = nearestHorizontalGuide ? nearestHorizontalGuide.position : null;
     };
 
     const applyCanvasGuideSnap = object => {
@@ -55,49 +196,97 @@
       // V1 only snaps against canvas guides. Keeping this separate makes it
       // much easier to add object-to-object snapping later without disturbing
       // the rest of the builder runtime.
-      const builderCanvas = ctx.ensureCanvas();
-      const bounds = object.getBoundingRect();
-      const canvasWidth = builderCanvas.getWidth();
-      const canvasHeight = builderCanvas.getHeight();
       const guideThreshold = constants.SNAP_THRESHOLD_PX;
+      const releaseThreshold = constants.SNAP_RELEASE_DISTANCE_PX;
 
-      const verticalCandidates = [
-        { position: 0, point: bounds.left },
-        { position: canvasWidth / 2, point: bounds.left + (bounds.width / 2) },
-        { position: canvasWidth, point: bounds.left + bounds.width },
-      ];
-      const horizontalCandidates = [
-        { position: 0, point: bounds.top },
-        { position: canvasHeight / 2, point: bounds.top + (bounds.height / 2) },
-        { position: canvasHeight, point: bounds.top + bounds.height },
-      ];
+      const {
+        verticalCandidates,
+        horizontalCandidates,
+      } = getGuideCandidates(object);
 
       let nextLeft = object.left || 0;
       let nextTop = object.top || 0;
       let nextVerticalGuide = null;
       let nextHorizontalGuide = null;
+      let skipVerticalSnap = false;
+      let skipHorizontalSnap = false;
+      let didOverrideLeft = false;
+      let didOverrideTop = false;
 
-      verticalCandidates.forEach(candidate => {
-        const distance = Math.abs(candidate.position - candidate.point);
-        if (distance <= guideThreshold && (nextVerticalGuide === null || distance < Math.abs(nextVerticalGuide - candidate.point))) {
-          nextLeft += candidate.position - candidate.point;
-          nextVerticalGuide = candidate.position;
+      const activeVerticalLock = state.snapLocks.vertical;
+      if (activeVerticalLock) {
+        const lockedCandidate = verticalCandidates.find(candidate => candidate.key === activeVerticalLock.candidateKey);
+        const guideDistance = lockedCandidate
+          ? Math.abs(activeVerticalLock.guide - lockedCandidate.point)
+          : Number.POSITIVE_INFINITY;
+        if (guideDistance <= releaseThreshold && lockedCandidate) {
+          nextLeft += activeVerticalLock.guide - lockedCandidate.point;
+          nextVerticalGuide = activeVerticalLock.guide;
+          didOverrideLeft = true;
+        } else {
+          state.snapLocks.vertical = null;
+          skipVerticalSnap = true;
         }
-      });
+      }
 
-      horizontalCandidates.forEach(candidate => {
-        const distance = Math.abs(candidate.position - candidate.point);
-        if (distance <= guideThreshold && (nextHorizontalGuide === null || distance < Math.abs(nextHorizontalGuide - candidate.point))) {
-          nextTop += candidate.position - candidate.point;
-          nextHorizontalGuide = candidate.position;
+      const activeHorizontalLock = state.snapLocks.horizontal;
+      if (activeHorizontalLock) {
+        const lockedCandidate = horizontalCandidates.find(candidate => candidate.key === activeHorizontalLock.candidateKey);
+        const guideDistance = lockedCandidate
+          ? Math.abs(activeHorizontalLock.guide - lockedCandidate.point)
+          : Number.POSITIVE_INFINITY;
+        if (guideDistance <= releaseThreshold && lockedCandidate) {
+          nextTop += activeHorizontalLock.guide - lockedCandidate.point;
+          nextHorizontalGuide = activeHorizontalLock.guide;
+          didOverrideTop = true;
+        } else {
+          state.snapLocks.horizontal = null;
+          skipHorizontalSnap = true;
         }
-      });
+      }
 
-      object.set({
-        left: Math.round(nextLeft),
-        top: Math.round(nextTop),
-      });
-      object.setCoords();
+      if (nextVerticalGuide === null && !skipVerticalSnap) {
+        const nearestVerticalGuide = getNearestGuide(verticalCandidates, guideThreshold);
+        if (nearestVerticalGuide) {
+          nextLeft += nearestVerticalGuide.position - nearestVerticalGuide.point;
+          nextVerticalGuide = nearestVerticalGuide.position;
+          didOverrideLeft = true;
+          state.snapLocks.vertical = {
+            guide: nearestVerticalGuide.position,
+            candidateKey: nearestVerticalGuide.key,
+          };
+        }
+      }
+
+      if (nextHorizontalGuide === null && !skipHorizontalSnap) {
+        const nearestHorizontalGuide = getNearestGuide(horizontalCandidates, guideThreshold);
+        if (nearestHorizontalGuide) {
+          nextTop += nearestHorizontalGuide.position - nearestHorizontalGuide.point;
+          nextHorizontalGuide = nearestHorizontalGuide.position;
+          didOverrideTop = true;
+          state.snapLocks.horizontal = {
+            guide: nearestHorizontalGuide.position,
+            candidateKey: nearestHorizontalGuide.key,
+          };
+        }
+      }
+
+      if (nextVerticalGuide === null) {
+        state.snapLocks.vertical = null;
+      }
+
+      if (nextHorizontalGuide === null) {
+        state.snapLocks.horizontal = null;
+      }
+
+      if (didOverrideLeft || didOverrideTop) {
+        object.set({
+          ...(didOverrideLeft ? { left: nextLeft } : {}),
+          ...(didOverrideTop ? { top: nextTop } : {}),
+        });
+        object.setCoords();
+      }
+
       state.snapGuides.vertical = nextVerticalGuide;
       state.snapGuides.horizontal = nextHorizontalGuide;
     };
@@ -106,17 +295,28 @@
       const builderCanvas = ctx.ensureCanvas();
 
       // Guide drawing is rendered on Fabric's top context so it never pollutes
-      // exported images or template thumbnails.
+      // exported images or template thumbnails. The overlay lives outside
+      // Fabric's own transform layer so guide cleanup never stomps handles.
       builderCanvas.on('object:moving', event => {
         applyCanvasGuideSnap(event.target);
       });
       builderCanvas.on('object:scaling', event => {
-        applyCanvasGuideSnap(event.target);
+        clearSnapLocks();
+        previewCanvasGuides(event.target);
+      });
+      builderCanvas.on('object:rotating', () => {
+        resetSnapGuides();
       });
       builderCanvas.on('object:modified', () => {
         resetSnapGuides();
       });
+      builderCanvas.on('before:selection:cleared', () => {
+        resetSnapGuides();
+      });
       builderCanvas.on('selection:cleared', () => {
+        resetSnapGuides();
+      });
+      builderCanvas.on('mouse:out', () => {
         resetSnapGuides();
       });
       builderCanvas.on('mouse:up', () => {

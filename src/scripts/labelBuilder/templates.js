@@ -562,11 +562,7 @@
         await openTemplateModal();
       };
 
-      // The modal has both header and footer entry points on purpose so future
-      // workflow changes do not have to thread template access back through
-      // the canvas toolbar only.
       refs.templatesButton?.addEventListener('click', openHandler);
-      refs.templatesFooterButton?.addEventListener('click', openHandler);
       refs.templateModalCloseButton?.addEventListener('click', closeTemplateModal);
       refs.templateLocalTabButton?.addEventListener('click', async () => {
         state.templateModalTab = 'local';

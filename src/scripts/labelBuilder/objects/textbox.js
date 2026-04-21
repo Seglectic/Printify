@@ -197,6 +197,19 @@
       ...overrides,
     })));
 
+    const getInitialTextboxFontSize = ({ frameWidth, frameHeight }) => {
+      const widthLimitedSize = frameWidth * 0.14;
+      const heightLimitedSize = frameHeight * 0.22;
+
+      return Math.max(
+        24,
+        Math.min(
+          72,
+          Math.round(Math.min(widthLimitedSize, heightLimitedSize))
+        )
+      );
+    };
+
     const focusTextbox = textObject => {
       state.lastSelectedTextObject = textObject;
       ctx.ensureCanvas().setActiveObject(textObject);
@@ -231,9 +244,10 @@
     const addTextbox = () => {
       const builderCanvas = ctx.ensureCanvas();
       const textboxCount = builderCanvas.getObjects().filter(object => object instanceof window.fabric.Textbox).length;
-      const fontSize = Math.max(24, Math.round(builderCanvas.getHeight() * 0.18));
-      const topStep = Math.max(34, Math.round(fontSize * 1.35));
       const frameWidth = Math.round(builderCanvas.getWidth() * 0.58);
+      const frameHeight = Math.max(48, Math.round(builderCanvas.getHeight() * 0.34));
+      const fontSize = getInitialTextboxFontSize({ frameWidth, frameHeight });
+      const topStep = Math.max(34, Math.round(fontSize * 1.35));
       const textbox = buildTextbox(builderCanvas.getWidth(), builderCanvas.getHeight(), {
         text: '',
         left: Math.round((builderCanvas.getWidth() - frameWidth) / 2),
@@ -241,7 +255,7 @@
         frameWidth,
         top: Math.round(builderCanvas.getHeight() * 0.12) + (textboxCount * topStep),
         fontSize,
-        frameHeight: Math.max(48, Math.round(builderCanvas.getHeight() * 0.34)),
+        frameHeight,
         autoFitText: false,
       });
 
@@ -250,6 +264,24 @@
       beginTextboxEditing(textbox);
       ctx.refreshBuilderMeta();
       void ctx.syncAutoFitTapeCanvas();
+    };
+
+    const createSeedTextbox = () => {
+      const builderCanvas = ctx.ensureCanvas();
+      const frameWidth = Math.round(builderCanvas.getWidth() * 0.6);
+      const frameHeight = Math.max(48, Math.round(builderCanvas.getHeight() * 0.6));
+      const fontSize = getInitialTextboxFontSize({ frameWidth, frameHeight });
+
+      return buildTextbox(builderCanvas.getWidth(), builderCanvas.getHeight(), {
+        text: '',
+        left: Math.round((builderCanvas.getWidth() - frameWidth) / 2),
+        top: Math.round((builderCanvas.getHeight() - frameHeight) / 2),
+        width: frameWidth,
+        frameWidth,
+        frameHeight,
+        fontSize,
+        autoFitText: false,
+      });
     };
 
     const updateSelectedTextbox = updates => {
@@ -387,6 +419,7 @@
       bakeTextboxScale,
       beginTextboxEditing,
       buildTextbox,
+      createSeedTextbox,
       commitTextboxState,
       ensureTextboxSerialState,
       fitTextboxFontToFrame,

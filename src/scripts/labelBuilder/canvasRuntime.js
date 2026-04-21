@@ -12,6 +12,56 @@
   namespace.register('canvasRuntime', ctx => {
     const { refs, settings, state } = ctx;
 
+    const ensureSnapOverlay = () => {
+      const builderCanvas = ensureCanvas();
+      const container = builderCanvas.wrapperEl;
+
+      if (!container) {
+        return null;
+      }
+
+      if (state.snapOverlayCanvas && state.snapOverlayCanvas.isConnected) {
+        return state.snapOverlayCanvas;
+      }
+
+      const overlayCanvas = document.createElement('canvas');
+      overlayCanvas.className = 'printify-builder__snap-overlay';
+      overlayCanvas.setAttribute('aria-hidden', 'true');
+      overlayCanvas.style.position = 'absolute';
+      overlayCanvas.style.inset = '0';
+      overlayCanvas.style.pointerEvents = 'none';
+      overlayCanvas.style.zIndex = '2';
+      overlayCanvas.style.borderRadius = '12px';
+      overlayCanvas.style.display = 'block';
+      container.style.position = container.style.position || 'relative';
+      container.appendChild(overlayCanvas);
+
+      state.snapOverlayCanvas = overlayCanvas;
+      state.snapOverlayContext = overlayCanvas.getContext('2d');
+      return overlayCanvas;
+    };
+
+    const syncSnapOverlayViewport = () => {
+      const builderCanvas = ensureCanvas();
+      const overlayCanvas = ensureSnapOverlay();
+      const lowerCanvas = builderCanvas.lowerCanvasEl;
+
+      if (!overlayCanvas || !lowerCanvas) {
+        return;
+      }
+
+      const logicalWidth = Math.max(1, Math.round(builderCanvas.getWidth()));
+      const logicalHeight = Math.max(1, Math.round(builderCanvas.getHeight()));
+      const lowerCanvasRect = lowerCanvas.getBoundingClientRect();
+
+      overlayCanvas.width = logicalWidth;
+      overlayCanvas.height = logicalHeight;
+      overlayCanvas.style.left = '0';
+      overlayCanvas.style.top = '0';
+      overlayCanvas.style.width = `${lowerCanvasRect.width}px`;
+      overlayCanvas.style.height = `${lowerCanvasRect.height}px`;
+    };
+
     const ensureCanvas = () => {
       if (state.canvas) {
         return state.canvas;
@@ -26,6 +76,7 @@
         uniformScaling: true,
         uniScaleKey: null,
       });
+      syncSnapOverlayViewport();
 
       return state.canvas;
     };
@@ -93,8 +144,8 @@
       const viewportHeight = window.innerHeight || document.documentElement.clientHeight || logicalHeight;
       const availableHeight = Math.max(180, Math.floor(viewportHeight * 0.46));
       const displayScale = Math.min(1, availableWidth / logicalWidth, availableHeight / logicalHeight);
-      const displayWidth = Math.max(1, Math.round(logicalWidth * displayScale));
-      const displayHeight = Math.max(1, Math.round(logicalHeight * displayScale));
+      const displayWidth = Math.max(1, logicalWidth * displayScale);
+      const displayHeight = Math.max(1, logicalHeight * displayScale);
       state.currentViewportScale = displayScale;
 
       [container, lowerCanvas, upperCanvas].forEach(element => {
@@ -102,6 +153,7 @@
         element.style.height = `${displayHeight}px`;
       });
 
+      syncSnapOverlayViewport();
       updateCanvasControlAppearance();
       syncMonochromePreviewViewport();
       builderCanvas.calcOffset();
@@ -485,6 +537,7 @@
       refreshBuilderMeta,
       syncAutoFitTapeCanvas,
       syncMonochromePreviewViewport,
+      syncSnapOverlayViewport,
       syncTapeControls,
       updateCanvasControlAppearance,
     };

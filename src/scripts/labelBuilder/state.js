@@ -48,7 +48,13 @@
     localTemplates: [],
     remoteTemplates: [],
     remoteFolders: [],
+    snapOverlayCanvas: null,
+    snapOverlayContext: null,
     snapGuides: {
+      vertical: null,
+      horizontal: null,
+    },
+    snapLocks: {
       vertical: null,
       horizontal: null,
     },

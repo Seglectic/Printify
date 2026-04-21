@@ -25,25 +25,18 @@
       state.isMonochromePreviewActive = false;
       ctx.hideMonochromePreview();
 
-      // Reset always seeds the builder with a single placeholder textbox so
-      // first-time users land in an editable state instead of a blank canvas.
+      // Reset always seeds the builder with the same textbox behavior as the
+      // regular "Add Text" flow so the first object does not feel special.
       builderCanvas.clear();
       builderCanvas.setDimensions({ width, height });
       builderCanvas.backgroundColor = '#ffffff';
 
-      const defaultTextboxWidth = Math.round(width * 0.9);
-      const defaultTextboxHeight = Math.max(48, Math.round(height * 0.8));
-      state.defaultTextbox = ctx.applyTextboxPlaceholder(ctx.buildTextbox(width, height, {
-        left: Math.round((width - defaultTextboxWidth) / 2),
-        top: Math.round((height - defaultTextboxHeight) / 2),
-        width: defaultTextboxWidth,
-        frameWidth: defaultTextboxWidth,
-        frameHeight: defaultTextboxHeight,
-      }));
+      state.defaultTextbox = ctx.createSeedTextbox();
       state.lastSelectedTextObject = state.defaultTextbox;
       state.lastSelectedCodeObject = null;
       builderCanvas.add(state.defaultTextbox);
       ctx.focusTextbox(state.defaultTextbox);
+      ctx.beginTextboxEditing(state.defaultTextbox);
       ctx.updateCanvasControlAppearance();
       builderCanvas.requestRenderAll();
       ctx.applyCanvasViewportScale();

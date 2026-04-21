@@ -6,6 +6,9 @@ serverData.json
 yarn.lock
 lib/previewCache/*.png
 logs/*.ndjson
+data/uploads
+data/labelTemplates
+data/logs
 config.yaml
 config/config.yaml
 src/plugins/emu/ROM/*

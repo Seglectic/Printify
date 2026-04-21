@@ -836,6 +836,64 @@ img {
   padding-bottom: 8px;
 }
 
+.printify-builder__history-buttons {
+  position: absolute;
+  left: 30px;
+  bottom: 28px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.printify-builder__history-button {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  color: color-mix(in srgb, var(--printify-ink) 48%, transparent);
+  border: 1px solid color-mix(in srgb, var(--printify-line) 78%, var(--printify-ink) 10%);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--printify-builder-surface) 88%, var(--printify-page));
+  box-shadow: 0 10px 20px rgba(23, 23, 23, 0.14);
+  opacity: 0.62;
+  cursor: default;
+  backdrop-filter: blur(10px);
+  transition:
+    transform 160ms ease,
+    opacity 160ms ease,
+    color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background 160ms ease;
+}
+
+.printify-builder__history-button.is-available {
+  opacity: 1;
+  cursor: pointer;
+  color: var(--printify-ink);
+  background: color-mix(in srgb, var(--printify-card) 92%, var(--printify-builder-surface));
+  border-color: color-mix(in srgb, #1f6f43 45%, var(--printify-line));
+  box-shadow: 0 14px 26px rgba(23, 23, 23, 0.18);
+}
+
+.printify-builder__history-button.is-available:hover,
+.printify-builder__history-button.is-available:focus-visible {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, #1f6f43 68%, var(--printify-line));
+  box-shadow: 0 16px 30px rgba(23, 23, 23, 0.22);
+}
+
+.printify-builder__history-button:disabled {
+  pointer-events: none;
+}
+
+.printify-builder__history-icon {
+  display: block;
+  width: 20px;
+  height: 20px;
+}
+
 .printify-builder__canvas-shell.is-drop-target .canvas-container {
   border-color: rgba(100, 212, 123, 0.55);
   box-shadow: 0 0 0 4px rgba(100, 212, 123, 0.12), inset 0 0 0 1px rgba(24, 33, 43, 0.04);

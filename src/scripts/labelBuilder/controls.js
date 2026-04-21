@@ -29,6 +29,20 @@
       }
     };
 
+    const syncHistoryButtons = () => {
+      const hasUndoHistory = Boolean(state.currentPrinter) && ctx.canUndoHistory();
+      const hasRedoHistory = Boolean(state.currentPrinter) && ctx.canRedoHistory();
+
+      [
+        [refs.undoButton, hasUndoHistory],
+        [refs.redoButton, hasRedoHistory],
+      ].forEach(([button, isAvailable]) => {
+        if (!button) return;
+        button.disabled = !isAvailable;
+        button.classList.toggle('is-available', isAvailable);
+      });
+    };
+
     const clearEnterPrintPrompt = () => {
       state.enterPrintArmed = false;
       window.clearTimeout(state.enterPrintTimer);
@@ -214,6 +228,7 @@
         textObject.setCoords();
         syncTextControls(textObject);
         ctx.ensureCanvas().requestRenderAll();
+        void ctx.recordHistoryCheckpoint();
       });
 
       refs.textSerialEnabledInput?.addEventListener('change', () => {
@@ -251,6 +266,7 @@
 
         ctx.refreshTextboxSerialPreview(textObject);
         syncTextControls(textObject);
+        void ctx.recordHistoryCheckpoint();
       });
 
       refs.textSerialValueInput?.addEventListener('input', () => {
@@ -264,6 +280,7 @@
         rememberSerialSettings(textObject.serialCurrentValue, refs.textSerialDigitsInput?.value);
         ctx.refreshTextboxSerialPreview(textObject);
         syncTextControls(textObject);
+        void ctx.recordHistoryCheckpoint();
       });
 
       refs.textSerialDigitsInput?.addEventListener('input', () => {
@@ -275,6 +292,7 @@
         rememberSerialSettings(textObject.serialCurrentValue, refs.textSerialDigitsInput.value);
         ctx.applyTextboxSerialDigits(textObject, refs.textSerialDigitsInput.value);
         syncTextControls(textObject);
+        void ctx.recordHistoryCheckpoint();
       });
 
       refs.qrTextInput?.addEventListener('input', () => {
@@ -350,6 +368,7 @@
       clearEnterPrintPrompt,
       rememberSerialSettings,
       showEnterPrintPrompt,
+      syncHistoryButtons,
       syncPreviewButton,
       syncTextControls,
     };

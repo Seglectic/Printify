@@ -126,6 +126,9 @@
         });
         if (!options.skipControlSync) ctx.syncTextControls(codeObject);
         ctx.ensureCanvas().requestRenderAll();
+        if (!options.skipHistory) {
+          void ctx.recordHistoryCheckpoint();
+        }
         return;
       }
 
@@ -163,6 +166,9 @@
         codeObject.setCoords();
         if (!options.skipControlSync) ctx.syncTextControls(codeObject);
         ctx.ensureCanvas().requestRenderAll();
+        if (!options.skipHistory) {
+          void ctx.recordHistoryCheckpoint();
+        }
       } catch (error) {
         settings.onError(new Error('Could not update that code object.'));
       }
@@ -216,6 +222,7 @@
         ctx.fitObjectToCanvas(codeImage);
         builderCanvas.add(codeImage);
         ctx.focusObject(codeImage);
+        void ctx.recordHistoryCheckpoint();
         window.setTimeout(() => {
           if (!refs.qrTextInput) return;
           refs.qrTextInput.focus();

@@ -44,6 +44,14 @@
           <div class="printify-builder__canvas-shell">
             <canvas class="printify-builder__canvas" id="labelCanvas" width="425" height="200"></canvas>
           </div>
+          <div class="printify-builder__history-buttons" role="group" aria-label="Builder history actions">
+            <button class="printify-builder__history-button" id="labelBuilderUndo" type="button" aria-label="Undo" title="Undo (Ctrl/Cmd+Z)" disabled>
+              <img class="printify-builder__history-icon" src="/assets/icons/undo.svg" alt="">
+            </button>
+            <button class="printify-builder__history-button" id="labelBuilderRedo" type="button" aria-label="Redo" title="Redo (Ctrl/Cmd+Y or Ctrl/Cmd+Shift+Z)" disabled>
+              <img class="printify-builder__history-icon" src="/assets/icons/redo.svg" alt="">
+            </button>
+          </div>
           <div class="printify-builder__baked-preview" id="labelBuilderMonochromePreviewShell" hidden>
             <img id="labelBuilderMonochromePreviewImage" alt="Backend monochrome print preview">
           </div>
@@ -329,8 +337,9 @@
     <script src="/scripts/labelBuilder/controls.js"></script>
     <script src="/scripts/labelBuilder/preview.js"></script>
     <script src="/scripts/labelBuilder/export.js"></script>
-    <script src="/scripts/labelBuilder/session.js"></script>
     <script src="/scripts/labelBuilder/templates.js"></script>
+    <script src="/scripts/labelBuilder/history.js"></script>
+    <script src="/scripts/labelBuilder/session.js"></script>
     <script src="/scripts/labelBuilder/snapping.js"></script>
     <script src="/scripts/labelBuilder/events.js"></script>
     <script src="/scripts/labelBuilder.js"></script>

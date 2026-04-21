@@ -62,6 +62,74 @@
       overlayCanvas.style.height = `${lowerCanvasRect.height}px`;
     };
 
+    const withCanvasTransitionMask = async work => {
+      const builderCanvas = ensureCanvas();
+      const container = builderCanvas.wrapperEl;
+      const lowerCanvas = builderCanvas.lowerCanvasEl;
+      const upperCanvas = builderCanvas.upperCanvasEl;
+
+      if (!container || !lowerCanvas || !upperCanvas) {
+        return work();
+      }
+
+      let maskElement = null;
+      const frozenElements = [container, lowerCanvas, upperCanvas];
+      const frozenDimensions = frozenElements.map(element => ({
+        element,
+        width: element.getBoundingClientRect().width,
+        height: element.getBoundingClientRect().height,
+        inlineWidth: element.style.width,
+        inlineHeight: element.style.height,
+      }));
+
+      try {
+        const lowerCanvasRect = lowerCanvas.getBoundingClientRect();
+        const snapshotUrl = lowerCanvas.toDataURL('image/png');
+
+        frozenDimensions.forEach(({ element, width, height }) => {
+          element.style.width = `${width}px`;
+          element.style.height = `${height}px`;
+        });
+
+        maskElement = document.createElement('img');
+        maskElement.className = 'printify-builder__transition-mask';
+        maskElement.alt = '';
+        maskElement.setAttribute('aria-hidden', 'true');
+        maskElement.src = snapshotUrl;
+        maskElement.style.position = 'absolute';
+        maskElement.style.left = '0';
+        maskElement.style.top = '0';
+        maskElement.style.width = `${lowerCanvasRect.width}px`;
+        maskElement.style.height = `${lowerCanvasRect.height}px`;
+        maskElement.style.pointerEvents = 'none';
+        maskElement.style.zIndex = '4';
+        maskElement.style.borderRadius = '12px';
+        maskElement.style.display = 'block';
+        container.appendChild(maskElement);
+      } catch (error) {
+        maskElement = null;
+      }
+
+      try {
+        return await work();
+      } finally {
+        if (!maskElement) {
+          return;
+        }
+
+        await new Promise(resolve => {
+          window.requestAnimationFrame(() => {
+            window.requestAnimationFrame(resolve);
+          });
+        });
+        maskElement.remove();
+        frozenDimensions.forEach(({ element, inlineWidth, inlineHeight }) => {
+          element.style.width = inlineWidth;
+          element.style.height = inlineHeight;
+        });
+      }
+    };
+
     const ensureCanvas = () => {
       if (state.canvas) {
         return state.canvas;
@@ -469,6 +537,7 @@
       ctx.syncTextControls(null);
       builderCanvas.requestRenderAll();
       refreshBuilderMeta();
+      void ctx.recordHistoryCheckpoint();
       return true;
     };
 
@@ -504,7 +573,7 @@
 
       builderCanvas.requestRenderAll();
       refreshBuilderMeta();
-      void syncAutoFitTapeCanvas();
+      void syncAutoFitTapeCanvas().then(() => ctx.recordHistoryCheckpoint());
       return true;
     };
 
@@ -540,6 +609,7 @@
       syncSnapOverlayViewport,
       syncTapeControls,
       updateCanvasControlAppearance,
+      withCanvasTransitionMask,
     };
   });
 }());

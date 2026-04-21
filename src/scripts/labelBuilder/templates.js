@@ -133,7 +133,10 @@
       return null;
     };
 
-    const serializeCanvasToDocument = (canvas, builderState) => {
+    const serializeCanvasToDocument = (canvas, builderState, options = {}) => {
+      const includeThumbnail = options.includeThumbnail !== false;
+      const includeTimestamps = options.includeTimestamps !== false;
+
       // This is intentionally a Printify-owned schema instead of raw Fabric
       // JSON so we can evolve builder features without hard-coupling saves to
       // Fabric internals or accidental private fields.
@@ -147,9 +150,9 @@
           displayName: refs.templateNameInput?.value?.trim() || `${builderState.currentPrinter?.displayName || 'Printify'} Template`,
           printerId: builderState.currentPrinter?.id || null,
           printerDisplayName: builderState.currentPrinter?.displayName || null,
-          createdAt: builderState.templateCreatedAt || null,
-          updatedAt: ctx.utils.getCurrentIsoTimestamp(),
-          thumbnailDataUrl: captureTemplateThumbnail(canvas),
+          createdAt: includeTimestamps ? (builderState.templateCreatedAt || null) : null,
+          updatedAt: includeTimestamps ? ctx.utils.getCurrentIsoTimestamp() : null,
+          thumbnailDataUrl: includeThumbnail ? captureTemplateThumbnail(canvas) : null,
         },
         canvas: {
           width: canvas.getWidth(),
@@ -254,7 +257,7 @@
       return codeObject;
     };
 
-    const hydrateCanvasFromDocument = async (templateDocument, runtime = ctx) => {
+    const hydrateCanvasFromDocument = async (templateDocument, runtime = ctx, options = {}) => {
       const builderCanvas = runtime.ensureCanvas();
       const templateBuilderState = templateDocument?.builderState || {};
 
@@ -303,9 +306,14 @@
         return;
       }
 
-      const firstObject = builderCanvas.getObjects()[0];
-      if (firstObject) {
-        runtime.focusObject(firstObject);
+      const selectionIndex = Number.isInteger(options.selectionIndex)
+        ? options.selectionIndex
+        : 0;
+      const selectedObject = builderCanvas.getObjects()[selectionIndex] || builderCanvas.getObjects()[0] || null;
+      if (selectedObject) {
+        runtime.focusObject(selectedObject);
+      } else {
+        runtime.syncTextControls(null);
       }
 
       runtime.updateCanvasControlAppearance();
@@ -314,6 +322,10 @@
       runtime.refreshBuilderMeta();
       runtime.syncPreviewButton();
       builderCanvas.requestRenderAll();
+
+      if (options.skipHistoryReset !== true && typeof runtime.resetHistory === 'function') {
+        await runtime.resetHistory();
+      }
     };
 
     const remoteTemplateApi = {

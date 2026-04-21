@@ -53,6 +53,7 @@
       ctx.syncTextControls(activeObject);
       builderCanvas.requestRenderAll();
       void ctx.syncAutoFitTapeCanvas();
+      void ctx.recordHistoryCheckpoint();
     };
 
     const addImageFromFile = async file => {
@@ -78,6 +79,7 @@
         ctx.focusObject(image);
         ctx.refreshBuilderMeta();
         void ctx.syncAutoFitTapeCanvas();
+        void ctx.recordHistoryCheckpoint();
       } catch (error) {
         settings.onError(new Error('Could not load that image into the label builder.'));
       }

@@ -33,8 +33,9 @@
       'controls',
       'preview',
       'export',
-      'session',
       'templates',
+      'history',
+      'session',
       'snapping',
       'events',
     ];
@@ -52,6 +53,7 @@
     ctx.bindSnappingEvents();
     ctx.bindDomEvents();
     ctx.syncPreviewButton();
+    ctx.syncHistoryButtons();
 
     return {
       open: ctx.open,

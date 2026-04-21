@@ -45,6 +45,8 @@
       applyPrinterCopy(printer);
       ctx.clearEnterPrintPrompt();
       ctx.syncPreviewButton();
+      ctx.syncHistoryButtons();
+      void ctx.resetHistory();
     };
 
     const restoreBuilderSession = printer => {
@@ -61,6 +63,7 @@
       applyPrinterCopy(printer);
       ctx.clearEnterPrintPrompt();
       ctx.syncPreviewButton();
+      ctx.syncHistoryButtons();
       builderCanvas.requestRenderAll();
       ctx.syncTextControls(builderCanvas.getActiveObject() || null);
     };
@@ -83,6 +86,7 @@
       state.isSerialPreviewActive = false;
       void ctx.stopMonochromePreview();
       ctx.syncPreviewButton();
+      ctx.syncHistoryButtons();
       ctx.utils.setClientOverlayActive('label-builder', false);
       window.clearTimeout(state.closeAnimationTimer);
       if (state.openAnimationFrame) {
@@ -128,6 +132,7 @@
         state.lastBuilderStatePrinterKey = nextPrinterKey;
       }
       ctx.syncPreviewButton();
+      ctx.syncHistoryButtons();
       state.openAnimationFrame = window.requestAnimationFrame(() => {
         ctx.applyCanvasViewportScale();
         state.openAnimationFrame = window.requestAnimationFrame(() => {

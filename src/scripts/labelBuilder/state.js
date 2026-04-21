@@ -48,6 +48,9 @@
     localTemplates: [],
     remoteTemplates: [],
     remoteFolders: [],
+    historyPast: [],
+    historyFuture: [],
+    isRestoringHistory: false,
     snapOverlayCanvas: null,
     snapOverlayContext: null,
     snapGuides: {

@@ -83,6 +83,7 @@
           preserveWhenBlank: true,
           serialCurrentValue: object.serialCurrentValue + copyOffset,
           skipControlSync: true,
+          skipHistory: true,
           useRenderedText: true,
         });
       }
@@ -116,6 +117,7 @@
         await ctx.updateCodeObject(object, object.codeText || '', object.codeFormat || 'qrcode', {
           preserveWhenBlank: true,
           skipControlSync: true,
+          skipHistory: true,
           useRenderedText: false,
         });
       }

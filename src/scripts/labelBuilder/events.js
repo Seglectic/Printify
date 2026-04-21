@@ -67,10 +67,11 @@
         ctx.beginTextboxEditing(event.target);
       });
 
-      builderCanvas.on('object:modified', event => {
+      builderCanvas.on('object:modified', async event => {
         ctx.bakeTextboxScale(event);
         ctx.refreshBuilderMeta();
-        void ctx.syncAutoFitTapeCanvas();
+        await ctx.syncAutoFitTapeCanvas();
+        await ctx.recordHistoryCheckpoint();
       });
 
       builderCanvas.on('object:rotating', event => {
@@ -86,6 +87,15 @@
     };
 
     const bindDomEvents = () => {
+      const isFabricHiddenTextarea = element => {
+        const activeTextbox = ctx.getEditableTextObject();
+        return element instanceof window.HTMLTextAreaElement
+          && Boolean(
+            activeTextbox?.hiddenTextarea === element
+            || element.getAttribute('data-fabric-hiddentextarea') !== null
+          );
+      };
+
       // Keep builder affordances centralized here so future feature modules can
       // expose helpers without each owning another slice of global DOM wiring.
       refs.addImageButton?.addEventListener('click', () => {
@@ -171,6 +181,12 @@
 
       refs.closeButton?.addEventListener('click', ctx.close);
       refs.cancelButton?.addEventListener('click', ctx.close);
+      refs.undoButton?.addEventListener('click', () => {
+        void ctx.undoHistory();
+      });
+      refs.redoButton?.addEventListener('click', () => {
+        void ctx.redoHistory();
+      });
       refs.resetButton?.addEventListener('click', () => {
         ctx.clearEnterPrintPrompt();
         void ctx.stopMonochromePreview();
@@ -224,7 +240,9 @@
 
         const activeTextbox = ctx.getEditableTextObject();
         const isEditingTextbox = Boolean(activeTextbox?.isEditing);
-        const isTypingIntoField = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName);
+        const activeElement = document.activeElement;
+        const isTypingIntoField = ['INPUT', 'TEXTAREA', 'SELECT'].includes(activeElement?.tagName)
+          && !isFabricHiddenTextarea(activeElement);
 
         if (event.key === 'Escape') {
           if (state.templateModalOpen) {
@@ -243,6 +261,9 @@
           return;
         }
 
+        const lowerKey = String(event.key || '').toLowerCase();
+        const usesPrimaryModifier = event.metaKey || event.ctrlKey;
+
         if (event.key === 'Enter' && !event.shiftKey && !event.metaKey && !event.ctrlKey && !event.altKey) {
           if (isEditingTextbox || isTypingIntoField) return;
 
@@ -258,6 +279,23 @@
         }
 
         ctx.clearEnterPrintPrompt();
+
+        if (usesPrimaryModifier && !event.altKey && !isEditingTextbox && !isTypingIntoField) {
+          const isUndoShortcut = lowerKey === 'z' && !event.shiftKey;
+          const isRedoShortcut = lowerKey === 'y' || (lowerKey === 'z' && event.shiftKey);
+
+          if (isUndoShortcut) {
+            event.preventDefault();
+            void ctx.undoHistory();
+            return;
+          }
+
+          if (isRedoShortcut) {
+            event.preventDefault();
+            void ctx.redoHistory();
+            return;
+          }
+        }
 
         if (ctx.utils.isArrowNudgeKey(event.key) && !event.shiftKey && !event.metaKey && !event.ctrlKey && !event.altKey && !isEditingTextbox && !isTypingIntoField) {
           if (ctx.nudgeActiveObject(event.key)) {

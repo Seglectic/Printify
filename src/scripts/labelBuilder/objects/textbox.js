@@ -154,6 +154,7 @@
         refreshTextboxSerialPreview(textbox, { skipRender: true });
         ctx.syncTextControls(textbox);
         ctx.ensureCanvas().requestRenderAll();
+        void ctx.recordHistoryCheckpoint();
       });
       textbox.width = textbox.frameWidth;
       textbox.initDimensions();
@@ -264,6 +265,7 @@
       beginTextboxEditing(textbox);
       ctx.refreshBuilderMeta();
       void ctx.syncAutoFitTapeCanvas();
+      void ctx.recordHistoryCheckpoint();
     };
 
     const createSeedTextbox = () => {
@@ -303,6 +305,7 @@
       ctx.syncTextControls(textObject);
       ctx.ensureCanvas().requestRenderAll();
       void ctx.syncAutoFitTapeCanvas();
+      void ctx.recordHistoryCheckpoint();
     };
 
     const applyTextboxLayoutPreset = layoutMode => {
@@ -331,6 +334,7 @@
       ctx.syncTextControls(textObject);
       builderCanvas.requestRenderAll();
       void ctx.syncAutoFitTapeCanvas();
+      void ctx.recordHistoryCheckpoint();
     };
 
     const commitTextboxState = (textObject, options = {}) => {
@@ -372,6 +376,10 @@
       refreshTextboxSerialPreview(textObject, {
         skipRender: options.skipRender,
       });
+
+      if (!options.skipHistory) {
+        void ctx.recordHistoryCheckpoint();
+      }
     };
 
     const bakeTextboxScale = event => {

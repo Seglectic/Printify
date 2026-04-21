@@ -121,6 +121,8 @@ img {
     box-shadow 180ms ease,
     transform 180ms ease;
   transform-origin: top right;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .printify-quick-config.is-open {

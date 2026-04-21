@@ -29,6 +29,16 @@
           </div>
           <button class="printify-quick-config__action" id="quickConfigThemeToggle" type="button">Switch to Light</button>
         </div>
+        <div class="printify-quick-config__section printify-quick-config__section--theme">
+          <div class="printify-quick-config__copy">
+            <p class="printify-quick-config__label">Theme</p>
+            <p class="printify-quick-config__meta" id="quickConfigThemeFamilyMeta">Current family: Default.</p>
+          </div>
+          <div class="printify-quick-config__picker">
+            <button class="printify-quick-config__action printify-quick-config__action--theme" id="quickConfigThemeFamilyButton" type="button" aria-haspopup="menu" aria-expanded="false" title="Click to cycle themes. Right click for the full list.">Default</button>
+            <div class="printify-quick-config__menu" id="quickConfigThemeFamilyMenu" role="menu" hidden></div>
+          </div>
+        </div>
         <div class="printify-quick-config__section printify-quick-config__section--assistant">
           <div class="printify-quick-config__copy">
             <p class="printify-quick-config__label">Assistant</p>
@@ -282,7 +292,7 @@
               <div>
                 <p class="printify-builder__text-card-eyebrow">Builder Templates</p>
                 <h3 class="printify-builder__templates-title">Load or Save Templates</h3>
-                <p class="printify-builder__templates-copy">Browse local saves or a mirrored server folder tree, then restore a builder canvas from its named template card.</p>
+                <p class="printify-builder__templates-copy">Browse locally saved or server-side label templates.</p>
               </div>
               <button class="printer-card__button printer-card__button--secondary" id="labelBuilderTemplatesClose" type="button">Close</button>
             </div>

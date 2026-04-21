@@ -21,10 +21,23 @@
   --printify-builder-shell: #1c2320;
   --printify-button-secondary: rgba(236, 242, 238, 0.08);
   --printify-feedback-bg: rgba(12, 16, 19, 0.96);
+  --printify-feedback-ink: #f3f7fb;
   --printify-footer-bg: rgba(236, 242, 238, 0.06);
   --printify-footer-ink: rgba(236, 242, 238, 0.64);
   --printify-toggle-bg: rgba(236, 242, 238, 0.08);
   --printify-toggle-hover: rgba(236, 242, 238, 0.14);
+  --printify-accent: #1f6f43;
+  --printify-accent-hover: #25814e;
+  --printify-accent-ink: #f7fbf8;
+  --printify-accent-shadow: rgba(31, 111, 67, 0.2);
+  --printify-accent-soft: rgba(100, 212, 123, 0.12);
+  --printify-accent-strong: rgba(100, 212, 123, 0.55);
+  --printify-focus-ring: rgba(31, 111, 67, 0.28);
+  --printify-danger: #d65a5a;
+  --printify-danger-soft: rgba(214, 90, 90, 0.1);
+  --printify-danger-border: rgba(214, 90, 90, 0.44);
+  --printify-history-icon-filter: brightness(0) saturate(100%) invert(69%) sepia(8%) saturate(238%) hue-rotate(93deg) brightness(91%) contrast(88%);
+  --printify-history-icon-active-filter: brightness(0) saturate(100%) invert(73%) sepia(35%) saturate(675%) hue-rotate(82deg) brightness(103%) contrast(88%);
   --printify-pdf: #8f2f1b;
   --printify-image: #1f6f43;
   --printify-zip: #805308;
@@ -45,10 +58,92 @@
   --printify-builder-shell: #ebf0ef;
   --printify-button-secondary: rgba(23, 23, 23, 0.08);
   --printify-feedback-bg: rgba(24, 33, 43, 0.94);
+  --printify-feedback-ink: #f3f7fb;
   --printify-footer-bg: rgba(23, 23, 23, 0.06);
   --printify-footer-ink: rgba(23, 23, 23, 0.58);
   --printify-toggle-bg: rgba(23, 23, 23, 0.06);
   --printify-toggle-hover: rgba(23, 23, 23, 0.12);
+  --printify-accent: #1f6f43;
+  --printify-accent-hover: #25814e;
+  --printify-accent-ink: #f7fbf8;
+  --printify-accent-shadow: rgba(31, 111, 67, 0.18);
+  --printify-accent-soft: rgba(100, 212, 123, 0.12);
+  --printify-accent-strong: rgba(100, 212, 123, 0.55);
+  --printify-focus-ring: rgba(31, 111, 67, 0.28);
+  --printify-danger: #d65a5a;
+  --printify-danger-soft: rgba(214, 90, 90, 0.1);
+  --printify-danger-border: rgba(214, 90, 90, 0.44);
+  --printify-history-icon-filter: brightness(0) saturate(100%) invert(48%) sepia(6%) saturate(559%) hue-rotate(95deg) brightness(95%) contrast(90%);
+  --printify-history-icon-active-filter: brightness(0) saturate(100%) invert(31%) sepia(48%) saturate(947%) hue-rotate(122deg) brightness(91%) contrast(86%);
+}
+
+:root[data-theme-family='dracula'] {
+  --printify-ink: #f8f8f2;
+  --printify-muted: rgba(248, 248, 242, 0.62);
+  --printify-line: rgba(189, 147, 249, 0.18);
+  --printify-card: #282a36;
+  --printify-card-hover: #303341;
+  --printify-overlay: rgba(80, 250, 123, 0.14);
+  --printify-overlay-invalid: rgba(255, 85, 85, 0.16);
+  --printify-shadow: 0 22px 54px rgba(7, 8, 11, 0.4);
+  --printify-page: #171821;
+  --printify-builder-surface: rgba(40, 42, 54, 0.97);
+  --printify-builder-shell: #343746;
+  --printify-button-secondary: rgba(248, 248, 242, 0.08);
+  --printify-feedback-bg: rgba(31, 33, 43, 0.96);
+  --printify-feedback-ink: #f8f8f2;
+  --printify-footer-bg: rgba(248, 248, 242, 0.06);
+  --printify-footer-ink: rgba(248, 248, 242, 0.64);
+  --printify-toggle-bg: rgba(189, 147, 249, 0.12);
+  --printify-toggle-hover: rgba(189, 147, 249, 0.22);
+  --printify-accent: #bd93f9;
+  --printify-accent-hover: #c9a8fa;
+  --printify-accent-ink: #1d1630;
+  --printify-accent-shadow: rgba(189, 147, 249, 0.26);
+  --printify-accent-soft: rgba(189, 147, 249, 0.16);
+  --printify-accent-strong: rgba(189, 147, 249, 0.5);
+  --printify-focus-ring: rgba(189, 147, 249, 0.34);
+  --printify-danger: #ff6b81;
+  --printify-danger-soft: rgba(255, 107, 129, 0.12);
+  --printify-danger-border: rgba(255, 107, 129, 0.4);
+  --printify-history-icon-filter: brightness(0) saturate(100%) invert(87%) sepia(7%) saturate(264%) hue-rotate(202deg) brightness(101%) contrast(95%);
+  --printify-history-icon-active-filter: brightness(0) saturate(100%) invert(76%) sepia(20%) saturate(1675%) hue-rotate(213deg) brightness(102%) contrast(96%);
+  --printify-pdf: #ffb86c;
+  --printify-image: #50fa7b;
+  --printify-zip: #f1fa8c;
+}
+
+:root[data-theme='light'][data-theme-family='dracula'] {
+  --printify-ink: #2f2742;
+  --printify-muted: rgba(47, 39, 66, 0.6);
+  --printify-line: rgba(123, 95, 208, 0.16);
+  --printify-card: #ffffff;
+  --printify-card-hover: #f5efff;
+  --printify-overlay: rgba(123, 95, 208, 0.12);
+  --printify-overlay-invalid: rgba(255, 107, 129, 0.14);
+  --printify-shadow: 0 22px 54px rgba(88, 67, 137, 0.14);
+  --printify-page: #f7f3ff;
+  --printify-builder-surface: rgba(255, 255, 255, 0.97);
+  --printify-builder-shell: #ece5ff;
+  --printify-button-secondary: rgba(123, 95, 208, 0.08);
+  --printify-feedback-bg: rgba(47, 39, 66, 0.94);
+  --printify-feedback-ink: #f8f8f2;
+  --printify-footer-bg: rgba(123, 95, 208, 0.08);
+  --printify-footer-ink: rgba(47, 39, 66, 0.64);
+  --printify-toggle-bg: rgba(123, 95, 208, 0.08);
+  --printify-toggle-hover: rgba(123, 95, 208, 0.14);
+  --printify-accent: #7b5fd0;
+  --printify-accent-hover: #6e53c4;
+  --printify-accent-ink: #f8f8f2;
+  --printify-accent-shadow: rgba(123, 95, 208, 0.22);
+  --printify-accent-soft: rgba(123, 95, 208, 0.12);
+  --printify-accent-strong: rgba(123, 95, 208, 0.44);
+  --printify-focus-ring: rgba(123, 95, 208, 0.28);
+  --printify-danger: #d54d6d;
+  --printify-danger-soft: rgba(213, 77, 109, 0.1);
+  --printify-danger-border: rgba(213, 77, 109, 0.38);
+  --printify-history-icon-filter: brightness(0) saturate(100%) invert(38%) sepia(22%) saturate(741%) hue-rotate(213deg) brightness(95%) contrast(88%);
+  --printify-history-icon-active-filter: brightness(0) saturate(100%) invert(38%) sepia(57%) saturate(994%) hue-rotate(225deg) brightness(93%) contrast(92%);
 }
 
 * {
@@ -127,7 +222,7 @@ img {
 
 .printify-quick-config.is-open {
   width: 274px;
-  height: 248px;
+  height: 334px;
   border-radius: 24px;
   background: color-mix(in srgb, var(--printify-builder-surface) 88%, var(--printify-page));
   box-shadow: 0 26px 58px rgba(0, 0, 0, 0.32);
@@ -356,6 +451,7 @@ img {
   transform: translateY(-1px);
 }
 
+.printify-quick-config__section--theme,
 .printify-quick-config__section--assistant {
   position: relative;
   align-items: flex-start;
@@ -369,6 +465,7 @@ img {
   flex: 0 0 auto;
 }
 
+.printify-quick-config__action--theme,
 .printify-quick-config__action--assistant {
   max-width: 116px;
   overflow: hidden;
@@ -814,15 +911,15 @@ img {
 }
 
 .printer-card__button--primary {
-  background: #1f6f43;
-  color: #f7fbf8;
-  box-shadow: 0 12px 24px rgba(31, 111, 67, 0.18);
+  background: var(--printify-accent);
+  color: var(--printify-accent-ink);
+  box-shadow: 0 12px 24px var(--printify-accent-shadow);
 }
 
 .printer-card__button--primary:hover,
 .printer-card__button--primary:focus-visible {
-  background: #25814e;
-  box-shadow: 0 16px 28px rgba(31, 111, 67, 0.22);
+  background: var(--printify-accent-hover);
+  box-shadow: 0 16px 28px color-mix(in srgb, var(--printify-accent-shadow) 118%, transparent);
 }
 
 .printer-card__button--secondary {
@@ -848,7 +945,7 @@ img {
   padding: 14px 18px;
   border-radius: 18px;
   background: var(--printify-feedback-bg);
-  color: #f3f7fb;
+  color: var(--printify-feedback-ink);
   box-shadow: 0 20px 40px rgba(24, 33, 43, 0.2);
   opacity: 0;
   transform: translateY(12px);
@@ -1102,14 +1199,14 @@ img {
   opacity: 1;
   cursor: pointer;
   background: color-mix(in srgb, var(--printify-card) 92%, var(--printify-builder-surface));
-  border-color: color-mix(in srgb, #1f6f43 45%, var(--printify-line));
+  border-color: color-mix(in srgb, var(--printify-accent) 45%, var(--printify-line));
   box-shadow: 0 14px 26px rgba(23, 23, 23, 0.18);
 }
 
 .printify-builder__history-button.is-available:hover,
 .printify-builder__history-button.is-available:focus-visible {
   transform: translateY(-1px);
-  border-color: color-mix(in srgb, #1f6f43 68%, var(--printify-line));
+  border-color: color-mix(in srgb, var(--printify-accent) 68%, var(--printify-line));
   box-shadow: 0 16px 30px rgba(23, 23, 23, 0.22);
 }
 
@@ -1121,13 +1218,13 @@ img {
   display: block;
   width: 20px;
   height: 20px;
-  filter: brightness(0) saturate(100%) invert(69%) sepia(8%) saturate(238%) hue-rotate(93deg) brightness(91%) contrast(88%);
+  filter: var(--printify-history-icon-filter);
   opacity: 0.92;
   transition: filter 160ms ease, opacity 160ms ease, transform 160ms ease;
 }
 
 .printify-builder__history-button.is-available .printify-builder__history-icon {
-  filter: brightness(0) saturate(100%) invert(73%) sepia(35%) saturate(675%) hue-rotate(82deg) brightness(103%) contrast(88%);
+  filter: var(--printify-history-icon-active-filter);
   opacity: 1;
 }
 
@@ -1136,17 +1233,9 @@ img {
   transform: scale(1.04);
 }
 
-:root[data-theme='light'] .printify-builder__history-icon {
-  filter: brightness(0) saturate(100%) invert(48%) sepia(6%) saturate(559%) hue-rotate(95deg) brightness(95%) contrast(90%);
-}
-
-:root[data-theme='light'] .printify-builder__history-button.is-available .printify-builder__history-icon {
-  filter: brightness(0) saturate(100%) invert(31%) sepia(48%) saturate(947%) hue-rotate(122deg) brightness(91%) contrast(86%);
-}
-
 .printify-builder__canvas-shell.is-drop-target .canvas-container {
-  border-color: rgba(100, 212, 123, 0.55);
-  box-shadow: 0 0 0 4px rgba(100, 212, 123, 0.12), inset 0 0 0 1px rgba(24, 33, 43, 0.04);
+  border-color: var(--printify-accent-strong);
+  box-shadow: 0 0 0 4px var(--printify-accent-soft), inset 0 0 0 1px rgba(24, 33, 43, 0.04);
 }
 
 .printify-builder__canvas-shell .canvas-container {
@@ -1525,8 +1614,8 @@ img {
 }
 
 .printify-builder__field--checkbox input:checked + .printify-builder__toggle {
-  background: color-mix(in srgb, #1f6f43 82%, transparent);
-  box-shadow: inset 0 0 0 1px rgba(31, 111, 67, 0.48);
+  background: color-mix(in srgb, var(--printify-accent) 82%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--printify-accent) 48%, transparent);
 }
 
 .printify-builder__field--checkbox input:checked + .printify-builder__toggle::after {
@@ -1534,7 +1623,7 @@ img {
 }
 
 .printify-builder__field--checkbox input:focus-visible + .printify-builder__toggle {
-  outline: 2px solid rgba(31, 111, 67, 0.28);
+  outline: 2px solid var(--printify-focus-ring);
   outline-offset: 2px;
 }
 
@@ -1649,8 +1738,8 @@ img {
 }
 
 .printify-builder__segmented .printer-card__button.is-active {
-  background: #1f6f43;
-  color: #f7fbf8;
+  background: var(--printify-accent);
+  color: var(--printify-accent-ink);
 }
 
 .printify-builder .printer-card__button {
@@ -1755,7 +1844,7 @@ img {
 
 .printify-builder__templates-feedback {
   min-height: 18px;
-  color: #1f6f43;
+  color: var(--printify-accent);
   font-size: 13px;
   font-weight: 700;
 }
@@ -1891,9 +1980,9 @@ img {
 
 .printify-builder__template-icon-button:hover,
 .printify-builder__template-icon-button:focus-visible {
-  color: #d65a5a;
-  border-color: color-mix(in srgb, #d65a5a 44%, var(--printify-line));
-  background: color-mix(in srgb, #d65a5a 10%, var(--printify-card));
+  color: var(--printify-danger);
+  border-color: color-mix(in srgb, var(--printify-danger-border) 100%, var(--printify-line));
+  background: color-mix(in srgb, var(--printify-danger-soft) 100%, var(--printify-card));
   transform: translateY(-1px);
 }
 
@@ -1949,7 +2038,7 @@ img {
 
 .label-builder-lab__eyebrow {
   margin: 0;
-  color: rgba(23, 23, 23, 0.48);
+  color: var(--printify-muted);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.18em;
@@ -1982,7 +2071,7 @@ img {
   display: grid;
   gap: 8px;
   min-width: 240px;
-  color: rgba(23, 23, 23, 0.6);
+  color: var(--printify-muted);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -2030,7 +2119,7 @@ img {
   display: block;
   max-width: 100%;
   margin: 0 auto;
-  background: #ffffff;
+  background: color-mix(in srgb, var(--printify-page) 94%, white);
 }
 
 .label-builder-lab__field select {

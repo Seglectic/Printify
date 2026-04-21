@@ -35,13 +35,21 @@
   ]);
   const ZIP_EXTENSIONS = new Set(['zip']);
   const ASPECT_RATIO_WARNING_MIN_AREA_FRACTION = 0.72;
+  const APPEARANCE_STORAGE_KEY = 'printify-appearance';
   const THEME_STORAGE_KEY = 'printify-theme';
   const ASSISTANT_OVERRIDE_STORAGE_KEY = 'printify-assistant-override';
   const PRINTER_OPTION_STATE_STORAGE_KEY = 'printify-printer-option-state';
   const DUPLICATE_WHITELIST_STORAGE_KEY = 'printify-duplicate-whitelist';
   const DUPLICATE_WHITELIST_DURATION_MS = 24 * 60 * 60 * 1000;
+  const ASSISTANT_BOOT_BUBBLE_HOLD_MS = 5500;
+  const DEFAULT_APPEARANCE = 'dark';
+  const DEFAULT_THEME_FAMILY = 'default';
   const SERVER_ASSISTANT_OPTION = '__server__';
   const DEFAULT_ASSISTANT = 'Clippy';
+  const THEME_FAMILY_OPTIONS = [
+    { value: 'default', label: 'Default' },
+    { value: 'dracula', label: 'Dracula' },
+  ];
   const ASSISTANT_OPTIONS = [
     { value: SERVER_ASSISTANT_OPTION, label: 'Server Default' },
     { value: 'Bonzi', label: 'Bonzi' },
@@ -78,6 +86,33 @@
       return parsedValue && typeof parsedValue === 'object' ? parsedValue : {};
     } catch (error) {
       return {};
+    }
+  };
+
+  const getStoredAppearance = () => {
+    try {
+      const storedValue = window.localStorage.getItem(APPEARANCE_STORAGE_KEY);
+      if (storedValue === 'dark' || storedValue === 'light') {
+        return storedValue;
+      }
+
+      const legacyThemeValue = window.localStorage.getItem(THEME_STORAGE_KEY);
+      return legacyThemeValue === 'light' || legacyThemeValue === 'dark'
+        ? legacyThemeValue
+        : DEFAULT_APPEARANCE;
+    } catch (error) {
+      return DEFAULT_APPEARANCE;
+    }
+  };
+
+  const getStoredThemeFamily = () => {
+    try {
+      const storedValue = window.localStorage.getItem(THEME_STORAGE_KEY);
+      return THEME_FAMILY_OPTIONS.some(option => option.value === storedValue)
+        ? storedValue
+        : DEFAULT_THEME_FAMILY;
+    } catch (error) {
+      return DEFAULT_THEME_FAMILY;
     }
   };
 
@@ -122,11 +157,14 @@
     lastPrintJob: null,
     dailyStats: {},
     serverAssistant: DEFAULT_ASSISTANT,
+    appearance: getStoredAppearance(),
+    themeFamily: getStoredThemeFamily(),
     assistantOverride: getStoredAssistantOverride(),
     assistant: DEFAULT_ASSISTANT,
     feedbackTimer: null,
     assistantAgent: null,
     assistantBootTimer: null,
+    assistantSpeechTimer: null,
     labelBuilder: null,
     logDrawer: null,
     clientPluginsById: {},
@@ -159,6 +197,9 @@
   const quickConfigBody = document.getElementById('quickConfigBody');
   const quickConfigThemeToggle = document.getElementById('quickConfigThemeToggle');
   const quickConfigThemeMeta = document.getElementById('quickConfigThemeMeta');
+  const quickConfigThemeFamilyButton = document.getElementById('quickConfigThemeFamilyButton');
+  const quickConfigThemeFamilyMenu = document.getElementById('quickConfigThemeFamilyMenu');
+  const quickConfigThemeFamilyMeta = document.getElementById('quickConfigThemeFamilyMeta');
   const quickConfigAssistantButton = document.getElementById('quickConfigAssistantButton');
   const quickConfigAssistantMenu = document.getElementById('quickConfigAssistantMenu');
   const quickConfigAssistantMeta = document.getElementById('quickConfigAssistantMeta');
@@ -434,6 +475,8 @@
   const destroyAssistantAgent = () => {
     window.clearTimeout(appState.assistantBootTimer);
     appState.assistantBootTimer = null;
+    window.clearTimeout(appState.assistantSpeechTimer);
+    appState.assistantSpeechTimer = null;
 
     const agent = appState.assistantAgent;
     if (!agent) {
@@ -575,14 +618,47 @@
   let quickConfigOpen = false;
   let quickConfigCloseTimer = null;
   let assistantMenuOpen = false;
+  let themeFamilyMenuOpen = false;
+
+  const getThemeFamilyOption = value => (
+    THEME_FAMILY_OPTIONS.find(option => option.value === value) || THEME_FAMILY_OPTIONS[0]
+  );
+
+  const closeThemeFamilyMenu = () => {
+    themeFamilyMenuOpen = false;
+    quickConfig?.classList.remove('is-menu-open');
+    if (quickConfigThemeFamilyMenu) {
+      quickConfigThemeFamilyMenu.hidden = true;
+    }
+    quickConfigThemeFamilyButton?.setAttribute('aria-expanded', 'false');
+  };
 
   const closeAssistantMenu = () => {
     assistantMenuOpen = false;
-    quickConfig?.classList.remove('is-menu-open');
     if (quickConfigAssistantMenu) {
       quickConfigAssistantMenu.hidden = true;
     }
     quickConfigAssistantButton?.setAttribute('aria-expanded', 'false');
+  };
+
+  const syncQuickConfigMenuState = () => {
+    quickConfig?.classList.toggle('is-menu-open', assistantMenuOpen || themeFamilyMenuOpen);
+  };
+
+  const renderThemeFamilyMenu = () => {
+    if (!quickConfigThemeFamilyMenu) {
+      return;
+    }
+
+    quickConfigThemeFamilyMenu.innerHTML = THEME_FAMILY_OPTIONS.map(option => `
+      <button
+        class="printify-quick-config__menu-option${option.value === appState.themeFamily ? ' is-active' : ''}"
+        type="button"
+        role="menuitemradio"
+        aria-checked="${option.value === appState.themeFamily ? 'true' : 'false'}"
+        data-theme-family-value="${escapeHtml(option.value)}"
+      >${escapeHtml(option.label)}</button>
+    `).join('');
   };
 
   const renderAssistantMenu = () => {
@@ -600,6 +676,33 @@
         data-assistant-value="${escapeHtml(option.value)}"
       >${escapeHtml(option.label)}</button>
     `).join('');
+  };
+
+  const syncThemeUi = () => {
+    const currentAppearance = appState.appearance === 'light' ? 'light' : 'dark';
+    const isDark = currentAppearance === 'dark';
+    const currentThemeFamily = getThemeFamilyOption(appState.themeFamily);
+
+    if (quickConfigThemeToggle) {
+      quickConfigThemeToggle.textContent = isDark ? 'Switch to Light' : 'Switch to Dark';
+    }
+
+    if (quickConfigThemeMeta) {
+      quickConfigThemeMeta.textContent = isDark
+        ? 'Dark mode is active.'
+        : 'Light mode is active.';
+    }
+
+    if (quickConfigThemeFamilyButton) {
+      quickConfigThemeFamilyButton.textContent = currentThemeFamily.label;
+      quickConfigThemeFamilyButton.title = `Theme family: ${currentThemeFamily.label}. Click to cycle themes. Right click for the full list.`;
+    }
+
+    if (quickConfigThemeFamilyMeta) {
+      quickConfigThemeFamilyMeta.textContent = `Current family: ${currentThemeFamily.label}.`;
+    }
+
+    renderThemeFamilyMenu();
   };
 
   const syncAssistantUi = () => {
@@ -629,18 +732,43 @@
 
     renderAssistantMenu();
     assistantMenuOpen = true;
-    quickConfig?.classList.add('is-menu-open');
     quickConfigAssistantMenu.hidden = false;
     quickConfigAssistantButton?.setAttribute('aria-expanded', 'true');
+    syncQuickConfigMenuState();
   };
 
   const toggleAssistantMenu = () => {
     if (assistantMenuOpen) {
       closeAssistantMenu();
+      syncQuickConfigMenuState();
       return;
     }
 
+    closeThemeFamilyMenu();
     openAssistantMenu();
+  };
+
+  const openThemeFamilyMenu = () => {
+    if (!quickConfigThemeFamilyMenu) {
+      return;
+    }
+
+    renderThemeFamilyMenu();
+    themeFamilyMenuOpen = true;
+    quickConfigThemeFamilyMenu.hidden = false;
+    quickConfigThemeFamilyButton?.setAttribute('aria-expanded', 'true');
+    syncQuickConfigMenuState();
+  };
+
+  const toggleThemeFamilyMenu = () => {
+    if (themeFamilyMenuOpen) {
+      closeThemeFamilyMenu();
+      syncQuickConfigMenuState();
+      return;
+    }
+
+    closeAssistantMenu();
+    openThemeFamilyMenu();
   };
 
   const bootClippy = () => {
@@ -689,7 +817,17 @@
           dailyStats: appState.dailyStats,
         }) || 'I appear to be between remarks at the moment.';
 
-        agent.speak(line);
+        agent.speak(line, true);
+        window.clearTimeout(appState.assistantSpeechTimer);
+        appState.assistantSpeechTimer = window.setTimeout(() => {
+          if (appState.assistantAgent !== agent) {
+            return;
+          }
+
+          agent._balloon?.close?.();
+          agent._balloon?.hide?.(true);
+          appState.assistantSpeechTimer = null;
+        }, ASSISTANT_BOOT_BUBBLE_HOLD_MS);
       }, 3200);
     });
   };
@@ -705,6 +843,7 @@
     appState.assistant = getEffectiveAssistant();
     syncAssistantUi();
     closeAssistantMenu();
+    syncQuickConfigMenuState();
     bootClippy();
   };
 
@@ -731,6 +870,7 @@
         quickConfig.classList.add('is-open');
       });
     } else {
+      closeThemeFamilyMenu();
       closeAssistantMenu();
       quickConfig.classList.remove('is-open');
       quickConfigCloseTimer = window.setTimeout(() => {
@@ -743,14 +883,22 @@
     themeToggle.setAttribute('aria-expanded', String(quickConfigOpen));
   };
 
-  const applyTheme = theme => {
-    const nextTheme = theme === 'light' ? 'light' : 'dark';
-    const isDark = nextTheme === 'dark';
+  const applyTheme = ({ appearance = appState.appearance, themeFamily = appState.themeFamily } = {}) => {
+    appState.appearance = appearance === 'light' ? 'light' : 'dark';
+    appState.themeFamily = THEME_FAMILY_OPTIONS.some(option => option.value === themeFamily)
+      ? themeFamily
+      : DEFAULT_THEME_FAMILY;
 
-    if (isDark) {
+    if (appState.appearance === 'dark') {
       document.documentElement.removeAttribute('data-theme');
     } else {
       document.documentElement.setAttribute('data-theme', 'light');
+    }
+
+    if (appState.themeFamily === DEFAULT_THEME_FAMILY) {
+      document.documentElement.removeAttribute('data-theme-family');
+    } else {
+      document.documentElement.setAttribute('data-theme-family', appState.themeFamily);
     }
 
     if (themeToggle) {
@@ -758,32 +906,63 @@
       themeToggle.setAttribute('title', 'Open quick config');
     }
 
-    if (quickConfigThemeToggle) {
-      quickConfigThemeToggle.textContent = isDark ? 'Switch to Light' : 'Switch to Dark';
-    }
-
-    if (quickConfigThemeMeta) {
-      quickConfigThemeMeta.textContent = isDark
-        ? 'Dark mode is active.'
-        : 'Light mode is active.';
-    }
-
+    syncThemeUi();
     syncAssistantUi();
   };
 
+  const applyThemeFamilyChoice = themeFamily => {
+    const normalizedValue = THEME_FAMILY_OPTIONS.some(option => option.value === themeFamily)
+      ? themeFamily
+      : DEFAULT_THEME_FAMILY;
+    window.localStorage.setItem(THEME_STORAGE_KEY, normalizedValue);
+    applyTheme({ themeFamily: normalizedValue });
+    closeThemeFamilyMenu();
+    syncQuickConfigMenuState();
+  };
+
+  const cycleThemeFamilyChoice = () => {
+    const currentIndex = THEME_FAMILY_OPTIONS.findIndex(option => option.value === appState.themeFamily);
+    const nextIndex = currentIndex === -1
+      ? 0
+      : (currentIndex + 1) % THEME_FAMILY_OPTIONS.length;
+    applyThemeFamilyChoice(THEME_FAMILY_OPTIONS[nextIndex].value);
+  };
+
   const bootTheme = () => {
-    const savedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
-    applyTheme(savedTheme || 'dark');
+    applyTheme({
+      appearance: appState.appearance,
+      themeFamily: appState.themeFamily,
+    });
 
     themeToggle?.addEventListener('click', () => {
       setQuickConfigOpen(!quickConfigOpen);
     });
 
     quickConfigThemeToggle?.addEventListener('click', () => {
-      const currentTheme = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
-      const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
-      window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
-      applyTheme(nextTheme);
+      const nextAppearance = appState.appearance === 'dark' ? 'light' : 'dark';
+      window.localStorage.setItem(APPEARANCE_STORAGE_KEY, nextAppearance);
+      applyTheme({ appearance: nextAppearance });
+    });
+
+    quickConfigThemeFamilyButton?.addEventListener('click', () => {
+      cycleThemeFamilyChoice();
+    });
+
+    quickConfigThemeFamilyButton?.addEventListener('contextmenu', event => {
+      event.preventDefault();
+      if (!quickConfigOpen) {
+        setQuickConfigOpen(true);
+      }
+      toggleThemeFamilyMenu();
+    });
+
+    quickConfigThemeFamilyMenu?.addEventListener('click', event => {
+      const optionButton = event.target.closest('[data-theme-family-value]');
+      if (!optionButton) {
+        return;
+      }
+
+      applyThemeFamilyChoice(optionButton.getAttribute('data-theme-family-value'));
     });
 
     quickConfigAssistantButton?.addEventListener('click', () => {
@@ -805,12 +984,17 @@
       }
 
       applyAssistantChoice(optionButton.getAttribute('data-assistant-value'));
-      closeAssistantMenu();
     });
 
     document.addEventListener('click', event => {
+      if (themeFamilyMenuOpen && quickConfigThemeFamilyMenu && !quickConfigThemeFamilyMenu.contains(event.target) && event.target !== quickConfigThemeFamilyButton) {
+        closeThemeFamilyMenu();
+        syncQuickConfigMenuState();
+      }
+
       if (assistantMenuOpen && quickConfigAssistantMenu && !quickConfigAssistantMenu.contains(event.target) && event.target !== quickConfigAssistantButton) {
         closeAssistantMenu();
+        syncQuickConfigMenuState();
       }
 
       if (!quickConfigOpen || !quickConfig) {
@@ -825,8 +1009,15 @@
     });
 
     document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && themeFamilyMenuOpen) {
+        closeThemeFamilyMenu();
+        syncQuickConfigMenuState();
+        return;
+      }
+
       if (event.key === 'Escape' && assistantMenuOpen) {
         closeAssistantMenu();
+        syncQuickConfigMenuState();
         return;
       }
 

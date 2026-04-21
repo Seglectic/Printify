@@ -12,6 +12,9 @@
   --pkc-editor-border: rgba(234, 240, 236, 0.08);
   --pkc-save: #2f6f44;
   --pkc-save-hover: #3a8352;
+  --pkc-save-ink: #f7fbf8;
+  --pkc-scrim: rgba(20, 30, 43, 0.18);
+  --pkc-focus-ring: rgba(100, 212, 123, 0.35);
 }
 
 :root[data-theme='light'] .printify-config-drawer {
@@ -28,13 +31,54 @@
   --pkc-editor-border: rgba(24, 33, 43, 0.08);
   --pkc-save: #2f6f44;
   --pkc-save-hover: #3a8352;
+  --pkc-save-ink: #f7fbf8;
+  --pkc-scrim: rgba(20, 30, 43, 0.18);
+  --pkc-focus-ring: rgba(100, 212, 123, 0.35);
+}
+
+:root[data-theme-family='dracula'] .printify-config-drawer {
+  --pkc-panel: rgba(36, 38, 50, 0.97);
+  --pkc-ink: #f8f8f2;
+  --pkc-muted: rgba(248, 248, 242, 0.62);
+  --pkc-line: rgba(189, 147, 249, 0.18);
+  --pkc-shadow: 0 24px 60px rgba(9, 10, 16, 0.38);
+  --pkc-button: rgba(248, 248, 242, 0.08);
+  --pkc-button-hover: rgba(189, 147, 249, 0.18);
+  --pkc-close: rgba(189, 147, 249, 0.12);
+  --pkc-close-hover: rgba(189, 147, 249, 0.2);
+  --pkc-editor: rgba(248, 248, 242, 0.04);
+  --pkc-editor-border: rgba(189, 147, 249, 0.16);
+  --pkc-save: #bd93f9;
+  --pkc-save-hover: #c9a8fa;
+  --pkc-save-ink: #1d1630;
+  --pkc-scrim: rgba(16, 17, 25, 0.3);
+  --pkc-focus-ring: rgba(189, 147, 249, 0.34);
+}
+
+:root[data-theme='light'][data-theme-family='dracula'] .printify-config-drawer {
+  --pkc-panel: rgba(249, 246, 255, 0.97);
+  --pkc-ink: #2f2742;
+  --pkc-muted: rgba(47, 39, 66, 0.64);
+  --pkc-line: rgba(123, 95, 208, 0.14);
+  --pkc-shadow: 0 24px 60px rgba(88, 67, 137, 0.16);
+  --pkc-button: rgba(123, 95, 208, 0.08);
+  --pkc-button-hover: rgba(123, 95, 208, 0.14);
+  --pkc-close: rgba(123, 95, 208, 0.1);
+  --pkc-close-hover: rgba(123, 95, 208, 0.16);
+  --pkc-editor: rgba(239, 232, 255, 0.92);
+  --pkc-editor-border: rgba(123, 95, 208, 0.12);
+  --pkc-save: #7b5fd0;
+  --pkc-save-hover: #6e53c4;
+  --pkc-save-ink: #f8f8f2;
+  --pkc-scrim: rgba(53, 41, 82, 0.16);
+  --pkc-focus-ring: rgba(123, 95, 208, 0.3);
 }
 
 .printify-config-drawer__scrim {
   position: fixed;
   inset: 0;
   z-index: 1095;
-  background: rgba(20, 30, 43, 0.18);
+  background: var(--pkc-scrim);
   opacity: 0;
   pointer-events: none;
   transition: opacity 280ms ease;
@@ -182,7 +226,7 @@
 .printify-config-drawer__button--primary {
   border-color: transparent;
   background: var(--pkc-save);
-  color: #f7fbf8;
+  color: var(--pkc-save-ink);
 }
 
 .printify-config-drawer__button--primary:hover,
@@ -207,7 +251,7 @@
 }
 
 .printify-config-drawer__editor:focus-visible {
-  outline: 2px solid rgba(100, 212, 123, 0.35);
+  outline: 2px solid var(--pkc-focus-ring);
   outline-offset: 0;
 }
 

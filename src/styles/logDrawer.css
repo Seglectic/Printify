@@ -21,6 +21,7 @@
   --pld-code-popup-bg: linear-gradient(180deg, rgba(24, 30, 28, 0.99), rgba(18, 23, 21, 0.99));
   --pld-code-popup-text: #8bda9f;
   --pld-code-popup-shadow: 0 14px 28px rgba(3, 12, 7, 0.24);
+  --pld-scrim: rgba(20, 30, 43, 0.18);
 }
 
 :root[data-theme='light'] .printify-log-drawer {
@@ -46,6 +47,59 @@
   --pld-code-popup-bg: linear-gradient(180deg, rgba(210, 221, 230, 0.99), rgba(197, 210, 220, 0.99));
   --pld-code-popup-text: #224932;
   --pld-code-popup-shadow: 0 14px 28px rgba(35, 56, 76, 0.14);
+  --pld-scrim: rgba(20, 30, 43, 0.18);
+}
+
+:root[data-theme-family='dracula'] .printify-log-drawer {
+  --pld-panel: rgba(36, 38, 50, 0.97);
+  --pld-ink: #f8f8f2;
+  --pld-muted: rgba(248, 248, 242, 0.62);
+  --pld-line: rgba(189, 147, 249, 0.18);
+  --pld-shadow: 0 24px 60px rgba(9, 10, 16, 0.38);
+  --pld-button: rgba(248, 248, 242, 0.08);
+  --pld-button-hover: rgba(189, 147, 249, 0.18);
+  --pld-close: rgba(189, 147, 249, 0.12);
+  --pld-close-hover: rgba(189, 147, 249, 0.2);
+  --pld-card: rgba(248, 248, 242, 0.04);
+  --pld-card-new: rgba(80, 250, 123, 0.18);
+  --pld-card-selected: rgba(189, 147, 249, 0.2);
+  --pld-icon-bg: rgba(248, 248, 242, 0.08);
+  --pld-code-bg: rgba(248, 248, 242, 0.05);
+  --pld-code-border: rgba(189, 147, 249, 0.16);
+  --pld-code-pill-bg: linear-gradient(180deg, rgba(54, 57, 75, 0.98), rgba(42, 45, 60, 0.98));
+  --pld-code-pill-bg-hover: linear-gradient(180deg, rgba(63, 67, 88, 0.98), rgba(50, 53, 70, 0.98));
+  --pld-code-pill-text: #bd93f9;
+  --pld-code-pill-shadow: 0 8px 16px rgba(16, 17, 25, 0.24);
+  --pld-code-popup-bg: linear-gradient(180deg, rgba(49, 52, 68, 0.99), rgba(39, 42, 55, 0.99));
+  --pld-code-popup-text: #c9a8fa;
+  --pld-code-popup-shadow: 0 14px 28px rgba(16, 17, 25, 0.3);
+  --pld-scrim: rgba(16, 17, 25, 0.3);
+}
+
+:root[data-theme='light'][data-theme-family='dracula'] .printify-log-drawer {
+  --pld-panel: rgba(249, 246, 255, 0.97);
+  --pld-ink: #2f2742;
+  --pld-muted: rgba(47, 39, 66, 0.62);
+  --pld-line: rgba(123, 95, 208, 0.14);
+  --pld-shadow: 0 24px 60px rgba(88, 67, 137, 0.16);
+  --pld-button: rgba(123, 95, 208, 0.08);
+  --pld-button-hover: rgba(123, 95, 208, 0.14);
+  --pld-close: rgba(123, 95, 208, 0.1);
+  --pld-close-hover: rgba(123, 95, 208, 0.16);
+  --pld-card: rgba(255, 255, 255, 0.84);
+  --pld-card-new: rgba(198, 242, 202, 0.78);
+  --pld-card-selected: rgba(123, 95, 208, 0.16);
+  --pld-icon-bg: rgba(123, 95, 208, 0.1);
+  --pld-code-bg: rgba(239, 232, 255, 0.92);
+  --pld-code-border: rgba(123, 95, 208, 0.12);
+  --pld-code-pill-bg: linear-gradient(180deg, rgba(232, 225, 252, 0.98), rgba(221, 213, 247, 0.98));
+  --pld-code-pill-bg-hover: linear-gradient(180deg, rgba(224, 217, 248, 0.99), rgba(213, 204, 243, 0.99));
+  --pld-code-pill-text: #5a439a;
+  --pld-code-pill-shadow: 0 8px 16px rgba(88, 67, 137, 0.12);
+  --pld-code-popup-bg: linear-gradient(180deg, rgba(235, 229, 252, 0.99), rgba(224, 217, 248, 0.99));
+  --pld-code-popup-text: #523d8d;
+  --pld-code-popup-shadow: 0 14px 28px rgba(88, 67, 137, 0.14);
+  --pld-scrim: rgba(53, 41, 82, 0.16);
 }
 
 .printify-log-drawer__toggle {
@@ -152,7 +206,7 @@
   position: fixed;
   inset: 0;
   z-index: 20;
-  background: rgba(20, 30, 43, 0.18);
+  background: var(--pld-scrim);
   -webkit-backdrop-filter: blur(1.5px);
   backdrop-filter: blur(1.5px);
   opacity: 0;

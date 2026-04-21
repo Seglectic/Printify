@@ -16,7 +16,31 @@
   <body>
     <div class="printify-log-drawer" id="printifyLogDrawer"></div>
     <div class="printify-config-drawer" id="printifyConfigDrawer"></div>
-    <button class="printify-theme-toggle" id="themeToggle" type="button" aria-pressed="true" aria-label="Switch theme" title="Switch theme"><span class="printify-theme-toggle__icon" aria-hidden="true"></span></button>
+    <div class="printify-quick-config" id="quickConfig">
+      <button class="printify-theme-toggle" id="themeToggle" type="button" aria-label="Open quick config" aria-haspopup="dialog" aria-expanded="false" title="Open quick config">
+        <span class="printify-theme-toggle__icon printify-theme-toggle__icon--settings" aria-hidden="true"></span>
+      </button>
+      <div class="printify-quick-config__body" id="quickConfigBody" hidden>
+        <p class="printify-quick-config__eyebrow">Quick Config</p>
+        <div class="printify-quick-config__section">
+          <div class="printify-quick-config__copy">
+            <p class="printify-quick-config__label">Appearance</p>
+            <p class="printify-quick-config__meta" id="quickConfigThemeMeta">Dark mode is active.</p>
+          </div>
+          <button class="printify-quick-config__action" id="quickConfigThemeToggle" type="button">Switch to Light</button>
+        </div>
+        <div class="printify-quick-config__section printify-quick-config__section--assistant">
+          <div class="printify-quick-config__copy">
+            <p class="printify-quick-config__label">Assistant</p>
+            <p class="printify-quick-config__meta" id="quickConfigAssistantMeta">Using server default.</p>
+          </div>
+          <div class="printify-quick-config__picker">
+            <button class="printify-quick-config__action printify-quick-config__action--assistant" id="quickConfigAssistantButton" type="button" aria-haspopup="menu" aria-expanded="false" title="Click to cycle assistants. Right click for the full list.">Server Default</button>
+            <div class="printify-quick-config__menu" id="quickConfigAssistantMenu" role="menu" hidden></div>
+          </div>
+        </div>
+      </div>
+    </div>
     <button class="printify-theme-toggle printify-theme-toggle--config" id="configToggle" type="button" aria-label="Toggle config drawer" title="Toggle config drawer" hidden><span class="printify-theme-toggle__icon printify-theme-toggle__icon--config" aria-hidden="true"></span></button>
 
     <div class="printify-app">

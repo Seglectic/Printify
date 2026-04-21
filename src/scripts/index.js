@@ -36,9 +36,26 @@
   const ZIP_EXTENSIONS = new Set(['zip']);
   const ASPECT_RATIO_WARNING_MIN_AREA_FRACTION = 0.72;
   const THEME_STORAGE_KEY = 'printify-theme';
+  const ASSISTANT_OVERRIDE_STORAGE_KEY = 'printify-assistant-override';
   const PRINTER_OPTION_STATE_STORAGE_KEY = 'printify-printer-option-state';
   const DUPLICATE_WHITELIST_STORAGE_KEY = 'printify-duplicate-whitelist';
   const DUPLICATE_WHITELIST_DURATION_MS = 24 * 60 * 60 * 1000;
+  const SERVER_ASSISTANT_OPTION = '__server__';
+  const DEFAULT_ASSISTANT = 'Clippy';
+  const ASSISTANT_OPTIONS = [
+    { value: SERVER_ASSISTANT_OPTION, label: 'Server Default' },
+    { value: 'Bonzi', label: 'Bonzi' },
+    { value: 'Clippy', label: 'Clippy' },
+    { value: 'F1', label: 'F1' },
+    { value: 'Genie', label: 'Genie' },
+    { value: 'Genius', label: 'Genius' },
+    { value: 'Links', label: 'Links' },
+    { value: 'Merlin', label: 'Merlin' },
+    { value: 'Peedy', label: 'Peedy' },
+    { value: 'Rocky', label: 'Rocky' },
+    { value: 'Rover', label: 'Rover' },
+    { value: 'none', label: 'None' },
+  ];
   const DUPLICATE_PROMPTS = [
     'This file has been printed recently, send it?',
     'File printed within the last 31 days, print again?',
@@ -61,6 +78,18 @@
       return parsedValue && typeof parsedValue === 'object' ? parsedValue : {};
     } catch (error) {
       return {};
+    }
+  };
+
+  const getStoredAssistantOverride = () => {
+    try {
+      const storedValue = window.localStorage.getItem(ASSISTANT_OVERRIDE_STORAGE_KEY);
+      if (!storedValue) return null;
+      return ASSISTANT_OPTIONS.some(option => option.value === storedValue)
+        ? storedValue
+        : null;
+    } catch (error) {
+      return null;
     }
   };
 
@@ -92,9 +121,12 @@
     lastPrintAt: null,
     lastPrintJob: null,
     dailyStats: {},
-    assistant: 'Clippy',
+    serverAssistant: DEFAULT_ASSISTANT,
+    assistantOverride: getStoredAssistantOverride(),
+    assistant: DEFAULT_ASSISTANT,
     feedbackTimer: null,
     assistantAgent: null,
+    assistantBootTimer: null,
     labelBuilder: null,
     logDrawer: null,
     clientPluginsById: {},
@@ -123,6 +155,13 @@
   const promptCancel = document.getElementById('promptCancel');
   const promptConfirm = document.getElementById('promptConfirm');
   const themeToggle = document.getElementById('themeToggle');
+  const quickConfig = document.getElementById('quickConfig');
+  const quickConfigBody = document.getElementById('quickConfigBody');
+  const quickConfigThemeToggle = document.getElementById('quickConfigThemeToggle');
+  const quickConfigThemeMeta = document.getElementById('quickConfigThemeMeta');
+  const quickConfigAssistantButton = document.getElementById('quickConfigAssistantButton');
+  const quickConfigAssistantMenu = document.getElementById('quickConfigAssistantMenu');
+  const quickConfigAssistantMeta = document.getElementById('quickConfigAssistantMeta');
   const footerDrawer = window.createPrintifyFooterDrawer?.('#printifyFooterDrawer', {
     footerSelector: '#footer',
   }) || null;
@@ -371,6 +410,65 @@
     showFeedback(message);
   };
 
+  const getAssistantOption = value => (
+    ASSISTANT_OPTIONS.find(option => option.value === value) || ASSISTANT_OPTIONS[0]
+  );
+
+  const getEffectiveAssistant = () => (
+    appState.assistantOverride || appState.serverAssistant || DEFAULT_ASSISTANT
+  );
+
+  const persistAssistantOverride = value => {
+    try {
+      if (!value || value === SERVER_ASSISTANT_OPTION) {
+        window.localStorage.removeItem(ASSISTANT_OVERRIDE_STORAGE_KEY);
+        return;
+      }
+
+      window.localStorage.setItem(ASSISTANT_OVERRIDE_STORAGE_KEY, value);
+    } catch (error) {
+      // Keep assistant selection best-effort so the picker never blocks UI work.
+    }
+  };
+
+  const destroyAssistantAgent = () => {
+    window.clearTimeout(appState.assistantBootTimer);
+    appState.assistantBootTimer = null;
+
+    const agent = appState.assistantAgent;
+    if (!agent) {
+      return;
+    }
+
+    try {
+      agent._queue?.clear?.();
+      agent._balloon?.pause?.();
+      if (agent._balloon) {
+        agent._balloon._active = false;
+        agent._balloon._hold = false;
+        agent._balloon._hidden = true;
+        window.clearTimeout(agent._balloon._loop);
+        window.clearTimeout(agent._balloon._hiding);
+      }
+      agent.stopCurrent?.();
+      agent.closeBalloon?.();
+      agent.stop?.();
+      agent.hide?.(true);
+      agent._balloon?.stop?.(true, true);
+      agent._balloon?._balloon?.stop?.(true, true);
+      agent._balloon?._balloon?.hide?.();
+      agent._balloon?.remove?.();
+      agent._el?.stop?.(true, true);
+      agent._el?.remove?.();
+    } catch (error) {
+      // Assistant cleanup is intentionally tolerant because clippy.js internals vary by mascot.
+    }
+
+    appState.assistantAgent = null;
+  };
+
+  appState.assistant = getEffectiveAssistant();
+
   appState.confirmSystem = typeof window.createPrintifyConfirmSystem === 'function'
     ? window.createPrintifyConfirmSystem({
       confirmLayer,
@@ -474,22 +572,203 @@
 
   window.printifyShowPromptCard = showPromptCard;
 
+  let quickConfigOpen = false;
+  let quickConfigCloseTimer = null;
+  let assistantMenuOpen = false;
+
+  const closeAssistantMenu = () => {
+    assistantMenuOpen = false;
+    quickConfig?.classList.remove('is-menu-open');
+    if (quickConfigAssistantMenu) {
+      quickConfigAssistantMenu.hidden = true;
+    }
+    quickConfigAssistantButton?.setAttribute('aria-expanded', 'false');
+  };
+
+  const renderAssistantMenu = () => {
+    if (!quickConfigAssistantMenu) {
+      return;
+    }
+
+    const activeValue = appState.assistantOverride || SERVER_ASSISTANT_OPTION;
+    quickConfigAssistantMenu.innerHTML = ASSISTANT_OPTIONS.map(option => `
+      <button
+        class="printify-quick-config__menu-option${option.value === activeValue ? ' is-active' : ''}"
+        type="button"
+        role="menuitemradio"
+        aria-checked="${option.value === activeValue ? 'true' : 'false'}"
+        data-assistant-value="${escapeHtml(option.value)}"
+      >${escapeHtml(option.label)}</button>
+    `).join('');
+  };
+
+  const syncAssistantUi = () => {
+    const currentOption = getAssistantOption(appState.assistantOverride || SERVER_ASSISTANT_OPTION);
+    const effectiveOption = getAssistantOption(getEffectiveAssistant());
+
+    if (quickConfigAssistantButton) {
+      quickConfigAssistantButton.textContent = currentOption.label;
+      quickConfigAssistantButton.title = currentOption.value === SERVER_ASSISTANT_OPTION
+        ? `Using server default (${effectiveOption.label}). Click to cycle assistants. Right click for the full list.`
+        : `Assistant override: ${currentOption.label}. Click to cycle assistants. Right click for the full list.`;
+    }
+
+    if (quickConfigAssistantMeta) {
+      quickConfigAssistantMeta.textContent = currentOption.value === SERVER_ASSISTANT_OPTION
+        ? `Using server default: ${effectiveOption.label}.`
+        : `Personal pick: ${currentOption.label}.`;
+    }
+
+    renderAssistantMenu();
+  };
+
+  const openAssistantMenu = () => {
+    if (!quickConfigAssistantMenu) {
+      return;
+    }
+
+    renderAssistantMenu();
+    assistantMenuOpen = true;
+    quickConfig?.classList.add('is-menu-open');
+    quickConfigAssistantMenu.hidden = false;
+    quickConfigAssistantButton?.setAttribute('aria-expanded', 'true');
+  };
+
+  const toggleAssistantMenu = () => {
+    if (assistantMenuOpen) {
+      closeAssistantMenu();
+      return;
+    }
+
+    openAssistantMenu();
+  };
+
+  const bootClippy = () => {
+    destroyAssistantAgent();
+
+    if (appState.assistant === 'none') return;
+    if (!window.clippy) return;
+
+    window.clippy.load(appState.assistant, agent => {
+      if (appState.assistant !== getEffectiveAssistant()) {
+        agent.hide?.(true);
+        agent._balloon?.remove?.();
+        agent._el?.remove?.();
+        return;
+      }
+
+      appState.assistantAgent = agent;
+      if (typeof agent.pinToCorner === 'function') {
+        agent.pinToCorner({
+          right: 15,
+          bottom: 15,
+        });
+      }
+      agent.show();
+      window.setTimeout(() => agent.reposition(), 80);
+
+      appState.assistantBootTimer = window.setTimeout(() => {
+        const line = window.PrintifyQuippy?.getRandomBootLine({
+          printCounter: appState.exactPrintCounter || appState.printCounter,
+          pageCounter: appState.pageCounter,
+          actualPrintCounter: appState.actualPrintCounter,
+          actualPageCounter: appState.actualPageCounter,
+          testingPrintCounter: appState.testingPrintCounter,
+          testingPageCounter: appState.testingPageCounter,
+          paperAreaSquareMm: appState.paperAreaSquareMm,
+          actualPaperAreaSquareMm: appState.actualPaperAreaSquareMm,
+          testingPaperAreaSquareMm: appState.testingPaperAreaSquareMm,
+          testing: appState.testing,
+          pageHits: appState.pageHits,
+          printers: appState.printers,
+          serverVersion: appState.serverVersion,
+          serverDataVersion: appState.serverDataVersion,
+          lastStartedAt: appState.lastStartedAt,
+          lastPrintAt: appState.lastPrintAt,
+          lastPrintJob: appState.lastPrintJob,
+          dailyStats: appState.dailyStats,
+        }) || 'I appear to be between remarks at the moment.';
+
+        agent.speak(line);
+      }, 3200);
+    });
+  };
+
+  const applyAssistantChoice = assistantValue => {
+    const normalizedValue = ASSISTANT_OPTIONS.some(option => option.value === assistantValue)
+      ? assistantValue
+      : SERVER_ASSISTANT_OPTION;
+    appState.assistantOverride = normalizedValue === SERVER_ASSISTANT_OPTION
+      ? null
+      : normalizedValue;
+    persistAssistantOverride(normalizedValue);
+    appState.assistant = getEffectiveAssistant();
+    syncAssistantUi();
+    closeAssistantMenu();
+    bootClippy();
+  };
+
+  const cycleAssistantChoice = () => {
+    const currentValue = appState.assistantOverride || SERVER_ASSISTANT_OPTION;
+    const currentIndex = ASSISTANT_OPTIONS.findIndex(option => option.value === currentValue);
+    const nextIndex = currentIndex === -1
+      ? 0
+      : (currentIndex + 1) % ASSISTANT_OPTIONS.length;
+    applyAssistantChoice(ASSISTANT_OPTIONS[nextIndex].value);
+  };
+
+  const setQuickConfigOpen = nextOpenState => {
+    if (!quickConfig || !themeToggle || !quickConfigBody) {
+      return;
+    }
+
+    quickConfigOpen = Boolean(nextOpenState);
+    window.clearTimeout(quickConfigCloseTimer);
+
+    if (quickConfigOpen) {
+      quickConfigBody.hidden = false;
+      window.requestAnimationFrame(() => {
+        quickConfig.classList.add('is-open');
+      });
+    } else {
+      closeAssistantMenu();
+      quickConfig.classList.remove('is-open');
+      quickConfigCloseTimer = window.setTimeout(() => {
+        if (!quickConfigOpen) {
+          quickConfigBody.hidden = true;
+        }
+      }, 360);
+    }
+
+    themeToggle.setAttribute('aria-expanded', String(quickConfigOpen));
+  };
+
   const applyTheme = theme => {
     const nextTheme = theme === 'light' ? 'light' : 'dark';
+    const isDark = nextTheme === 'dark';
 
-    if (nextTheme === 'dark') {
+    if (isDark) {
       document.documentElement.removeAttribute('data-theme');
     } else {
       document.documentElement.setAttribute('data-theme', 'light');
     }
 
     if (themeToggle) {
-      const isDark = nextTheme === 'dark';
-      themeToggle.dataset.icon = isDark ? 'sun' : 'moon';
-      themeToggle.setAttribute('aria-pressed', String(isDark));
-      themeToggle.setAttribute('aria-label', isDark ? 'Switch to light mode' : 'Switch to dark mode');
-      themeToggle.setAttribute('title', isDark ? 'Switch to light mode' : 'Switch to dark mode');
+      themeToggle.setAttribute('aria-label', 'Open quick config');
+      themeToggle.setAttribute('title', 'Open quick config');
     }
+
+    if (quickConfigThemeToggle) {
+      quickConfigThemeToggle.textContent = isDark ? 'Switch to Light' : 'Switch to Dark';
+    }
+
+    if (quickConfigThemeMeta) {
+      quickConfigThemeMeta.textContent = isDark
+        ? 'Dark mode is active.'
+        : 'Light mode is active.';
+    }
+
+    syncAssistantUi();
   };
 
   const bootTheme = () => {
@@ -497,10 +776,63 @@
     applyTheme(savedTheme || 'dark');
 
     themeToggle?.addEventListener('click', () => {
+      setQuickConfigOpen(!quickConfigOpen);
+    });
+
+    quickConfigThemeToggle?.addEventListener('click', () => {
       const currentTheme = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
       const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
       window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
       applyTheme(nextTheme);
+    });
+
+    quickConfigAssistantButton?.addEventListener('click', () => {
+      cycleAssistantChoice();
+    });
+
+    quickConfigAssistantButton?.addEventListener('contextmenu', event => {
+      event.preventDefault();
+      if (!quickConfigOpen) {
+        setQuickConfigOpen(true);
+      }
+      toggleAssistantMenu();
+    });
+
+    quickConfigAssistantMenu?.addEventListener('click', event => {
+      const optionButton = event.target.closest('[data-assistant-value]');
+      if (!optionButton) {
+        return;
+      }
+
+      applyAssistantChoice(optionButton.getAttribute('data-assistant-value'));
+      closeAssistantMenu();
+    });
+
+    document.addEventListener('click', event => {
+      if (assistantMenuOpen && quickConfigAssistantMenu && !quickConfigAssistantMenu.contains(event.target) && event.target !== quickConfigAssistantButton) {
+        closeAssistantMenu();
+      }
+
+      if (!quickConfigOpen || !quickConfig) {
+        return;
+      }
+
+      if (quickConfig.contains(event.target)) {
+        return;
+      }
+
+      setQuickConfigOpen(false);
+    });
+
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && assistantMenuOpen) {
+        closeAssistantMenu();
+        return;
+      }
+
+      if (event.key === 'Escape' && quickConfigOpen) {
+        setQuickConfigOpen(false);
+      }
     });
   };
 
@@ -548,8 +880,10 @@
     appState.lastPrintAt = serverData.lastPrintAt || null;
     appState.lastPrintJob = serverData.lastPrintJob || null;
     appState.dailyStats = serverData.dailyStats || {};
-    appState.assistant = serverData.assistant || 'Clippy';
+    appState.serverAssistant = serverData.assistant || DEFAULT_ASSISTANT;
+    appState.assistant = getEffectiveAssistant();
     appState.activeJobs = Array.isArray(serverData.activeJobs) ? serverData.activeJobs : appState.activeJobs;
+    syncAssistantUi();
 
     if (patchPrinterStats && serverData.printers && appState.printers.length) {
       appState.printers = appState.printers.map(printer => ({
@@ -1420,12 +1754,62 @@
     }, 180);
   };
 
+  const playPrinterCardSettleAnimation = (card, mode) => {
+    if (!card || typeof card.animate !== 'function') {
+      return;
+    }
+
+    card._settleAnimation?.cancel?.();
+
+    const keyframes = mode === 'open'
+      ? [
+        { transform: 'translateY(0) scale(1)' },
+        { transform: 'translateY(-4px) scale(1.018)' },
+        { transform: 'translateY(0) scale(1)' },
+      ]
+      : [
+        { transform: 'translateY(0) scale(1)' },
+        { transform: 'translateY(2px) scale(0.992)' },
+        { transform: 'translateY(0) scale(1)' },
+      ];
+
+    const animation = card.animate(keyframes, {
+      duration: mode === 'open' ? 340 : 280,
+      easing: mode === 'open'
+        ? 'cubic-bezier(0.2, 1.18, 0.24, 1)'
+        : 'cubic-bezier(0.24, 0.92, 0.3, 1)',
+      fill: 'none',
+    });
+    card._settleAnimation = animation;
+
+    const clearAnimation = () => {
+      if (card._settleAnimation === animation) {
+        card._settleAnimation = null;
+      }
+    };
+
+    animation.addEventListener('finish', clearAnimation, { once: true });
+    animation.addEventListener('cancel', clearAnimation, { once: true });
+  };
+
   const setOpenPrinter = printerId => {
+    const previousPrinterId = appState.openPrinterId;
     appState.openPrinterId = printerId;
     printerGrid.querySelectorAll('[data-role="printer-card"]').forEach(card => {
-      const isOpen = card.getAttribute('data-printer-id') === printerId;
+      const cardPrinterId = card.getAttribute('data-printer-id');
+      const wasOpen = cardPrinterId === previousPrinterId;
+      const isOpen = cardPrinterId === printerId;
       card.classList.toggle('is-open', isOpen);
       card.setAttribute('aria-expanded', String(isOpen));
+
+      if (isOpen && !wasOpen) {
+        playPrinterCardSettleAnimation(card, 'open');
+        return;
+      }
+
+      if (!isOpen && wasOpen) {
+        playPrinterCardSettleAnimation(card, 'close');
+      }
     });
   };
 
@@ -1813,48 +2197,6 @@
     }
 
     syncClientPluginTriggers();
-  };
-
-  const bootClippy = () => {
-    if (appState.assistant === 'none') return;
-    if (!window.clippy) return;
-
-    window.clippy.load(appState.assistant, agent => {
-      appState.assistantAgent = agent;
-      if (typeof agent.pinToCorner === 'function') {
-        agent.pinToCorner({
-          right: 15,
-          bottom: 15,
-        });
-      }
-      agent.show();
-      window.setTimeout(() => agent.reposition(), 80);
-
-      window.setTimeout(() => {
-        const line = window.PrintifyQuippy?.getRandomBootLine({
-          printCounter: appState.exactPrintCounter || appState.printCounter,
-          pageCounter: appState.pageCounter,
-          actualPrintCounter: appState.actualPrintCounter,
-          actualPageCounter: appState.actualPageCounter,
-          testingPrintCounter: appState.testingPrintCounter,
-          testingPageCounter: appState.testingPageCounter,
-          paperAreaSquareMm: appState.paperAreaSquareMm,
-          actualPaperAreaSquareMm: appState.actualPaperAreaSquareMm,
-          testingPaperAreaSquareMm: appState.testingPaperAreaSquareMm,
-          testing: appState.testing,
-          pageHits: appState.pageHits,
-          printers: appState.printers,
-          serverVersion: appState.serverVersion,
-          serverDataVersion: appState.serverDataVersion,
-          lastStartedAt: appState.lastStartedAt,
-          lastPrintAt: appState.lastPrintAt,
-          lastPrintJob: appState.lastPrintJob,
-          dailyStats: appState.dailyStats,
-        }) || 'I appear to be between remarks at the moment.';
-
-        agent.speak(line);
-      }, 3200);
-    });
   };
 
   // ╭──────────────────────────╮

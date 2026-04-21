@@ -67,13 +67,15 @@
       const container = builderCanvas.wrapperEl;
       const lowerCanvas = builderCanvas.lowerCanvasEl;
       const upperCanvas = builderCanvas.upperCanvasEl;
+      const shell = refs.canvasShell;
+      const wrap = refs.canvasWrap;
 
-      if (!container || !lowerCanvas || !upperCanvas) {
+      if (!container || !lowerCanvas || !upperCanvas || !shell || !wrap) {
         return work();
       }
 
       let maskElement = null;
-      const frozenElements = [container, lowerCanvas, upperCanvas];
+      const frozenElements = [wrap, shell, container, lowerCanvas, upperCanvas];
       const frozenDimensions = frozenElements.map(element => ({
         element,
         width: element.getBoundingClientRect().width,
@@ -85,6 +87,7 @@
       try {
         const lowerCanvasRect = lowerCanvas.getBoundingClientRect();
         const snapshotUrl = lowerCanvas.toDataURL('image/png');
+        const shellRect = shell.getBoundingClientRect();
 
         frozenDimensions.forEach(({ element, width, height }) => {
           element.style.width = `${width}px`;
@@ -97,15 +100,16 @@
         maskElement.setAttribute('aria-hidden', 'true');
         maskElement.src = snapshotUrl;
         maskElement.style.position = 'absolute';
-        maskElement.style.left = '0';
-        maskElement.style.top = '0';
+        maskElement.style.left = `${lowerCanvasRect.left - shellRect.left}px`;
+        maskElement.style.top = `${lowerCanvasRect.top - shellRect.top}px`;
         maskElement.style.width = `${lowerCanvasRect.width}px`;
         maskElement.style.height = `${lowerCanvasRect.height}px`;
         maskElement.style.pointerEvents = 'none';
         maskElement.style.zIndex = '4';
         maskElement.style.borderRadius = '12px';
         maskElement.style.display = 'block';
-        container.appendChild(maskElement);
+        shell.style.position = shell.style.position || 'relative';
+        shell.appendChild(maskElement);
       } catch (error) {
         maskElement = null;
       }

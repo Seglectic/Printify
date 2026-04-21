@@ -69,6 +69,7 @@ body {
 
 .printify-app,
 .printify-footer,
+.printify-quick-config,
 .printify-theme-toggle,
 .printify-feedback,
 .printify-confirm {
@@ -78,6 +79,7 @@ body {
 
 body.printify-client-overlay-open .printify-app,
 body.printify-client-overlay-open .printify-footer,
+body.printify-client-overlay-open .printify-quick-config,
 body.printify-client-overlay-open .printify-theme-toggle,
 body.printify-client-overlay-open .printify-feedback,
 body.printify-client-overlay-open .printify-confirm {
@@ -96,9 +98,112 @@ img {
   max-width: 100%;
 }
 
-.printify-theme-toggle {
+.printify-quick-config {
   position: fixed;
   top: 22px;
+  right: 24px;
+  z-index: 55;
+  width: 48px;
+  height: 48px;
+  overflow: hidden;
+  border: 1px solid var(--printify-line);
+  border-radius: 999px;
+  background: var(--printify-toggle-bg);
+  color: var(--printify-ink);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--printify-shadow);
+  transition:
+    width 420ms cubic-bezier(0.2, 1.22, 0.24, 1),
+    height 420ms cubic-bezier(0.2, 1.22, 0.24, 1),
+    border-radius 340ms cubic-bezier(0.2, 1.18, 0.24, 1),
+    background 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+  transform-origin: top right;
+}
+
+.printify-quick-config.is-open {
+  width: 274px;
+  height: 248px;
+  border-radius: 24px;
+  background: color-mix(in srgb, var(--printify-builder-surface) 88%, var(--printify-page));
+  box-shadow: 0 26px 58px rgba(0, 0, 0, 0.32);
+}
+
+.printify-quick-config.is-menu-open {
+  overflow: visible;
+}
+
+.printify-quick-config .printify-theme-toggle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 2;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  padding: 0;
+  background: transparent;
+  color: var(--printify-ink);
+  cursor: pointer;
+  font-family: "Droid Sans Mono", "Lucida Console", Courier, monospace;
+  font-size: 20px;
+  line-height: 1;
+  box-shadow: none;
+  transition: color 160ms ease, transform 160ms ease;
+}
+
+.printify-theme-toggle > span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: currentColor;
+  -webkit-mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  mask-position: center;
+  mask-repeat: no-repeat;
+  mask-size: contain;
+}
+
+.printify-theme-toggle__icon--settings {
+  width: 19px;
+  height: 19px;
+  -webkit-mask-image: url('/assets/icons/settings.svg');
+  mask-image: url('/assets/icons/settings.svg');
+}
+
+.printify-theme-toggle__icon--config {
+  width: 19px;
+  height: 19px;
+  -webkit-mask-image: url('/media/icon-config-gear.svg');
+  mask-image: url('/media/icon-config-gear.svg');
+}
+
+.printify-quick-config .printify-theme-toggle:hover,
+.printify-quick-config .printify-theme-toggle:focus-visible {
+  transform: translateY(-1px);
+}
+
+.printify-quick-config .printify-theme-toggle:active {
+  transform: translateY(0) scale(0.97);
+}
+
+:root[data-theme='light'] .printify-quick-config .printify-theme-toggle:hover,
+:root[data-theme='light'] .printify-quick-config .printify-theme-toggle:focus-visible {
+  color: color-mix(in srgb, var(--printify-ink) 86%, transparent);
+}
+
+.printify-theme-toggle--config {
+  position: fixed;
+  top: 80px;
   right: 24px;
   z-index: 55;
   width: 48px;
@@ -117,64 +222,15 @@ img {
   line-height: 1;
   backdrop-filter: blur(10px);
   box-shadow: var(--printify-shadow);
-  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
-}
-
-.printify-theme-toggle > span {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  background: currentColor;
-  -webkit-mask-position: center;
-  -webkit-mask-repeat: no-repeat;
-  -webkit-mask-size: contain;
-  mask-position: center;
-  mask-repeat: no-repeat;
-  mask-size: contain;
-}
-
-.printify-theme-toggle[data-icon='sun'] > span {
-  -webkit-mask-image: url('/media/icon-theme-sun.svg');
-  mask-image: url('/media/icon-theme-sun.svg');
-}
-
-.printify-theme-toggle[data-icon='moon'] > span {
-  -webkit-mask-image: url('/media/icon-theme-moon.svg');
-  mask-image: url('/media/icon-theme-moon.svg');
-}
-
-.printify-theme-toggle__icon--config {
-  width: 19px;
-  height: 19px;
-  -webkit-mask-image: url('/media/icon-config-gear.svg');
-  mask-image: url('/media/icon-config-gear.svg');
-}
-
-.printify-theme-toggle:hover,
-.printify-theme-toggle:focus-visible {
-  background: var(--printify-toggle-hover);
-  border-color: rgba(236, 242, 238, 0.42);
-  box-shadow: 0 26px 58px rgba(0, 0, 0, 0.32);
-  transform: translateY(-1px);
-}
-
-.printify-theme-toggle:active {
-  transform: translateY(0) scale(0.97);
-}
-
-:root[data-theme='light'] .printify-theme-toggle:hover,
-:root[data-theme='light'] .printify-theme-toggle:focus-visible {
-  border-color: rgba(23, 23, 23, 0.28);
-  box-shadow: 0 24px 52px rgba(23, 23, 23, 0.12);
-}
-
-.printify-theme-toggle--config {
-  top: 80px;
   opacity: 0;
   transform: translateY(-10px) scale(0.92);
   pointer-events: none;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    opacity 180ms ease;
 }
 
 .printify-theme-toggle--config.is-visible {
@@ -183,8 +239,182 @@ img {
   pointer-events: auto;
 }
 
+.printify-theme-toggle--config:hover,
+.printify-theme-toggle--config:focus-visible {
+  background: var(--printify-toggle-hover);
+  border-color: rgba(236, 242, 238, 0.42);
+  box-shadow: 0 26px 58px rgba(0, 0, 0, 0.32);
+}
+
+:root[data-theme='light'] .printify-theme-toggle--config:hover,
+:root[data-theme='light'] .printify-theme-toggle--config:focus-visible {
+  border-color: rgba(23, 23, 23, 0.28);
+  box-shadow: 0 24px 52px rgba(23, 23, 23, 0.12);
+}
+
 .printify-theme-toggle[hidden] {
   display: none;
+}
+
+.printify-quick-config__body[hidden] {
+  display: none;
+}
+
+.printify-quick-config__body {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  justify-items: center;
+  gap: 12px;
+  padding: 16px 16px 16px;
+  padding-top: 14px;
+  opacity: 0;
+  transform: translateY(-8px) scale(0.96);
+  transform-origin: top right;
+  transition:
+    opacity 180ms ease,
+    transform 380ms cubic-bezier(0.2, 1.16, 0.24, 1);
+}
+
+.printify-quick-config.is-open .printify-quick-config__body {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.printify-quick-config__eyebrow,
+.printify-quick-config__label,
+.printify-quick-config__meta {
+  margin: 0;
+}
+
+.printify-quick-config__eyebrow {
+  justify-self: start;
+  width: 100%;
+  padding-right: 56px;
+  color: var(--printify-muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.printify-quick-config__section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: min(100%, 242px);
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--printify-line) 88%, transparent);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--printify-card) 82%, transparent);
+}
+
+.printify-quick-config__copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.printify-quick-config__label {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.printify-quick-config__meta {
+  color: var(--printify-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.printify-quick-config__action {
+  flex: 0 0 auto;
+  border: 1px solid color-mix(in srgb, var(--printify-line) 88%, transparent);
+  border-radius: 999px;
+  padding: 10px 13px;
+  background: var(--printify-button-secondary);
+  color: var(--printify-ink);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.printify-quick-config__action:hover,
+.printify-quick-config__action:focus-visible {
+  background: var(--printify-toggle-hover);
+  border-color: color-mix(in srgb, var(--printify-line) 42%, var(--printify-ink));
+  transform: translateY(-1px);
+}
+
+.printify-quick-config__section--assistant {
+  position: relative;
+  align-items: flex-start;
+}
+
+.printify-quick-config__picker {
+  position: relative;
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.printify-quick-config__action--assistant {
+  max-width: 116px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.printify-quick-config__menu[hidden] {
+  display: none;
+}
+
+.printify-quick-config__menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 4;
+  min-width: 168px;
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid color-mix(in srgb, var(--printify-line) 88%, transparent);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--printify-builder-surface) 94%, var(--printify-page));
+  box-shadow: 0 22px 42px rgba(0, 0, 0, 0.28);
+}
+
+.printify-quick-config__menu-option {
+  width: 100%;
+  border: 0;
+  border-radius: 12px;
+  padding: 9px 11px;
+  background: transparent;
+  color: var(--printify-ink);
+  cursor: pointer;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  transition: background 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.printify-quick-config__menu-option:hover,
+.printify-quick-config__menu-option:focus-visible {
+  background: var(--printify-toggle-hover);
+  transform: translateY(-1px);
+}
+
+.printify-quick-config__menu-option.is-active {
+  background: color-mix(in srgb, var(--printify-toggle-hover) 70%, var(--printify-overlay));
 }
 
 .printify-app {
@@ -851,7 +1081,6 @@ img {
   height: 44px;
   display: grid;
   place-items: center;
-  color: color-mix(in srgb, var(--printify-ink) 48%, transparent);
   border: 1px solid color-mix(in srgb, var(--printify-line) 78%, var(--printify-ink) 10%);
   border-radius: 999px;
   background: color-mix(in srgb, var(--printify-builder-surface) 88%, var(--printify-page));
@@ -862,7 +1091,6 @@ img {
   transition:
     transform 160ms ease,
     opacity 160ms ease,
-    color 160ms ease,
     border-color 160ms ease,
     box-shadow 160ms ease,
     background 160ms ease;
@@ -871,7 +1099,6 @@ img {
 .printify-builder__history-button.is-available {
   opacity: 1;
   cursor: pointer;
-  color: var(--printify-ink);
   background: color-mix(in srgb, var(--printify-card) 92%, var(--printify-builder-surface));
   border-color: color-mix(in srgb, #1f6f43 45%, var(--printify-line));
   box-shadow: 0 14px 26px rgba(23, 23, 23, 0.18);
@@ -892,6 +1119,27 @@ img {
   display: block;
   width: 20px;
   height: 20px;
+  filter: brightness(0) saturate(100%) invert(69%) sepia(8%) saturate(238%) hue-rotate(93deg) brightness(91%) contrast(88%);
+  opacity: 0.92;
+  transition: filter 160ms ease, opacity 160ms ease, transform 160ms ease;
+}
+
+.printify-builder__history-button.is-available .printify-builder__history-icon {
+  filter: brightness(0) saturate(100%) invert(73%) sepia(35%) saturate(675%) hue-rotate(82deg) brightness(103%) contrast(88%);
+  opacity: 1;
+}
+
+.printify-builder__history-button.is-available:hover .printify-builder__history-icon,
+.printify-builder__history-button.is-available:focus-visible .printify-builder__history-icon {
+  transform: scale(1.04);
+}
+
+:root[data-theme='light'] .printify-builder__history-icon {
+  filter: brightness(0) saturate(100%) invert(48%) sepia(6%) saturate(559%) hue-rotate(95deg) brightness(95%) contrast(90%);
+}
+
+:root[data-theme='light'] .printify-builder__history-button.is-available .printify-builder__history-icon {
+  filter: brightness(0) saturate(100%) invert(31%) sepia(48%) saturate(947%) hue-rotate(122deg) brightness(91%) contrast(86%);
 }
 
 .printify-builder__canvas-shell.is-drop-target .canvas-container {
@@ -1994,13 +2242,18 @@ img {
   }
 }
 
+
 @media (max-width: 720px) {
   .printify-app {
     padding: 82px 18px 84px;
   }
 
-  .printify-theme-toggle {
+  .printify-quick-config {
     top: 18px;
+    right: 18px;
+  }
+
+  .printify-theme-toggle--config {
     right: 18px;
   }
 

@@ -280,7 +280,14 @@
           width: templateDocument?.canvas?.width || ctx.utils.getPrinterCanvasSize(state.currentPrinter).width,
           height: templateDocument?.canvas?.height || ctx.utils.getPrinterCanvasSize(state.currentPrinter).height,
         };
-      builderCanvas.setDimensions(canvasMetrics);
+      const currentWidth = Math.round(builderCanvas.getWidth() || 0);
+      const currentHeight = Math.round(builderCanvas.getHeight() || 0);
+      const nextWidth = Math.round(canvasMetrics.width || 0);
+      const nextHeight = Math.round(canvasMetrics.height || 0);
+
+      if (currentWidth !== nextWidth || currentHeight !== nextHeight) {
+        builderCanvas.setDimensions(canvasMetrics);
+      }
       builderCanvas.backgroundColor = '#ffffff';
 
       // Hydration rebuilds real builder objects through the same factories used

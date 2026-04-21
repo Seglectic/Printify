@@ -57,6 +57,7 @@
             <span class="printify-builder__tooltip" role="tooltip">You can also drag images onto the canvas.</span>
           </span>
           <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAddQr" type="button">🔳 Code</button>
+          <button class="printer-card__button printer-card__button--secondary" id="labelBuilderTemplatesButton" type="button">🗂️ Templates</button>
         </div>
 
         <div class="printify-builder__controls printify-builder__controls--tape" id="labelBuilderTapeControls" hidden>
@@ -226,6 +227,7 @@
           <div class="printify-builder__footer-row printify-builder__footer-row--primary">
             <div class="printify-builder__actions">
               <button class="printer-card__button printer-card__button--primary" id="labelBuilderPrint" type="button">Print Label</button>
+              <button class="printer-card__button printer-card__button--secondary" id="labelBuilderTemplatesFooterButton" type="button">Templates</button>
               <button class="printer-card__button printer-card__button--secondary" id="labelBuilderReset" type="button">Reset</button>
               <button class="printer-card__button printer-card__button--secondary" id="labelBuilderCancel" type="button">Cancel</button>
             </div>
@@ -242,6 +244,49 @@
           </div>
         </div>
         <div class="printify-builder__enter-confirm" id="labelBuilderEnterConfirm" hidden>Print? Press Enter again.</div>
+
+        <div class="printify-builder__templates" id="labelBuilderTemplatesModal" hidden>
+          <div class="printify-builder__templates-card">
+            <div class="printify-builder__templates-header">
+              <div>
+                <p class="printify-builder__text-card-eyebrow">Builder Templates</p>
+                <h3 class="printify-builder__templates-title">Load or Save Templates</h3>
+                <p class="printify-builder__templates-copy">Browse local saves or a mirrored server folder tree, then restore a builder canvas from its named template card.</p>
+              </div>
+              <button class="printer-card__button printer-card__button--secondary" id="labelBuilderTemplatesClose" type="button">Close</button>
+            </div>
+
+            <div class="printify-builder__templates-toolbar">
+              <div class="printify-builder__segmented" role="group" aria-label="Template source">
+                <button class="printer-card__button printer-card__button--secondary" id="labelBuilderTemplatesTabLocal" type="button">Local</button>
+                <button class="printer-card__button printer-card__button--secondary" id="labelBuilderTemplatesTabRemote" type="button">Remote</button>
+              </div>
+              <div class="printify-builder__templates-path-wrap" id="labelBuilderTemplatesRemoteTools" hidden>
+                <span class="printify-builder__templates-path" id="labelBuilderTemplatesPath">/</span>
+                <div class="printify-builder__actions">
+                  <button class="printer-card__button printer-card__button--secondary" id="labelBuilderTemplatesUp" type="button">Up</button>
+                  <button class="printer-card__button printer-card__button--secondary" id="labelBuilderTemplatesNewFolder" type="button">New Folder</button>
+                  <button class="printer-card__button printer-card__button--secondary" id="labelBuilderTemplatesRefresh" type="button">Refresh</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="printify-builder__templates-save-row">
+              <label class="printify-builder__field printify-builder__field--stacked printify-builder__field--wide" for="labelBuilderTemplateName">
+                Template Name
+                <input class="printify-builder__input" id="labelBuilderTemplateName" type="text" placeholder="Shipping Label, Shelf Tag, Cartridge ID...">
+              </label>
+              <div class="printify-builder__actions">
+                <button class="printer-card__button printer-card__button--secondary" id="labelBuilderTemplateSaveLocal" type="button">Save Local</button>
+                <button class="printer-card__button printer-card__button--secondary" id="labelBuilderTemplateSaveRemote" type="button">Save Remote</button>
+              </div>
+            </div>
+
+            <p class="printify-builder__templates-feedback" id="labelBuilderTemplatesFeedback" hidden></p>
+            <div class="printify-builder__templates-grid" id="labelBuilderTemplatesGrid"></div>
+            <p class="printify-builder__templates-empty" id="labelBuilderTemplatesEmpty">No templates yet.</p>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -274,6 +319,21 @@
     <script src="/scripts/footerDrawer.js"></script>
     <script src="/scripts/input.js"></script>
     <script src="/scripts/configDrawer.js"></script>
+    <script src="/scripts/labelBuilder/constants.js"></script>
+    <script src="/scripts/labelBuilder/utils.js"></script>
+    <script src="/scripts/labelBuilder/dom.js"></script>
+    <script src="/scripts/labelBuilder/state.js"></script>
+    <script src="/scripts/labelBuilder/canvasRuntime.js"></script>
+    <script src="/scripts/labelBuilder/objects/textbox.js"></script>
+    <script src="/scripts/labelBuilder/objects/code.js"></script>
+    <script src="/scripts/labelBuilder/objects/media.js"></script>
+    <script src="/scripts/labelBuilder/controls.js"></script>
+    <script src="/scripts/labelBuilder/preview.js"></script>
+    <script src="/scripts/labelBuilder/export.js"></script>
+    <script src="/scripts/labelBuilder/session.js"></script>
+    <script src="/scripts/labelBuilder/templates.js"></script>
+    <script src="/scripts/labelBuilder/snapping.js"></script>
+    <script src="/scripts/labelBuilder/events.js"></script>
     <script src="/scripts/labelBuilder.js"></script>
     <script src="/scripts/confirm.js"></script>
     <script src="/scripts/index.js"></script>

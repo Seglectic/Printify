@@ -1,12 +1,18 @@
 (function () {
   const activeLayers = new Set();
+  const BLUR_EXCLUDED_LAYERS = new Set([
+    'footer-drawer',
+  ]);
 
   const applyOverlayState = () => {
     if (!document.body) {
       return;
     }
 
-    document.body.classList.toggle('printify-client-overlay-open', activeLayers.size > 0);
+    const hasBlurEligibleLayer = Array.from(activeLayers)
+      .some(layerName => !BLUR_EXCLUDED_LAYERS.has(layerName));
+
+    document.body.classList.toggle('printify-client-overlay-open', hasBlurEligibleLayer);
   };
 
   window.printifyClientOverlay = {

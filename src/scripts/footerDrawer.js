@@ -13,6 +13,15 @@
   const setClientOverlayActive = (layerName, isActive) => {
     window.printifyClientOverlay?.setActive?.(layerName, isActive);
   };
+  const isTypingContext = target => {
+    if (!target || !(target instanceof Element)) return false;
+
+    if (target.closest('input, textarea, select, [contenteditable="true"]')) {
+      return true;
+    }
+
+    return target.getAttribute('contenteditable') === 'true';
+  };
 
   const DEFAULT_SURFACE_ID = '__default__';
 
@@ -21,8 +30,8 @@
     <aside class="printify-footer-drawer__panel" data-role="panel" aria-hidden="true">
       <div class="printify-footer-drawer__header">
         <div class="printify-footer-drawer__heading">
-          <p class="printify-footer-drawer__eyebrow" data-role="eyebrow">Footer Panel</p>
-          <h2 class="printify-footer-drawer__title" data-role="title">Footer drawer standby</h2>
+          <p class="printify-footer-drawer__eyebrow" data-role="eyebrow"></p>
+          <h2 class="printify-footer-drawer__title" data-role="title"></h2>
         </div>
         <div class="printify-footer-drawer__header-actions">
           <button class="printify-footer-drawer__close" type="button" data-role="close">Close</button>
@@ -214,15 +223,19 @@
       }
 
       if (!activeSurface) {
-        eyebrow.textContent = 'Footer Panel';
-        title.textContent = 'Footer drawer standby';
-        title.hidden = false;
-        eyebrow.hidden = false;
+        panel.classList.add('is-empty');
+        body.classList.add('is-empty');
+        eyebrow.textContent = '';
+        title.textContent = '';
+        title.hidden = true;
+        eyebrow.hidden = true;
         setPanelHeight(settings.defaultHeight);
         renderTabs();
         return;
       }
 
+      panel.classList.remove('is-empty');
+      body.classList.remove('is-empty');
       eyebrow.textContent = activeSurface.eyebrow;
       eyebrow.hidden = !activeSurface.eyebrow;
       title.textContent = activeSurface.title;
@@ -410,10 +423,37 @@
     document.addEventListener('keydown', event => {
       if (event.key === 'Escape' && isOpen) {
         setOpenState(false);
+        return;
+      }
+
+      if (event.key === 'Tab' && event.shiftKey && !event.altKey && !event.ctrlKey && !event.metaKey) {
+        if (isTypingContext(event.target)) {
+          return;
+        }
+
+        event.preventDefault();
+
+        if (isOpen) {
+          setOpenState(false);
+          return;
+        }
+
+        if (!getSurfaceList().length) {
+          setOpenState(true);
+          return;
+        }
+
+        if (!surfaces.has(activeSurfaceId)) {
+          activeSurfaceId = getSurfaceList()[0].id;
+          syncSurfaceState();
+        }
+
+        setOpenState(true);
       }
     });
 
     setPanelHeight(settings.defaultHeight);
+    syncSurfaceState();
 
     const api = {
       open: () => setOpenState(true),

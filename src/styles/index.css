@@ -2234,6 +2234,11 @@ img {
   transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+.printify-footer-drawer__panel.is-empty {
+  gap: 0;
+  padding: 0;
+}
+
 .printify-footer-drawer__panel.is-open {
   transform: translateY(0);
 }
@@ -2243,6 +2248,10 @@ img {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+}
+
+.printify-footer-drawer__panel.is-empty .printify-footer-drawer__header {
+  display: none;
 }
 
 .printify-footer-drawer__heading {
@@ -2274,6 +2283,42 @@ img {
   overflow: hidden;
   align-content: start;
   gap: 10px;
+}
+
+.printify-footer-drawer__body.is-empty {
+  position: relative;
+  inset: 0;
+  isolation: isolate;
+  overflow: hidden;
+  gap: 0;
+}
+
+.printify-footer-drawer__body.is-empty::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      color-mix(in srgb, var(--printify-card) 88%, transparent) 0 18px,
+      color-mix(in srgb, var(--printify-accent-soft) 42%, var(--printify-card)) 18px 36px
+    );
+  opacity: 0.55;
+}
+
+.printify-footer-drawer__body.is-empty::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, transparent 0%, var(--printify-card) 8%) 0%,
+      transparent 32%,
+      color-mix(in srgb, transparent 0%, var(--printify-ink) 4%) 100%
+    );
 }
 
 .printify-footer-drawer__title,

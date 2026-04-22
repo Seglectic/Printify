@@ -1,0 +1,264 @@
+.printify-life {
+  display: flex;
+  flex: 1;
+  height: 100%;
+  min-height: 0;
+  font-family: "Droid Sans Mono", monospace;
+  --life-shell: #f4f7fb;
+  --life-surface: rgba(255, 255, 255, 0.72);
+  --life-line: rgba(29, 39, 54, 0.12);
+  --life-ink: #1d2736;
+  --life-muted: #5f6c7f;
+  --life-accent: #3167d5;
+  --life-accent-ink: #f4f8ff;
+  --life-grid: rgba(49, 103, 213, 0.12);
+  --life-cell: #27354a;
+  --life-panel: rgba(231, 237, 246, 0.86);
+  --life-shadow: 0 20px 48px rgba(29, 39, 54, 0.12);
+}
+
+:root:not([data-theme='light']) .printify-life {
+  --life-shell: #121821;
+  --life-surface: rgba(22, 29, 39, 0.8);
+  --life-line: rgba(207, 219, 236, 0.12);
+  --life-ink: #edf4ff;
+  --life-muted: #98a8c0;
+  --life-accent: #8ab4ff;
+  --life-accent-ink: #0f1826;
+  --life-grid: rgba(138, 180, 255, 0.14);
+  --life-cell: #dce8ff;
+  --life-panel: rgba(29, 38, 50, 0.88);
+  --life-shadow: 0 24px 56px rgba(0, 0, 0, 0.28);
+}
+
+.printify-life__shell {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 16px;
+  flex: 1;
+  height: 100%;
+  min-height: 0;
+  width: 100%;
+  background: transparent;
+  border-radius: 0;
+  overflow: hidden;
+}
+
+.printify-life__control-panel {
+  display: grid;
+  grid-template-columns: minmax(260px, auto) minmax(240px, 1fr);
+  grid-template-areas:
+    "meta copy"
+    "meta controls";
+  align-items: end;
+  gap: 16px 22px;
+  flex: 0 0 auto;
+  padding: 18px 20px;
+  border: 1px solid var(--life-line);
+  border-radius: 24px;
+  background: var(--life-panel);
+  box-shadow: var(--life-shadow);
+  color: var(--life-ink);
+}
+
+.printify-life__copy,
+.printify-life__stat-label,
+.printify-life__stat-value {
+  margin: 0;
+}
+
+.printify-life__board-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  padding: 20px;
+  overflow: hidden;
+  border: 1px solid var(--life-line);
+  border-radius: 28px;
+  background: var(--life-surface);
+  box-shadow: var(--life-shadow);
+}
+
+.printify-life__board {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  aspect-ratio: 12 / 7;
+  border-radius: 20px;
+  background: var(--life-shell);
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.printify-life__meta {
+  grid-area: meta;
+  display: grid;
+  align-content: end;
+  gap: 12px;
+}
+
+.printify-life__copy {
+  grid-area: copy;
+  justify-self: end;
+  align-self: start;
+  color: var(--life-muted);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: right;
+  max-width: 34ch;
+}
+
+.printify-life__controls {
+  grid-area: controls;
+  display: grid;
+  justify-items: end;
+  gap: 14px;
+}
+
+.printify-life__sliders {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(180px, 220px));
+  gap: 12px;
+}
+
+.printify-life__slider {
+  display: grid;
+  gap: 8px;
+}
+
+.printify-life__slider input {
+  width: 100%;
+  accent-color: var(--life-accent);
+}
+
+.printify-life__select {
+  width: 100%;
+  appearance: none;
+  border: 1px solid var(--life-line);
+  border-radius: 14px;
+  padding: 11px 12px;
+  background: color-mix(in srgb, var(--life-shell) 82%, transparent);
+  color: var(--life-ink);
+  font: inherit;
+  font-size: 12px;
+}
+
+.printify-life__slider-value {
+  color: var(--life-ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.printify-life__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-right: 104px;
+}
+
+.printify-life__button {
+  appearance: none;
+  border: 1px solid var(--life-line);
+  border-radius: 16px;
+  padding: 14px 16px;
+  background: transparent;
+  color: var(--life-ink);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: transform 140ms ease, border-color 140ms ease, background 140ms ease, color 140ms ease;
+}
+
+.printify-life__button:hover,
+.printify-life__button:focus-visible {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--life-accent) 48%, var(--life-line));
+  background: color-mix(in srgb, var(--life-accent) 10%, transparent);
+}
+
+.printify-life__button--primary {
+  border-color: transparent;
+  background: var(--life-accent);
+  color: var(--life-accent-ink);
+}
+
+.printify-life__stats {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.printify-life__stat {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 12px;
+  padding-left: 14px;
+  border-left: 1px solid var(--life-line);
+}
+
+.printify-life__stat-label {
+  color: var(--life-muted);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.printify-life__stat-value {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.printify-life__stat:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+@media (max-width: 900px) {
+  .printify-life__control-panel {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "copy"
+      "meta"
+      "controls";
+  }
+
+  .printify-life__controls,
+  .printify-life__meta {
+    justify-items: stretch;
+  }
+
+  .printify-life__sliders {
+    grid-template-columns: 1fr;
+  }
+
+  .printify-life__actions,
+  .printify-life__stats {
+    justify-content: flex-start;
+  }
+
+  .printify-life__actions {
+    padding-right: 0;
+  }
+
+  .printify-life__stat {
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .printify-life__copy {
+    max-width: none;
+    justify-self: stretch;
+    text-align: left;
+  }
+}

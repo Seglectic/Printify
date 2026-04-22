@@ -1,7 +1,9 @@
 .printify-dmg {
-  position: fixed;
-  inset: 0;
-  z-index: 90;
+  position: relative;
+  display: flex;
+  flex: 1;
+  height: 100%;
+  min-height: 0;
   font-family: "Droid Sans Mono", monospace;
   --dmg-shell: #c9cbc0;
   --dmg-shell-dark: #8a92aa;
@@ -46,7 +48,7 @@
   --dmg-button-secondary-border: rgba(36, 50, 110, 0.12);
 }
 
-:root[data-theme-family='dracula'] .printify-dmg {
+:root:not([data-theme='light']) .printify-dmg {
   --dmg-shell: #2b273b;
   --dmg-shell-dark: #3d355c;
   --dmg-ink: #f8f8f2;
@@ -90,70 +92,17 @@
   --dmg-button-secondary-border: rgba(189, 147, 249, 0.12);
 }
 
-:root[data-theme='light'][data-theme-family='dracula'] .printify-dmg {
-  --dmg-shell: #efe9ff;
-  --dmg-shell-dark: #d9cff7;
-  --dmg-ink: #3f3161;
-  --dmg-muted: #6a5a90;
-  --dmg-title: #47356d;
-  --dmg-accent: #7b5fd0;
-  --dmg-button: #33274d;
-  --dmg-button-ink: #f8f8f2;
-  --dmg-button-secondary-ink: #f8f8f2;
-  --dmg-surface: rgba(255, 255, 255, 0.78);
-  --dmg-card: #f8f4ff;
-  --dmg-card-selected: #e5dbfb;
-  --dmg-border: rgba(123, 95, 208, 0.22);
-  --dmg-backdrop: rgba(53, 41, 82, 0.28);
-  --dmg-window-shadow: 0 20px 80px rgba(88, 67, 137, 0.2);
-  --dmg-window-shadow-playing: 0 28px 90px rgba(88, 67, 137, 0.18);
-  --dmg-window-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.6);
-  --dmg-border-strong: rgba(123, 95, 208, 0.3);
-  --dmg-pane-border: rgba(123, 95, 208, 0.14);
-  --dmg-card-border: rgba(123, 95, 208, 0.12);
-  --dmg-card-hover-border: rgba(255, 121, 198, 0.28);
-  --dmg-card-selected-border: rgba(123, 95, 208, 0.36);
-  --dmg-card-selected-shadow: inset 0 0 0 1px rgba(123, 95, 208, 0.12);
-  --dmg-icon-bg: linear-gradient(180deg, rgba(255, 121, 198, 0.16), rgba(123, 95, 208, 0.1));
-  --dmg-icon-ring: inset 0 0 0 1px rgba(123, 95, 208, 0.12);
-  --dmg-screen-shell-shadow: inset 0 0 0 1px rgba(123, 95, 208, 0.14);
-  --dmg-screen-shell-playing-shadow:
-    inset 0 0 0 1px rgba(123, 95, 208, 0.14),
-    inset 0 18px 30px rgba(255, 255, 255, 0.24);
-  --dmg-screen-bg: #a2f2b8;
-  --dmg-screen-shadow:
-    inset 0 0 0 2px rgba(40, 56, 46, 0.34),
-    0 14px 30px rgba(88, 67, 137, 0.16);
-  --dmg-screen-playing-shadow:
-    inset 0 0 0 2px rgba(75, 63, 116, 0.2),
-    0 16px 28px rgba(88, 67, 137, 0.18);
-  --dmg-panel-bg: rgba(123, 95, 208, 0.12);
-  --dmg-panel-border: rgba(123, 95, 208, 0.16);
-  --dmg-controls-ink: #5a4d7d;
-  --dmg-button-shadow: inset 0 -2px 0 rgba(255, 255, 255, 0.08);
-  --dmg-button-secondary-border: rgba(123, 95, 208, 0.12);
-}
-
 .printify-dmg [hidden] {
   display: none !important;
 }
 
-.printify-dmg__backdrop {
-  position: absolute;
-  inset: 0;
-  background: var(--dmg-backdrop);
-  backdrop-filter: blur(10px);
-}
-
-.printify-dmg.is-playing .printify-dmg__backdrop {
-  background: var(--dmg-backdrop);
-}
-
 .printify-dmg__window {
   position: relative;
-  width: min(1120px, calc(100vw - 32px));
-  margin: min(6vh, 42px) auto;
-  padding: 22px;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0 4px 4px;
   border: 1px solid var(--dmg-border);
   border-radius: 28px;
   background: var(--dmg-shell);
@@ -163,6 +112,16 @@
   color: var(--dmg-ink);
 }
 
+.printify-dmg__window--embedded {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
 .printify-dmg.is-playing .printify-dmg__window {
   background: var(--dmg-shell);
   border-color: var(--dmg-border-strong);
@@ -170,6 +129,12 @@
     var(--dmg-window-shadow-playing),
     var(--dmg-window-highlight);
   color: var(--dmg-ink);
+}
+
+.printify-dmg.is-playing .printify-dmg__window--embedded {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
 }
 
 .printify-dmg__header,
@@ -182,6 +147,15 @@
 .printify-dmg__header,
 .printify-dmg__body {
   align-items: flex-start;
+}
+
+.printify-dmg__body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 250px;
+  align-items: stretch;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .printify-dmg__header {
@@ -224,12 +198,17 @@
 
 .printify-dmg__launcher {
   display: grid;
+  flex: 1;
+  min-height: 0;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 22px;
+  align-content: start;
 }
 
 .printify-dmg__launcher-pane {
   min-width: 0;
+  min-height: 0;
+  overflow: auto;
   padding: 18px;
   border-radius: 22px;
   background: var(--dmg-surface);
@@ -244,12 +223,14 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 16px;
+  align-content: start;
 }
 
 .printify-dmg__slot-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
+  align-content: start;
 }
 
 .printify-dmg__grid-card,
@@ -320,11 +301,15 @@
 .printify-dmg__launcher-actions {
   display: flex;
   margin-top: 20px;
+  padding: 0;
 }
 
 .printify-dmg__screen-shell {
-  flex: 1 1 520px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   min-width: 0;
+  min-height: 0;
   padding: 28px;
   border-radius: 22px;
   background: var(--dmg-shell-dark);
@@ -339,6 +324,9 @@
 .printify-dmg__screen {
   display: block;
   width: 100%;
+  max-width: min(100%, calc((100dvh - 250px) * 160 / 144));
+  max-height: 100%;
+  margin: 0 auto;
   aspect-ratio: 160 / 144;
   border-radius: 12px;
   background: var(--dmg-screen-bg);
@@ -352,8 +340,10 @@
 }
 
 .printify-dmg__panel {
-  flex: 0 0 250px;
   display: grid;
+  align-content: start;
+  min-height: 0;
+  overflow: auto;
   gap: 14px;
 }
 
@@ -465,17 +455,14 @@
   .printify-dmg__launcher,
   .printify-dmg__body {
     grid-template-columns: 1fr;
-    flex-direction: column;
   }
 
   .printify-dmg__slot-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .printify-dmg__screen-shell,
-  .printify-dmg__panel {
-    width: 100%;
-    flex-basis: auto;
+  .printify-dmg__body {
+    overflow: auto;
   }
 }
 

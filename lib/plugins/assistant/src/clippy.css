@@ -5,12 +5,12 @@
 }
 
 .clippy-balloon {
-
-    background: #FFC;
-    color: black;
+    background: color-mix(in srgb, var(--printify-card) 94%, transparent);
+    color: var(--printify-ink);
     padding: 8px;
-    border: 1px solid black;
+    border: 1px solid var(--printify-line);
     border-radius: 5px;
+    box-shadow: var(--printify-shadow);
 
 }
 
@@ -22,41 +22,98 @@
 }
 
 .clippy-tip {
-    width: 10px;
-    height: 16px;
-    background: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAgCAMAAAAlvKiEAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAAlQTFRF///MAAAA////52QwgAAAAAN0Uk5T//8A18oNQQAAAGxJREFUeNqs0kEOwCAIRFHn3//QTUU6xMyyxii+jQosrTPkyPEM6IN3FtzIRk1U4dFeKWQiH6pRRowMVKEmvronEynkwj0uZJgR22+YLopPSo9P34wJSamLSU7lSIWLJU7NkNomNlhqxUeAAQC+TQLZyEuJBwAAAABJRU5ErkJggg==) no-repeat;
+    width: 18px;
+    height: 10px;
     position: absolute;
+    background: transparent;
+    overflow: visible;
+}
+
+.clippy-tip::before,
+.clippy-tip::after {
+    content: "";
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-style: solid;
+}
+
+.clippy-tip::before {
+    filter: drop-shadow(2px 3px 8px rgba(0, 0, 0, 0.08));
+}
+
+.clippy-tip::after {
+    filter: none;
 }
 
 .clippy-top-left .clippy-tip {
     top: 100%;
-    margin-top: 0px;
     left: 100%;
-    margin-left: -50px;
+    margin-left: -56px;
+}
+
+.clippy-top-left .clippy-tip::before {
+    border-width: 10px 10px 0 0;
+    border-color: var(--printify-line) transparent transparent transparent;
+}
+
+.clippy-top-left .clippy-tip::after {
+    top: -1px;
+    left: 1px;
+    border-width: 9px 9px 0 0;
+    border-color: color-mix(in srgb, var(--printify-card) 94%, transparent) transparent transparent transparent;
 }
 
 .clippy-top-right .clippy-tip {
     top: 100%;
-    margin-top: 0px;
     left: 0;
-    margin-left: 50px;
-    background-position: -10px 0;
+    margin-left: 38px;
+}
 
+.clippy-top-right .clippy-tip::before {
+    border-width: 10px 0 0 10px;
+    border-color: transparent transparent transparent var(--printify-line);
+}
+
+.clippy-top-right .clippy-tip::after {
+    top: -1px;
+    left: 1px;
+    border-width: 9px 0 0 9px;
+    border-color: transparent transparent transparent color-mix(in srgb, var(--printify-card) 94%, transparent);
 }
 
 .clippy-bottom-right .clippy-tip {
-    top: 0;
-    margin-top: -16px;
+    top: -9px;
     left: 0;
-    margin-left: 50px;
-    background-position: -10px -16px;
+    margin-left: 38px;
+}
+
+.clippy-bottom-right .clippy-tip::before {
+    border-width: 0 0 10px 10px;
+    border-color: transparent transparent var(--printify-line) transparent;
+}
+
+.clippy-bottom-right .clippy-tip::after {
+    top: 1px;
+    left: 1px;
+    border-width: 0 0 9px 9px;
+    border-color: transparent transparent color-mix(in srgb, var(--printify-card) 94%, transparent) transparent;
 }
 
 .clippy-bottom-left .clippy-tip {
-    top: 0;
-    margin-top: -16px;
+    top: -9px;
     left: 100%;
-    margin-left: -50px;
-    background-position: 0px -16px;
+    margin-left: -56px;
 }
 
+.clippy-bottom-left .clippy-tip::before {
+    border-width: 0 10px 10px 0;
+    border-color: transparent var(--printify-line) transparent transparent;
+}
+
+.clippy-bottom-left .clippy-tip::after {
+    top: 1px;
+    left: 0;
+    border-width: 0 9px 9px 0;
+    border-color: transparent color-mix(in srgb, var(--printify-card) 94%, transparent) transparent transparent;
+}

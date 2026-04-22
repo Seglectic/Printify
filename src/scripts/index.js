@@ -41,7 +41,9 @@
   const PRINTER_OPTION_STATE_STORAGE_KEY = 'printify-printer-option-state';
   const DUPLICATE_WHITELIST_STORAGE_KEY = 'printify-duplicate-whitelist';
   const DUPLICATE_WHITELIST_DURATION_MS = 24 * 60 * 60 * 1000;
-  const ASSISTANT_BOOT_BUBBLE_HOLD_MS = 5500;
+  const ASSISTANT_BOOT_BUBBLE_DELAY_MIN_MS = 1000;
+  const ASSISTANT_BOOT_BUBBLE_DELAY_MAX_MS = 2500;
+  const ASSISTANT_BOOT_BUBBLE_HOLD_MS = 5000;
   const DEFAULT_APPEARANCE = 'dark';
   const DEFAULT_THEME_FAMILY = 'default';
   const DEFAULT_THEME_OPTION = {
@@ -119,6 +121,12 @@
     } catch (error) {
       return null;
     }
+  };
+
+  const getRandomDelayMs = (min, max) => {
+    const low = Math.min(min, max);
+    const high = Math.max(min, max);
+    return Math.round(low + (Math.random() * (high - low)));
   };
 
   const persistPrinterOptionState = () => {
@@ -938,6 +946,9 @@
 
         agent.speak(line, true);
         window.clearTimeout(appState.assistantSpeechTimer);
+        const speechDuration = typeof agent._balloon?.estimateSpeechDuration === 'function'
+          ? agent._balloon.estimateSpeechDuration(line)
+          : 0;
         appState.assistantSpeechTimer = window.setTimeout(() => {
           if (appState.assistantAgent !== agent) {
             return;
@@ -946,8 +957,8 @@
           agent._balloon?.close?.();
           agent._balloon?.hide?.(true);
           appState.assistantSpeechTimer = null;
-        }, ASSISTANT_BOOT_BUBBLE_HOLD_MS);
-      }, 3200);
+        }, ASSISTANT_BOOT_BUBBLE_HOLD_MS + speechDuration);
+      }, getRandomDelayMs(ASSISTANT_BOOT_BUBBLE_DELAY_MIN_MS, ASSISTANT_BOOT_BUBBLE_DELAY_MAX_MS));
     });
   };
 

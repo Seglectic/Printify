@@ -748,7 +748,7 @@ img {
 
 .printer-card.is-open .printer-card__details {
   max-height: 252px;
-  margin-top: -8px;
+  margin-top: 2px;
   opacity: 1;
   overflow: visible;
 }

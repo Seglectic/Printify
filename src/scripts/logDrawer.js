@@ -1459,7 +1459,11 @@
       if (isBuilderOpen && event.key !== 'Escape') return;
       if (isTypingTarget && event.key !== 'Escape') return;
 
-      if (event.key === 'Tab') {
+      if (event.key === 'Tab' && !event.shiftKey && !event.altKey && !event.ctrlKey && !event.metaKey) {
+        if (window.printifyFooterDrawer?.isOpen?.()) {
+          return;
+        }
+
         event.preventDefault();
         const shouldOpen = !panel.classList.contains('is-open');
 
@@ -1497,11 +1501,14 @@
     syncBatchUi();
     connectLogSocket();
 
-    return {
+    const api = {
       open: openDrawer,
       close: () => setOpenState(false),
       reload: loadRecentLogs,
     };
+
+    window.printifyLogDrawer = api;
+    return api;
   }
 
   window.createPrintifyLogDrawer = createPrintifyLogDrawer;

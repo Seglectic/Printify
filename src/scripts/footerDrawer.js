@@ -438,6 +438,8 @@
           return;
         }
 
+        window.printifyLogDrawer?.close?.();
+
         if (!getSurfaceList().length) {
           setOpenState(true);
           return;

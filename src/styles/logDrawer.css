@@ -239,13 +239,14 @@
   background: var(--pld-panel);
   box-shadow: var(--pld-shadow);
   border-right: 1px solid var(--pld-line);
-  transform: translateX(calc(-100% - 24px));
-  transition: transform 320ms cubic-bezier(0.2, 1.08, 0.28, 1);
+  transform: translate3d(calc(-100% - 24px), 0, 0);
+  transition: transform 380ms cubic-bezier(0.18, 1.16, 0.28, 1);
   backdrop-filter: blur(12px);
+  will-change: transform;
 }
 
 .printify-log-drawer__panel.is-open {
-  transform: translateX(0);
+  transform: translate3d(0, 0, 0);
 }
 
 .printify-log-drawer__batch {
@@ -792,7 +793,7 @@
 .printify-log-drawer__window-button:hover,
 .printify-log-drawer__window-button:focus-visible {
   background: var(--pld-button-hover);
-  border-color: rgba(100, 212, 123, 0.35);
+  border-color: var(--pld-card-selected-border);
   transform: translateY(-1px);
 }
 
@@ -841,13 +842,13 @@
 .printify-log-drawer__window-option:hover,
 .printify-log-drawer__window-option:focus-visible {
   background: var(--pld-button-hover);
-  border-color: rgba(100, 212, 123, 0.28);
+  border-color: var(--pld-card-selected-border);
   transform: translateY(-1px);
 }
 
 .printify-log-drawer__window-option.is-active {
-  background: var(--pld-button);
-  border-color: rgba(100, 212, 123, 0.3);
+  background: color-mix(in srgb, var(--pld-button) 72%, var(--pld-card-selected));
+  border-color: var(--pld-card-selected-border);
 }
 
 .printify-log-drawer__list {

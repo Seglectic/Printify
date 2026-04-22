@@ -498,9 +498,17 @@
     return clientJobId;
   };
 
-  const showFeedback = message => {
+  const showFeedback = (message, options = {}) => {
     if (appState.assistant !== 'none' && appState.assistantAgent && typeof appState.assistantAgent.speak === 'function') {
-      appState.assistantAgent.speak(message);
+      if (options.interruptAssistant) {
+        window.clearTimeout(appState.assistantBootTimer);
+        appState.assistantBootTimer = null;
+        window.clearTimeout(appState.assistantSpeechTimer);
+        appState.assistantSpeechTimer = null;
+        appState.assistantAgent.stop?.();
+      }
+
+      appState.assistantAgent.speak(message, options.hold === true);
       return;
     }
 
@@ -2478,14 +2486,17 @@
 
     return pluginModule.activatePlugin(pluginConfig, {
       showFeedback,
+      footerDrawer,
     });
   };
 
-  const buildClientPluginCodeSteps = code => Array.from(String(code || '').trim())
-    .map(character => ({
-      keys: [character],
-      display: '',
-    }));
+  const buildClientPluginCodeSteps = code => {
+    return Array.from(String(code || '').trim())
+      .map(character => ({
+        keys: [character],
+        display: character,
+      }));
+  };
 
   const syncClientPluginTriggers = () => {
     appState.clientPluginInputHandles.forEach(handle => handle?.unregister?.());
@@ -2507,8 +2518,15 @@
         id: `client-plugin-${pluginConfig.id}-code`,
         steps,
         timeoutMs: 1200,
+        matchDelayMs: 60,
+        cooldownMs: 320,
+        disableOnMatch: true,
+        onProgress: state => {
+          window.printifyFooterDrawer?.setSequencePreview?.(state?.matchedSteps || []);
+        },
         onMatch: async event => {
           event.preventDefault();
+          window.printifyFooterDrawer?.setSequencePreview?.([]);
 
           try {
             await activateClientPlugin(pluginConfig.id);

@@ -8,6 +8,7 @@
 
 :root {
   color-scheme: dark;
+  --printify-footer-rail-height: 34px;
   --printify-ink: #ecf2ee;
   --printify-muted: rgba(236, 242, 238, 0.58);
   --printify-line: rgba(236, 242, 238, 0.14);
@@ -2032,12 +2033,14 @@ img {
   right: 0;
   bottom: 0;
   left: 0;
-  z-index: 12;
+  z-index: 19;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
-  padding: 8px 14px;
+  gap: 10px;
+  height: var(--printify-footer-rail-height);
+  min-height: var(--printify-footer-rail-height);
+  padding: 0 14px;
   background: var(--printify-footer-bg);
   color: var(--printify-footer-ink);
   font-family: "Lucida Console", Courier, monospace;
@@ -2045,9 +2048,43 @@ img {
   cursor: default;
   -webkit-user-select: none;
   user-select: none;
+  transform: translateY(0);
+  transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  backdrop-filter: blur(14px);
+}
+
+.printify-footer.is-open {
+  z-index: 60;
+  transform: translateY(calc(-1 * (var(--printify-footer-drawer-height, min(50vh, 540px)) - var(--printify-footer-rail-height))));
+  backdrop-filter: none;
+}
+
+.printify-footer__tabs-rail {
+  position: absolute;
+  bottom: 100%;
+  left: 14px;
+  display: flex;
+  align-items: flex-end;
+  height: var(--printify-footer-rail-height);
+  z-index: 2;
+  pointer-events: none;
+}
+
+.printify-footer__tabs {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 8px;
+  height: 100%;
+  min-width: 0;
+  max-width: min(58vw, 720px);
+  overflow-x: auto;
+  padding: 0 8px;
+  background: transparent;
+  pointer-events: auto;
 }
 
 .printify-footer__left,
+.printify-footer__status,
 .printify-footer__right {
   min-width: 0;
 }
@@ -2069,6 +2106,30 @@ img {
   text-align: right;
 }
 
+.printify-footer__status {
+  flex: 0 1 320px;
+  color: var(--printify-muted);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.printify-footer__status.is-visible {
+  opacity: 1;
+}
+
+.printify-footer__right {
+  color: var(--printify-muted);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
 .printify-footer__input-icon {
   display: inline-block;
   width: 18px;
@@ -2081,6 +2142,26 @@ img {
   -webkit-mask-position: center;
   -webkit-mask-repeat: no-repeat;
   -webkit-mask-size: contain;
+}
+
+.printify-footer__input-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  height: 22px;
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, var(--printify-line) 82%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--printify-card) 84%, transparent);
+  box-shadow: 0 8px 18px rgba(9, 16, 28, 0.08);
+  color: var(--printify-ink);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .printify-footer__input-icon--up {
@@ -2140,16 +2221,15 @@ img {
   bottom: 0;
   left: 0;
   z-index: 59;
-  height: min(50vh, 540px);
+  height: calc(var(--printify-footer-drawer-height, min(50vh, 540px)) - var(--printify-footer-rail-height));
   display: flex;
   flex-direction: column;
   gap: 18px;
-  padding: 24px 28px 68px;
+  padding: 24px 28px 24px;
   border-top: 1px solid var(--printify-line);
-  border-radius: 28px 28px 0 0;
+  border-radius: 0;
   background: color-mix(in srgb, var(--printify-card) 94%, transparent);
   box-shadow: 0 -18px 48px rgba(0, 0, 0, 0.24);
-  backdrop-filter: blur(14px);
   transform: translateY(calc(100% + 24px));
   transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -2163,6 +2243,10 @@ img {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+}
+
+.printify-footer-drawer__heading {
+  min-width: 0;
 }
 
 .printify-footer-drawer__eyebrow {
@@ -2184,7 +2268,10 @@ img {
 }
 
 .printify-footer-drawer__body {
-  display: grid;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
   align-content: start;
   gap: 10px;
 }
@@ -2201,6 +2288,75 @@ img {
 .printify-footer-drawer__copy {
   max-width: 560px;
   color: var(--printify-muted);
+}
+
+.printify-footer-drawer__surface-host {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+}
+
+.printify-footer-drawer__surface {
+  flex: 1;
+  height: 100%;
+  min-height: 0;
+}
+
+.printify-footer-drawer__header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  min-width: 0;
+}
+
+.printify-footer-drawer__tab {
+  flex: 0 0 auto;
+  border: 1px solid color-mix(in srgb, var(--printify-line) 92%, transparent);
+  border-bottom: 0;
+  border-radius: 14px 14px 0 0;
+  height: 100%;
+  padding: 0 16px;
+  background: color-mix(in srgb, var(--printify-card) 84%, transparent);
+  color: var(--printify-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+}
+
+.printify-footer-drawer__tab::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--printify-line) 92%, transparent);
+}
+
+.printify-footer-drawer__tab:hover,
+.printify-footer-drawer__tab:focus-visible {
+  border-color: var(--printify-focus-ring);
+  color: var(--printify-ink);
+  background: color-mix(in srgb, var(--printify-card) 90%, var(--printify-accent-soft));
+  transform: translateY(0);
+}
+
+.printify-footer-drawer__tab.is-active {
+  border-color: var(--printify-focus-ring);
+  background: color-mix(in srgb, var(--printify-card) 96%, transparent);
+  color: var(--printify-ink);
+  box-shadow: 0 -10px 18px rgba(0, 0, 0, 0.08);
+}
+
+.printify-footer-drawer__tab.is-active::after {
+  border-bottom-color: transparent;
 }
 
 @keyframes printer-card-enter {

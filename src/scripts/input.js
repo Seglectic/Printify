@@ -37,6 +37,10 @@
       sequence.resetTimer = null;
     };
 
+    const wait = delayMs => new Promise(resolve => {
+      window.setTimeout(resolve, delayMs);
+    });
+
     const emitProgress = sequence => {
       sequence.onProgress?.({
         id: sequence.id,
@@ -53,6 +57,8 @@
       emitProgress(sequence);
     };
 
+    const isSequenceLocked = sequence => sequence?.isMatching || (Number(sequence?.lockUntil) > Date.now());
+
     const queueReset = sequence => {
       clearResetTimer(sequence);
       sequence.resetTimer = window.setTimeout(() => {
@@ -62,31 +68,71 @@
       }, sequence.timeoutMs);
     };
 
+    const handleSequenceMatch = sequence => {
+      sequence.isMatching = true;
+      clearResetTimer(sequence);
+
+      Promise.resolve()
+        .then(async () => {
+          if (sequence.matchDelayMs > 0) {
+            await wait(sequence.matchDelayMs);
+          }
+
+          await sequence.onMatch?.(sequence.matchEvent);
+        })
+        .finally(() => {
+          sequence.isMatching = false;
+          sequence.matchEvent = null;
+          if (sequence.disableOnMatch) {
+            sequence.isDisabled = true;
+            clearResetTimer(sequence);
+            sequence.progress = 0;
+            emitProgress(sequence);
+            return;
+          }
+          sequence.lockUntil = Date.now() + sequence.cooldownMs;
+          resetSequence(sequence);
+        });
+    };
+
     const handleKeydown = event => {
       if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.repeat) return;
       if (isTypingContext(event.target)) return;
 
       const normalizedKey = normalizeKey(event.key);
-
-      sequences.forEach(sequence => {
+      const sequenceList = Array.from(sequences.values()).filter(sequence => !sequence.isDisabled && !isSequenceLocked(sequence));
+      const activeSequences = sequenceList.filter(sequence => sequence.progress > 0);
+      const continuingSequences = activeSequences.filter(sequence => {
         const expectedKeys = sequence.steps[sequence.progress]?.keys || [];
-        const startKeys = sequence.steps[0]?.keys || [];
-        const matchesExpected = expectedKeys.includes(normalizedKey);
-        const matchesStart = startKeys.includes(normalizedKey);
+        return expectedKeys.includes(normalizedKey);
+      });
 
-        if (matchesExpected) {
+      if (continuingSequences.length) {
+        activeSequences.forEach(sequence => {
+          if (!continuingSequences.includes(sequence)) {
+            resetSequence(sequence);
+          }
+        });
+
+        continuingSequences.forEach(sequence => {
           sequence.progress += 1;
           emitProgress(sequence);
 
           if (sequence.progress >= sequence.steps.length) {
-            sequence.onMatch?.(event);
-            resetSequence(sequence);
+            sequence.matchEvent = event;
+            handleSequenceMatch(sequence);
             return;
           }
 
           queueReset(sequence);
-          return;
-        }
+        });
+
+        return;
+      }
+
+      sequenceList.forEach(sequence => {
+        const startKeys = sequence.steps[0]?.keys || [];
+        const matchesStart = startKeys.includes(normalizedKey);
 
         if (matchesStart) {
           sequence.progress = 1;
@@ -126,8 +172,15 @@
           steps,
           progress: 0,
           timeoutMs: Number.isFinite(config?.timeoutMs) ? config.timeoutMs : settings.timeoutMs,
+          matchDelayMs: Number.isFinite(config?.matchDelayMs) ? Math.max(0, config.matchDelayMs) : 0,
+          cooldownMs: Number.isFinite(config?.cooldownMs) ? Math.max(0, config.cooldownMs) : 0,
+          disableOnMatch: config?.disableOnMatch === true,
           onMatch: typeof config?.onMatch === 'function' ? config.onMatch : null,
           onProgress: typeof config?.onProgress === 'function' ? config.onProgress : null,
+          isMatching: false,
+          isDisabled: false,
+          lockUntil: 0,
+          matchEvent: null,
           resetTimer: null,
         };
 

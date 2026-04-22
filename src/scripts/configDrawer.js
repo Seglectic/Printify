@@ -238,6 +238,7 @@
     accessHandle = window.printifyInput?.registerSequence?.({
       id: 'config-drawer-access',
       steps: settings.accessSequence,
+      disableOnMatch: true,
       onMatch: () => {
         window.printifyFooterDrawer?.setSequencePreview?.([]);
         unlockQuickConfigShortcut();

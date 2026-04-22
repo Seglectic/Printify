@@ -166,10 +166,24 @@
 
   const getCurrentIsoTimestamp = () => new Date().toISOString();
 
+  const readThemeVariable = (name, fallbackValue) => {
+    const rootStyles = window.getComputedStyle(document.documentElement);
+    const resolvedValue = rootStyles.getPropertyValue(name).trim();
+    return resolvedValue || fallbackValue;
+  };
+
+  const getBuilderThemeColors = () => ({
+    accent: readThemeVariable('--printify-accent', '#1f6f43'),
+    accentSoft: readThemeVariable('--printify-accent-soft', 'rgba(100, 212, 123, 0.12)'),
+    focusRing: readThemeVariable('--printify-focus-ring', 'rgba(31, 111, 67, 0.28)'),
+    guideOutline: 'rgba(12, 16, 19, 0.52)',
+  });
+
   namespace.utils = {
     appendSerialToken,
     applySerialTokens,
     bindHoldAction,
+    getBuilderThemeColors,
     getCurrentIsoTimestamp,
     getPrinterCanvasSize,
     getResolvedDefaultTapeWidth,

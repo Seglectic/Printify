@@ -9,6 +9,7 @@
 
   namespace.register('textboxObjects', ctx => {
     const { state } = ctx;
+    const getTextboxThemeColors = () => ctx.utils.getBuilderThemeColors();
 
     const ensureTextboxSerialState = textbox => {
       if (!(textbox instanceof window.fabric.Textbox)) return textbox;
@@ -175,7 +176,10 @@
       return textbox;
     };
 
-    const buildTextbox = (canvasWidth, canvasHeight, overrides = {}) => attachTextboxFrameBehavior(ctx.applyBuilderObjectDefaults(new window.fabric.Textbox(Object.prototype.hasOwnProperty.call(overrides, 'text') ? overrides.text : '', {
+    const buildTextbox = (canvasWidth, canvasHeight, overrides = {}) => {
+      const themeColors = getTextboxThemeColors();
+
+      return attachTextboxFrameBehavior(ctx.applyBuilderObjectDefaults(new window.fabric.Textbox(Object.prototype.hasOwnProperty.call(overrides, 'text') ? overrides.text : '', {
       left: Math.round(canvasWidth * 0.08),
       top: Math.round(canvasHeight * 0.08),
       width: Math.round(canvasWidth * 0.58),
@@ -185,18 +189,19 @@
       fill: '#111111',
       textAlign: 'center',
       editable: true,
-      cursorColor: '#1f6f43',
+      cursorColor: themeColors.accent,
       cursorWidth: 2,
-      selectionColor: 'rgba(31, 111, 67, 0.2)',
+      selectionColor: themeColors.accentSoft,
       transparentCorners: false,
       cornerStyle: 'circle',
-      cornerColor: '#1f6f43',
-      borderColor: '#1f6f43',
+      cornerColor: themeColors.accent,
+      borderColor: themeColors.accent,
       borderScaleFactor: 2,
       padding: 10,
       frameHeight: Math.max(48, Math.round(canvasHeight * 0.46)),
       ...overrides,
     })));
+    };
 
     const getInitialTextboxFontSize = ({ frameWidth, frameHeight }) => {
       const widthLimitedSize = frameWidth * 0.14;

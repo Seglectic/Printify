@@ -1003,7 +1003,7 @@ img {
 
 .printify-builder__eyebrow {
   margin: 0;
-  color: rgba(23, 23, 23, 0.46);
+  color: var(--printify-muted);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.18em;

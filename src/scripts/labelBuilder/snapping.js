@@ -36,6 +36,7 @@
       const { vertical, horizontal } = state.snapGuides;
       const overlayCanvas = state.snapOverlayCanvas;
       const overlayContext = state.snapOverlayContext;
+      const themeColors = ctx.utils.getBuilderThemeColors();
 
       if (!overlayCanvas || !overlayContext) {
         return;
@@ -48,9 +49,30 @@
       }
 
       overlayContext.save();
-      overlayContext.strokeStyle = constants.SNAP_GUIDE_COLOR;
-      overlayContext.lineWidth = 1;
-      overlayContext.setLineDash([5, 5]);
+      const viewportScale = Math.max(0.2, Number(state.currentViewportScale) || 1);
+      const outlineWidth = Math.max(1.25, Math.min(3, 1.6 / viewportScale));
+      const innerWidth = Math.max(0.75, Math.min(1.5, 0.9 / viewportScale));
+      const dashLength = Math.max(3, Math.min(6, 4 / viewportScale));
+      const drawGuideLine = (fromX, fromY, toX, toY) => {
+        overlayContext.beginPath();
+        overlayContext.moveTo(fromX, fromY);
+        overlayContext.lineTo(toX, toY);
+
+        // A crisp dark outline keeps guides readable against the builder's
+        // white label surface, then the themed stroke sits on top.
+        overlayContext.strokeStyle = themeColors.guideOutline;
+        overlayContext.lineWidth = outlineWidth;
+        overlayContext.setLineDash([dashLength, dashLength]);
+        overlayContext.stroke();
+
+        overlayContext.beginPath();
+        overlayContext.moveTo(fromX, fromY);
+        overlayContext.lineTo(toX, toY);
+        overlayContext.strokeStyle = themeColors.accent;
+        overlayContext.lineWidth = innerWidth;
+        overlayContext.setLineDash([dashLength, dashLength]);
+        overlayContext.stroke();
+      };
 
       const getRenderPosition = (position, maxPosition) => {
         const inset = constants.SNAP_GUIDE_INSET_PX;
@@ -64,18 +86,12 @@
 
       if (vertical !== null) {
         const verticalPosition = getRenderPosition(vertical, overlayCanvas.width);
-        overlayContext.beginPath();
-        overlayContext.moveTo(verticalPosition, 0);
-        overlayContext.lineTo(verticalPosition, overlayCanvas.height);
-        overlayContext.stroke();
+        drawGuideLine(verticalPosition, 0, verticalPosition, overlayCanvas.height);
       }
 
       if (horizontal !== null && horizontal > 0 && horizontal < overlayCanvas.height) {
         const horizontalPosition = getRenderPosition(horizontal, overlayCanvas.height);
-        overlayContext.beginPath();
-        overlayContext.moveTo(0, horizontalPosition);
-        overlayContext.lineTo(overlayCanvas.width, horizontalPosition);
-        overlayContext.stroke();
+        drawGuideLine(0, horizontalPosition, overlayCanvas.width, horizontalPosition);
       }
 
       overlayContext.restore();

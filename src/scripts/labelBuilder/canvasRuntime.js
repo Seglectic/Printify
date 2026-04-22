@@ -239,14 +239,15 @@
     const applyBuilderObjectDefaults = object => {
       if (!object) return object;
       const { cornerSize, touchCornerSize } = getCanvasControlSizing();
+      const themeColors = utils.getBuilderThemeColors();
 
       // Rotation snapping is already part of current builder behavior, so it
       // stays in the shared object defaults even as positional snapping grows.
       object.set({
         transparentCorners: false,
         cornerStyle: 'circle',
-        cornerColor: '#1f6f43',
-        borderColor: '#1f6f43',
+        cornerColor: themeColors.accent,
+        borderColor: themeColors.accent,
         borderScaleFactor: 2,
         cornerSize,
         touchCornerSize,

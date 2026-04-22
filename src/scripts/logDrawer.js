@@ -95,8 +95,9 @@
       </div>
       <div class="printify-log-drawer__batch" data-role="batch">
         <button class="printify-log-drawer__batch-button" type="button" data-role="batch-button">
-          <span>REPRINT</span>
-          <span>BATCH</span>
+          <span class="printify-log-drawer__batch-count" data-role="batch-count">2</span>
+          <span class="printify-log-drawer__batch-label">REPRINT</span>
+          <span class="printify-log-drawer__batch-label">BATCH</span>
         </button>
         <label class="printify-log-drawer__batch-field" for="printifyLogDrawerBatchCopies">
           Copies
@@ -294,6 +295,29 @@
     return String(pageCount);
   };
 
+  const formatRepeatCount = count => {
+    const normalizedCount = Number.parseInt(count, 10);
+
+    if (!Number.isFinite(normalizedCount) || normalizedCount <= 1) {
+      return '';
+    }
+
+    if (normalizedCount === 2) return 'twice';
+
+    const numberWords = {
+      3: 'three',
+      4: 'four',
+      5: 'five',
+      6: 'six',
+      7: 'seven',
+      8: 'eight',
+      9: 'nine',
+      10: 'ten',
+    };
+
+    return `${numberWords[normalizedCount] || normalizedCount} times`;
+  };
+
   // ╭──────────────────────────╮
   // │  Drawer factory          │
   // ╰──────────────────────────╯
@@ -325,6 +349,7 @@
     const previewPane = root.querySelector('[data-role="preview-pane"]');
     const batch = root.querySelector('[data-role="batch"]');
     const batchButton = root.querySelector('[data-role="batch-button"]');
+    const batchCount = root.querySelector('[data-role="batch-count"]');
     const batchCopies = root.querySelector('[data-role="batch-copies"]');
     const batchStatus = root.querySelector('[data-role="batch-status"]');
     const previewTitle = root.querySelector('[data-role="preview-title"]');
@@ -641,6 +666,7 @@
 
       if (batch) batch.classList.toggle('is-visible', shouldShowBatch);
       if (batchButton) batchButton.disabled = selectedCount < 2;
+      if (batchCount) batchCount.textContent = String(Math.max(selectedCount, 0));
 
       if (!shouldShowBatch) {
         resetBatchCopies();
@@ -709,10 +735,13 @@
       const normalizedCopyCount = normalizeCopyCount(batchCopies?.value);
       const selectedCount = jobs.length;
       const batchRequests = buildBatchReprintRequests(jobs, normalizedCopyCount);
+      const repeatCount = formatRepeatCount(normalizedCopyCount);
 
       pendingBatchReprint = jobs;
       if (confirmMessage) {
-        confirmMessage.textContent = `${selectedCount} ${formatPlural(selectedCount, 'Document')} will be reprinted as ${batchRequests.length} ${formatPlural(batchRequests.length, 'job')} for up to ${normalizedCopyCount} ${formatPlural(normalizedCopyCount, 'time')} each.`;
+        confirmMessage.textContent = repeatCount
+          ? `${selectedCount} ${formatPlural(selectedCount, 'Document')} will be reprinted from ${batchRequests.length} ${formatPlural(batchRequests.length, 'job')} ${repeatCount}.`
+          : `${selectedCount} ${formatPlural(selectedCount, 'Document')} will be reprinted from ${batchRequests.length} ${formatPlural(batchRequests.length, 'job')}.`;
       }
       if (confirmPane) confirmPane.hidden = false;
     };
@@ -725,7 +754,10 @@
         selectedJobKeys.add(jobKey);
       }
 
-      renderLogs(currentJobs);
+      list.querySelectorAll('[data-role="log-card"]').forEach(card => {
+        const isSelected = selectedJobKeys.has(card.getAttribute('data-job-key'));
+        card.classList.toggle('is-selected', isSelected);
+      });
       syncBatchUi();
     };
     const syncPreviewTriggerState = () => {
@@ -1083,11 +1115,13 @@
       setClientOverlayActive('log-drawer', isOpen);
 
       if (!isOpen) {
+        selectedJobKeys.clear();
         expandedChecksumJobKeys.clear();
         selectedChecksumJobKeys.clear();
         closePreviewPane();
         unloadRenderedDrawerMedia();
         closeConfirmPane();
+        syncBatchUi();
       }
     };
 

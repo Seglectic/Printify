@@ -1,0 +1,68 @@
+:root[data-theme-family='dracula'] {
+  --printify-ink: #f8f8f2;
+  --printify-muted: rgba(248, 248, 242, 0.62);
+  --printify-line: rgba(189, 147, 249, 0.18);
+  --printify-card: #282a36;
+  --printify-card-hover: #303341;
+  --printify-overlay: rgba(80, 250, 123, 0.14);
+  --printify-overlay-invalid: rgba(255, 85, 85, 0.16);
+  --printify-shadow: 0 22px 54px rgba(7, 8, 11, 0.4);
+  --printify-page: #171821;
+  --printify-builder-surface: rgba(40, 42, 54, 0.97);
+  --printify-builder-shell: #343746;
+  --printify-button-secondary: rgba(248, 248, 242, 0.08);
+  --printify-feedback-bg: rgba(31, 33, 43, 0.96);
+  --printify-feedback-ink: #f8f8f2;
+  --printify-footer-bg: rgba(248, 248, 242, 0.06);
+  --printify-footer-ink: rgba(248, 248, 242, 0.64);
+  --printify-toggle-bg: rgba(189, 147, 249, 0.12);
+  --printify-toggle-hover: rgba(189, 147, 249, 0.22);
+  --printify-accent: #bd93f9;
+  --printify-accent-hover: #c9a8fa;
+  --printify-accent-ink: #1d1630;
+  --printify-accent-shadow: rgba(189, 147, 249, 0.26);
+  --printify-accent-soft: rgba(189, 147, 249, 0.16);
+  --printify-accent-strong: rgba(189, 147, 249, 0.5);
+  --printify-focus-ring: rgba(189, 147, 249, 0.34);
+  --printify-danger: #ff6b81;
+  --printify-danger-soft: rgba(255, 107, 129, 0.12);
+  --printify-danger-border: rgba(255, 107, 129, 0.4);
+  --printify-history-icon-filter: brightness(0) saturate(100%) invert(87%) sepia(7%) saturate(264%) hue-rotate(202deg) brightness(101%) contrast(95%);
+  --printify-history-icon-active-filter: brightness(0) saturate(100%) invert(76%) sepia(20%) saturate(1675%) hue-rotate(213deg) brightness(102%) contrast(96%);
+  --printify-pdf: #ffb86c;
+  --printify-image: #50fa7b;
+  --printify-zip: #f1fa8c;
+}
+
+:root[data-theme='light'][data-theme-family='dracula'] {
+  --printify-ink: #2f2742;
+  --printify-muted: rgba(47, 39, 66, 0.6);
+  --printify-line: rgba(123, 95, 208, 0.16);
+  --printify-card: #ffffff;
+  --printify-card-hover: #f5efff;
+  --printify-overlay: rgba(123, 95, 208, 0.12);
+  --printify-overlay-invalid: rgba(255, 107, 129, 0.14);
+  --printify-shadow: 0 22px 54px rgba(88, 67, 137, 0.14);
+  --printify-page: #f7f3ff;
+  --printify-builder-surface: rgba(255, 255, 255, 0.97);
+  --printify-builder-shell: #ece5ff;
+  --printify-button-secondary: rgba(123, 95, 208, 0.08);
+  --printify-feedback-bg: rgba(47, 39, 66, 0.94);
+  --printify-feedback-ink: #f8f8f2;
+  --printify-footer-bg: rgba(123, 95, 208, 0.08);
+  --printify-footer-ink: rgba(47, 39, 66, 0.64);
+  --printify-toggle-bg: rgba(123, 95, 208, 0.08);
+  --printify-toggle-hover: rgba(123, 95, 208, 0.14);
+  --printify-accent: #7b5fd0;
+  --printify-accent-hover: #6e53c4;
+  --printify-accent-ink: #f8f8f2;
+  --printify-accent-shadow: rgba(123, 95, 208, 0.22);
+  --printify-accent-soft: rgba(123, 95, 208, 0.12);
+  --printify-accent-strong: rgba(123, 95, 208, 0.44);
+  --printify-focus-ring: rgba(123, 95, 208, 0.28);
+  --printify-danger: #d54d6d;
+  --printify-danger-soft: rgba(213, 77, 109, 0.1);
+  --printify-danger-border: rgba(213, 77, 109, 0.38);
+  --printify-history-icon-filter: brightness(0) saturate(100%) invert(38%) sepia(22%) saturate(741%) hue-rotate(213deg) brightness(95%) contrast(88%);
+  --printify-history-icon-active-filter: brightness(0) saturate(100%) invert(38%) sepia(57%) saturate(994%) hue-rotate(225deg) brightness(93%) contrast(92%);
+}

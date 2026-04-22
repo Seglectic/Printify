@@ -36,7 +36,7 @@
   const ZIP_EXTENSIONS = new Set(['zip']);
   const ASPECT_RATIO_WARNING_MIN_AREA_FRACTION = 0.72;
   const APPEARANCE_STORAGE_KEY = 'printify-appearance';
-  const THEME_STORAGE_KEY = 'printify-theme';
+  const THEME_FAMILY_STORAGE_KEY = 'printify-theme-family';
   const ASSISTANT_OVERRIDE_STORAGE_KEY = 'printify-assistant-override';
   const PRINTER_OPTION_STATE_STORAGE_KEY = 'printify-printer-option-state';
   const DUPLICATE_WHITELIST_STORAGE_KEY = 'printify-duplicate-whitelist';
@@ -44,12 +44,14 @@
   const ASSISTANT_BOOT_BUBBLE_HOLD_MS = 5500;
   const DEFAULT_APPEARANCE = 'dark';
   const DEFAULT_THEME_FAMILY = 'default';
+  const DEFAULT_THEME_OPTION = {
+    value: DEFAULT_THEME_FAMILY,
+    label: 'Default',
+    href: null,
+  };
   const SERVER_ASSISTANT_OPTION = '__server__';
   const DEFAULT_ASSISTANT = 'Clippy';
-  const THEME_FAMILY_OPTIONS = [
-    { value: 'default', label: 'Default' },
-    { value: 'dracula', label: 'Dracula' },
-  ];
+  let themeFamilyOptions = [DEFAULT_THEME_OPTION];
   const ASSISTANT_OPTIONS = [
     { value: SERVER_ASSISTANT_OPTION, label: 'Server Default' },
     { value: 'Bonzi', label: 'Bonzi' },
@@ -92,14 +94,7 @@
   const getStoredAppearance = () => {
     try {
       const storedValue = window.localStorage.getItem(APPEARANCE_STORAGE_KEY);
-      if (storedValue === 'dark' || storedValue === 'light') {
-        return storedValue;
-      }
-
-      const legacyThemeValue = window.localStorage.getItem(THEME_STORAGE_KEY);
-      return legacyThemeValue === 'light' || legacyThemeValue === 'dark'
-        ? legacyThemeValue
-        : DEFAULT_APPEARANCE;
+      return storedValue === 'light' ? 'light' : DEFAULT_APPEARANCE;
     } catch (error) {
       return DEFAULT_APPEARANCE;
     }
@@ -107,10 +102,8 @@
 
   const getStoredThemeFamily = () => {
     try {
-      const storedValue = window.localStorage.getItem(THEME_STORAGE_KEY);
-      return THEME_FAMILY_OPTIONS.some(option => option.value === storedValue)
-        ? storedValue
-        : DEFAULT_THEME_FAMILY;
+      const storedValue = window.localStorage.getItem(THEME_FAMILY_STORAGE_KEY);
+      return storedValue ? String(storedValue) : DEFAULT_THEME_FAMILY;
     } catch (error) {
       return DEFAULT_THEME_FAMILY;
     }
@@ -219,6 +212,71 @@
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+
+  const getThemeFamilyOptions = () => themeFamilyOptions;
+
+  const getThemeFamilyOption = value => (
+    getThemeFamilyOptions().find(option => option.value === value) || DEFAULT_THEME_OPTION
+  );
+
+  const hasThemeFamilyOption = value => (
+    getThemeFamilyOptions().some(option => option.value === value)
+  );
+
+  const getThemeStylesheetId = themeValue => `printify-theme-family-${themeValue}-stylesheet`;
+
+  const ensureThemeStylesheet = themeOption => new Promise(resolve => {
+    if (!themeOption?.href) {
+      resolve();
+      return;
+    }
+
+    const stylesheetId = getThemeStylesheetId(themeOption.value);
+    const existingLink = document.getElementById(stylesheetId);
+
+    if (existingLink) {
+      resolve();
+      return;
+    }
+
+    const link = document.createElement('link');
+    link.id = stylesheetId;
+    link.rel = 'stylesheet';
+    link.href = themeOption.href;
+    link.onload = () => resolve();
+    link.onerror = () => resolve();
+    document.head.appendChild(link);
+  });
+
+  const loadThemeFamilies = async () => {
+    const response = await fetch('/themes');
+
+    if (!response.ok) {
+      throw new Error('Could not load themes.');
+    }
+
+    const payload = await response.json();
+    const discoveredThemes = Array.isArray(payload?.themes) ? payload.themes : [];
+    const normalizedThemes = discoveredThemes
+      .map(theme => ({
+        value: String(theme?.value || '').trim(),
+        label: String(theme?.label || '').trim(),
+        href: String(theme?.href || '').trim(),
+      }))
+      .filter(theme => (
+        theme.value
+        && theme.value !== DEFAULT_THEME_FAMILY
+        && theme.label
+        && theme.href
+      ));
+
+    themeFamilyOptions = [
+      DEFAULT_THEME_OPTION,
+      ...normalizedThemes,
+    ];
+
+    await Promise.all(themeFamilyOptions.map(ensureThemeStylesheet));
+  };
 
   const formatWholeNumber = value => {
     const numericValue = Number(value);
@@ -620,10 +678,6 @@
   let assistantMenuOpen = false;
   let themeFamilyMenuOpen = false;
 
-  const getThemeFamilyOption = value => (
-    THEME_FAMILY_OPTIONS.find(option => option.value === value) || THEME_FAMILY_OPTIONS[0]
-  );
-
   const closeThemeFamilyMenu = () => {
     themeFamilyMenuOpen = false;
     quickConfig?.classList.remove('is-menu-open');
@@ -650,7 +704,7 @@
       return;
     }
 
-    quickConfigThemeFamilyMenu.innerHTML = THEME_FAMILY_OPTIONS.map(option => `
+    quickConfigThemeFamilyMenu.innerHTML = getThemeFamilyOptions().map(option => `
       <button
         class="printify-quick-config__menu-option${option.value === appState.themeFamily ? ' is-active' : ''}"
         type="button"
@@ -885,7 +939,7 @@
 
   const applyTheme = ({ appearance = appState.appearance, themeFamily = appState.themeFamily } = {}) => {
     appState.appearance = appearance === 'light' ? 'light' : 'dark';
-    appState.themeFamily = THEME_FAMILY_OPTIONS.some(option => option.value === themeFamily)
+    appState.themeFamily = hasThemeFamilyOption(themeFamily)
       ? themeFamily
       : DEFAULT_THEME_FAMILY;
 
@@ -911,24 +965,32 @@
   };
 
   const applyThemeFamilyChoice = themeFamily => {
-    const normalizedValue = THEME_FAMILY_OPTIONS.some(option => option.value === themeFamily)
+    const normalizedValue = hasThemeFamilyOption(themeFamily)
       ? themeFamily
       : DEFAULT_THEME_FAMILY;
-    window.localStorage.setItem(THEME_STORAGE_KEY, normalizedValue);
+    window.localStorage.setItem(THEME_FAMILY_STORAGE_KEY, normalizedValue);
     applyTheme({ themeFamily: normalizedValue });
     closeThemeFamilyMenu();
     syncQuickConfigMenuState();
   };
 
   const cycleThemeFamilyChoice = () => {
-    const currentIndex = THEME_FAMILY_OPTIONS.findIndex(option => option.value === appState.themeFamily);
+    const availableThemes = getThemeFamilyOptions();
+    const currentIndex = availableThemes.findIndex(option => option.value === appState.themeFamily);
     const nextIndex = currentIndex === -1
       ? 0
-      : (currentIndex + 1) % THEME_FAMILY_OPTIONS.length;
-    applyThemeFamilyChoice(THEME_FAMILY_OPTIONS[nextIndex].value);
+      : (currentIndex + 1) % availableThemes.length;
+    applyThemeFamilyChoice(availableThemes[nextIndex].value);
   };
 
-  const bootTheme = () => {
+  const bootTheme = async () => {
+    try {
+      await loadThemeFamilies();
+    } catch (error) {
+      console.error('Could not load theme registry.', error);
+      themeFamilyOptions = [DEFAULT_THEME_OPTION];
+    }
+
     applyTheme({
       appearance: appState.appearance,
       themeFamily: appState.themeFamily,
@@ -2394,7 +2456,7 @@
   // │  Boot sequence           │
   // ╰──────────────────────────╯
   const boot = async () => {
-    bootTheme();
+    await bootTheme();
     bindPrinterEvents();
     bindClientPluginTriggers();
     bootLogDrawer();

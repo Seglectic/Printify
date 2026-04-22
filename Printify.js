@@ -204,6 +204,7 @@ app.get('/favicon.ico', (req, res) => {
 registerRoutes({
   app,
   rootDir,
+  staticDir,
   dataDir,
   configDir,
   configPath,

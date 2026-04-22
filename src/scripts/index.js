@@ -677,6 +677,70 @@
   let quickConfigCloseTimer = null;
   let assistantMenuOpen = false;
   let themeFamilyMenuOpen = false;
+  let quickConfigHeightFrame = null;
+  const measureQuickConfigOpenHeight = () => {
+    if (!quickConfig || !quickConfigBody) {
+      return;
+    }
+
+    const previousTransition = quickConfig.style.transition;
+    const previousWidth = quickConfig.style.width;
+    const previousHeight = quickConfig.style.height;
+    const previousBodyHidden = quickConfigBody.hidden;
+
+    quickConfig.style.transition = 'none';
+    quickConfig.style.width = '274px';
+    quickConfig.style.height = '48px';
+    quickConfigBody.hidden = false;
+    syncQuickConfigHeight();
+    void quickConfig.offsetWidth;
+    quickConfig.style.transition = previousTransition;
+    quickConfig.style.width = previousWidth;
+    quickConfig.style.height = previousHeight;
+
+    if (previousBodyHidden && !quickConfigOpen) {
+      quickConfigBody.hidden = true;
+    }
+  };
+
+  const scheduleQuickConfigHeightSync = () => {
+    window.cancelAnimationFrame(quickConfigHeightFrame);
+    quickConfigHeightFrame = window.requestAnimationFrame(() => {
+      quickConfigHeightFrame = window.requestAnimationFrame(() => {
+        syncQuickConfigHeight();
+      });
+    });
+  };
+
+  const syncQuickConfigHeight = () => {
+    if (!quickConfig || !quickConfigBody) {
+      return;
+    }
+
+    const wasHidden = quickConfigBody.hidden;
+
+    if (wasHidden) {
+      quickConfigBody.hidden = false;
+    }
+
+    const computedStyle = window.getComputedStyle(quickConfigBody);
+    const paddingTop = Number.parseFloat(computedStyle.paddingTop) || 0;
+    const paddingBottom = Number.parseFloat(computedStyle.paddingBottom) || 0;
+    const contentBottom = Array.from(quickConfigBody.children).reduce((maxBottom, child) => {
+      if (!(child instanceof HTMLElement) || child.hidden) {
+        return maxBottom;
+      }
+
+      const childBottom = child.offsetTop + child.offsetHeight;
+      return Math.max(maxBottom, childBottom);
+    }, paddingTop);
+    const measuredHeight = Math.ceil(contentBottom + paddingBottom);
+    quickConfig.style.setProperty('--printify-quick-config-open-height', `${measuredHeight}px`);
+
+    if (wasHidden && !quickConfigOpen) {
+      quickConfigBody.hidden = true;
+    }
+  };
 
   const closeThemeFamilyMenu = () => {
     themeFamilyMenuOpen = false;
@@ -777,6 +841,7 @@
     }
 
     renderAssistantMenu();
+    scheduleQuickConfigHeightSync();
   };
 
   const openAssistantMenu = () => {
@@ -920,9 +985,9 @@
 
     if (quickConfigOpen) {
       quickConfigBody.hidden = false;
-      window.requestAnimationFrame(() => {
-        quickConfig.classList.add('is-open');
-      });
+      measureQuickConfigOpenHeight();
+      quickConfig.classList.add('is-open');
+      scheduleQuickConfigHeightSync();
     } else {
       closeThemeFamilyMenu();
       closeAssistantMenu();
@@ -962,6 +1027,7 @@
 
     syncThemeUi();
     syncAssistantUi();
+    scheduleQuickConfigHeightSync();
   };
 
   const applyThemeFamilyChoice = themeFamily => {
@@ -995,6 +1061,8 @@
       appearance: appState.appearance,
       themeFamily: appState.themeFamily,
     });
+
+    window.addEventListener('printify-quick-config-updated', scheduleQuickConfigHeightSync);
 
     themeToggle?.addEventListener('click', () => {
       setQuickConfigOpen(!quickConfigOpen);

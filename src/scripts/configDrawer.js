@@ -2,7 +2,8 @@
   const setClientOverlayActive = (layerName, isActive) => {
     window.printifyClientOverlay?.setActive?.(layerName, isActive);
   };
-  const configToggle = document.getElementById('configToggle');
+  const quickConfig = document.getElementById('quickConfig');
+  const quickConfigBody = document.getElementById('quickConfigBody');
 
   // ╭──────────────────────────╮
   // │  Shared drawer markup    │
@@ -70,17 +71,72 @@
     audio.volume = 0.2;
     let isOpen = false;
     let accessHandle = null;
+    let shortcutUnlocked = false;
+    let quickConfigShortcut = null;
+    let quickConfigShortcutMeta = null;
+    let quickConfigShortcutButton = null;
 
     const setStatus = message => {
       if (status) status.textContent = message || '';
     };
 
-    const showConfigToggle = () => {
-      if (!configToggle) return;
-      configToggle.hidden = false;
-      window.requestAnimationFrame(() => {
-        configToggle.classList.add('is-visible');
-      });
+    const notifyQuickConfigChanged = () => {
+      window.dispatchEvent(new window.CustomEvent('printify-quick-config-updated'));
+    };
+
+    const syncQuickConfigShortcut = () => {
+      if (!quickConfigShortcut || !quickConfigShortcutMeta || !quickConfigShortcutButton) {
+        return;
+      }
+
+      quickConfigShortcut.hidden = !shortcutUnlocked;
+      quickConfigShortcutButton.textContent = isOpen ? 'Close Drawer' : 'Open Drawer';
+      quickConfigShortcutButton.title = isOpen
+        ? 'Close config drawer'
+        : 'Open config drawer';
+      quickConfigShortcutMeta.textContent = isOpen
+        ? 'Live config editor is open.'
+        : 'Live config editor unlocked.';
+      notifyQuickConfigChanged();
+    };
+
+    const ensureQuickConfigShortcut = () => {
+      if (!quickConfigBody) {
+        return null;
+      }
+
+      if (!quickConfigShortcut) {
+        quickConfigShortcut = document.createElement('div');
+        quickConfigShortcut.className = 'printify-quick-config__section printify-quick-config__section--config';
+        quickConfigShortcut.hidden = true;
+        quickConfigShortcut.innerHTML = `
+          <div class="printify-quick-config__copy">
+            <p class="printify-quick-config__label">Config</p>
+            <p class="printify-quick-config__meta" data-role="quick-config-meta">Live config editor unlocked.</p>
+          </div>
+          <button class="printify-quick-config__action printify-quick-config__action--config" type="button" data-role="quick-config-button">Open Drawer</button>
+        `;
+
+        quickConfigBody.appendChild(quickConfigShortcut);
+        quickConfigShortcutMeta = quickConfigShortcut.querySelector('[data-role="quick-config-meta"]');
+        quickConfigShortcutButton = quickConfigShortcut.querySelector('[data-role="quick-config-button"]');
+        quickConfigShortcutButton?.addEventListener('click', () => {
+          if (isOpen) {
+            setOpenState(false);
+            return;
+          }
+
+          openDrawer();
+        });
+      }
+
+      syncQuickConfigShortcut();
+      return quickConfigShortcut;
+    };
+
+    const unlockQuickConfigShortcut = () => {
+      shortcutUnlocked = true;
+      ensureQuickConfigShortcut();
     };
 
     const setOpenState = nextOpenState => {
@@ -88,6 +144,7 @@
       panel?.classList.toggle('is-open', nextOpenState);
       scrim?.classList.toggle('is-open', nextOpenState);
       setClientOverlayActive('config-drawer', nextOpenState);
+      syncQuickConfigShortcut();
 
       if (nextOpenState) {
         window.setTimeout(() => {
@@ -147,9 +204,11 @@
       audio.play().catch(() => {});
     };
 
-    const openDrawer = () => {
-      playKonamiAudio();
-      showConfigToggle();
+    const openDrawer = ({ playAudio = false } = {}) => {
+      if (playAudio) {
+        playKonamiAudio();
+      }
+
       setOpenState(true);
       loadConfig();
     };
@@ -170,17 +229,6 @@
       saveConfig();
     });
 
-    configToggle?.addEventListener('click', () => {
-      if (isOpen) {
-        setOpenState(false);
-        return;
-      }
-
-      showConfigToggle();
-      setOpenState(true);
-      loadConfig();
-    });
-
     document.addEventListener('keydown', event => {
       if (event.key === 'Escape' && isOpen) {
         setOpenState(false);
@@ -192,7 +240,8 @@
       steps: settings.accessSequence,
       onMatch: () => {
         window.printifyFooterDrawer?.setSequencePreview?.([]);
-        openDrawer();
+        unlockQuickConfigShortcut();
+        openDrawer({ playAudio: true });
       },
       onProgress: state => {
         window.printifyFooterDrawer?.setSequencePreview?.(state?.matchedSteps || []);

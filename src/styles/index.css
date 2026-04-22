@@ -125,6 +125,7 @@ img {
 }
 
 .printify-quick-config {
+  --printify-quick-config-open-height: 334px;
   position: fixed;
   top: 22px;
   right: 24px;
@@ -153,7 +154,7 @@ img {
 
 .printify-quick-config.is-open {
   width: 274px;
-  height: 334px;
+  height: var(--printify-quick-config-open-height);
   border-radius: 24px;
   background: color-mix(in srgb, var(--printify-builder-surface) 88%, var(--printify-page));
   box-shadow: 0 26px 58px rgba(0, 0, 0, 0.32);
@@ -229,57 +230,6 @@ img {
   color: color-mix(in srgb, var(--printify-ink) 86%, transparent);
 }
 
-.printify-theme-toggle--config {
-  position: fixed;
-  top: 80px;
-  right: 24px;
-  z-index: 55;
-  width: 48px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--printify-line);
-  border-radius: 999px;
-  padding: 0;
-  background: var(--printify-toggle-bg);
-  color: var(--printify-ink);
-  cursor: pointer;
-  font-family: "Droid Sans Mono", "Lucida Console", Courier, monospace;
-  font-size: 20px;
-  line-height: 1;
-  backdrop-filter: blur(10px);
-  box-shadow: var(--printify-shadow);
-  opacity: 0;
-  transform: translateY(-10px) scale(0.92);
-  pointer-events: none;
-  transition:
-    background 160ms ease,
-    border-color 160ms ease,
-    transform 160ms ease,
-    box-shadow 160ms ease,
-    opacity 180ms ease;
-}
-
-.printify-theme-toggle--config.is-visible {
-  opacity: 1;
-  transform: translateY(0) scale(1);
-  pointer-events: auto;
-}
-
-.printify-theme-toggle--config:hover,
-.printify-theme-toggle--config:focus-visible {
-  background: var(--printify-toggle-hover);
-  border-color: rgba(236, 242, 238, 0.42);
-  box-shadow: 0 26px 58px rgba(0, 0, 0, 0.32);
-}
-
-:root[data-theme='light'] .printify-theme-toggle--config:hover,
-:root[data-theme='light'] .printify-theme-toggle--config:focus-visible {
-  border-color: rgba(23, 23, 23, 0.28);
-  box-shadow: 0 24px 52px rgba(23, 23, 23, 0.12);
-}
-
 .printify-theme-toggle[hidden] {
   display: none;
 }
@@ -295,8 +245,8 @@ img {
   grid-template-columns: minmax(0, 1fr);
   align-content: start;
   justify-items: center;
-  gap: 12px;
-  padding: 16px 16px 16px;
+  gap: 14px;
+  padding: 16px 16px 12px;
   padding-top: 14px;
   opacity: 0;
   transform: translateY(-8px) scale(0.96);
@@ -397,7 +347,8 @@ img {
 }
 
 .printify-quick-config__action--theme,
-.printify-quick-config__action--assistant {
+.printify-quick-config__action--assistant,
+.printify-quick-config__action--config {
   max-width: 116px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2272,10 +2223,6 @@ img {
 
   .printify-quick-config {
     top: 18px;
-    right: 18px;
-  }
-
-  .printify-theme-toggle--config {
     right: 18px;
   }
 

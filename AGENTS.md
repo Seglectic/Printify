@@ -12,6 +12,7 @@ Primary responsibilities:
 - Convert images to PDF before printing when needed
 - Send jobs to configured printers
 - Track page hits and print counts in `serverData.json`
+- Run plugin-driven ingest checks such as duplicate confirmation and Xometry packing-slip pruning
 
 ## Runtime
 
@@ -19,7 +20,7 @@ Primary responsibilities:
 - Start command: `npm start`
 - Default server port in current code: `8020`
 - Static assets are served from `src/`
-- Uploaded files are written to `uploads/`
+- Uploaded files are staged under `data/uploads/`
 
 ## Important Files
 
@@ -32,14 +33,18 @@ Primary responsibilities:
 - `src/scripts/logDrawer.js`: Recent Logs drawer behavior
 - `src/scripts/clippy.js`: clippy mascot UI
 - `src/scripts/input.js`: shared hidden input sequence manager for config and client-plugin activation codes
+- `src/scripts/confirm.js`: shared confirm/prompt system used by duplicate and plugin-action prompts
+- `lib/ingest.js`: upload ingest pipeline, duplicate sessions, and deferred plugin-action sessions
+- `lib/routes.js`: printer upload routes, ingest confirmation routes, and metadata endpoints
 - `lib/previewer.js`: preview-cache generation and checksum-keyed thumbnail lookup
 - `lib/pluginLoader.js`: discovers plugins and exposes enabled client plugins to the browser
 - `lib/plugins/dmg/`: optional gen 1 Game Boy client plugin with ROM library and save slots
 - `lib/plugins/presence/`: Linux `lsusb` printer availability plugin keyed by printer id and regex
+- `lib/plugins/xometry-packing-slip/`: server-side packing-slip plugin that detects zero-quantity Xometry pages and offers a prune/original/cancel prompt
 - `lib/previewCache/`: generated log thumbnail cache keyed by checksum
 - `src/dymo.html`: legacy Dymo-specific browser UI, if still present
 - `serverData.json`: persisted counters for page hits and print count
-- `uploads/`: temporary uploaded and extracted files
+- `data/uploads/`: staged uploads, printer-specific upload folders, and extracted ZIP contents
 
 ## Coding Preferences
 
@@ -92,6 +97,8 @@ Current server endpoints in `Printify.js` include:
 - `POST /brotherImg`
 - `POST /labelmake`
 - `POST /dymopng`
+- `POST /ingest/:sessionId/confirm`
+- `POST /ingest/:sessionId/plugin-action`
 - `GET /version`
 
 ## Agent Guardrails
@@ -106,14 +113,18 @@ Current server endpoints in `Printify.js` include:
 - Do not remove `testing` mode unless explicitly requested.
 - Security weakpoint: the web config editor plus `printMode: "cli"` can let someone with UI access point a printer at arbitrary commands, and uploads/ZIP extraction make this especially dangerous. Treat this as a glaring known vulnerability; do not expand configurable command execution surfaces, and prefer hardcoded/proven probe commands until this is fixed.
 - Client plugins should use a `code` config field for hidden activation sequences and register through the shared `window.printifyInput` path instead of adding one-off keydown buffers.
+- Ingest plugins can be server-side only. Do not force every plugin through the client-plugin activation path if the behavior belongs in upload inspection or print preparation.
 - Keep client plugin ids, config keys, public plugin URLs, and `/client-plugins/:pluginId` API paths aligned. The gen 1 Game Boy plugin id is `dmg`; reserve broader emulator names for future backends.
 - The `presence` plugin is intentionally Linux-only and hardcoded to `lsusb`; do not add arbitrary command probes to it without first addressing the CLI/config execution risk.
 - For `lib/plugins/dmg/`, ROM selection is browser-driven from the discovered `ROM/` library. Do not reintroduce per-ROM `rom` or `save` config fields unless the user asks for a startup-default feature.
-- Be careful with filesystem writes in `uploads/` and `serverData.json`.
+- For `lib/plugins/xometry-packing-slip/`, preserve the prompt wording and logo-driven warning flow unless the user explicitly wants the review UI changed.
+- Duplicate confirmation currently resolves before deferred ingest plugin actions. Keep that ordering so a duplicate Brother upload can still reach the Xometry prune prompt after approval.
+- Be careful with filesystem writes in `data/uploads/` and `serverData.json`.
 - Treat `lib/previewCache/` as generated cache output, not hand-edited source.
 - Keep preview filenames checksum-keyed and prefer direct file existence checks over scanning historical logs for dedupe.
 - Preserve `chksum` on log entries so log-drawer thumbnails can resolve through the shared checksum key.
 - Keep preview generation best-effort. Preview failures should not turn successful prints into failed jobs unless the user explicitly asks for stricter behavior.
+- Pruned Xometry PDFs intentionally mask only the bottom-right page counter block; do not blank the whole footer unless the user asks for that tradeoff.
 - Keep the index page config-driven from `/printers`; do not hardcode printer availability.
 - Do not reintroduce the removed hero/status/builder UI on the index page.
 - Preserve the footer, Recent Logs button, and clippy on the index page.

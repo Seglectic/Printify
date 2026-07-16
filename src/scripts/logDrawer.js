@@ -233,6 +233,8 @@
         return 'Reprint';
       case 'upload-pdf':
         return 'Uploaded PDF';
+      case 'upload-pdf-xometry-pruned':
+        return 'Pruned PDF';
       case 'upload-pdf-bundled':
         return 'Bundled PDF';
       case 'upload-image':

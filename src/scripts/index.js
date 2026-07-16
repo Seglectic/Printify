@@ -1963,6 +1963,7 @@
       ],
       needsConfirmation: false,
       duplicates: [],
+      pendingPluginAction: confirmedResult.pendingPluginAction || uploadResult.pendingPluginAction || null,
     };
   };
 
@@ -2071,8 +2072,8 @@
           formData,
           onProgress: progress => indicator.setProgress(Math.max(0.02, progress * 0.28)),
         });
-        const pluginResolvedResult = await resolvePendingPluginAction(printer, uploadResult);
-        const resolvedResult = await resolvePendingDuplicates(printer, pluginResolvedResult);
+        const duplicatesResolvedResult = await resolvePendingDuplicates(printer, uploadResult);
+        const resolvedResult = await resolvePendingPluginAction(printer, duplicatesResolvedResult);
         debugIdLog(
           'upload success',
           `printer=${printer.id}`,

@@ -340,10 +340,14 @@
           <p class="printify-prompt__eyebrow" id="promptEyebrow">🚨 Warning</p>
           <h2 class="printify-prompt__title" id="promptTitle">Heads up</h2>
         </div>
+        <div class="printify-prompt__media" id="promptMedia" hidden>
+          <img class="printify-prompt__media-image" id="promptMediaImage" alt="">
+        </div>
         <p class="printify-prompt__message" id="promptMessage"></p>
         <p class="printify-prompt__subtext" id="promptSubtext" hidden></p>
         <div class="printify-prompt__actions">
           <button class="printer-card__button printer-card__button--secondary" id="promptCancel" type="button">Cancel</button>
+          <button class="printer-card__button printer-card__button--secondary" id="promptSecondary" type="button" hidden>Keep Original</button>
           <button class="printer-card__button printer-card__button--primary" id="promptConfirm" type="button">Send It</button>
         </div>
       </div>
@@ -376,7 +380,7 @@
     <script src="/scripts/labelBuilder/snapping.js"></script>
     <script src="/scripts/labelBuilder/events.js"></script>
     <script src="/scripts/labelBuilder.js"></script>
-    <script src="/scripts/confirm.js"></script>
-    <script src="/scripts/index.js"></script>
+    <script src="/scripts/confirm.js?v=2.7.1-xometry-cancel-fix"></script>
+    <script src="/scripts/index.js?v=2.7.1-xometry-cancel-fix"></script>
   </body>
 </html>

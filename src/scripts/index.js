@@ -189,9 +189,12 @@
   const promptCard = document.getElementById('promptCard');
   const promptEyebrow = document.getElementById('promptEyebrow');
   const promptTitle = document.getElementById('promptTitle');
+  const promptMedia = document.getElementById('promptMedia');
+  const promptMediaImage = document.getElementById('promptMediaImage');
   const promptMessage = document.getElementById('promptMessage');
   const promptSubtext = document.getElementById('promptSubtext');
   const promptCancel = document.getElementById('promptCancel');
+  const promptSecondary = document.getElementById('promptSecondary');
   const promptConfirm = document.getElementById('promptConfirm');
   const themeToggle = document.getElementById('themeToggle');
   const quickConfig = document.getElementById('quickConfig');
@@ -608,17 +611,32 @@
       })
   );
 
-  const showPromptCard = ({
+  const showPromptChoiceCard = ({
     tone = 'warning',
     eyebrow = 'Warning',
     title = 'Heads up',
     message = '',
     subtext = '',
-    confirmLabel = 'OK',
-    cancelLabel = 'Cancel',
+    media = null,
+    choices = [],
   }) => new Promise(resolve => {
+    const normalizedChoices = Array.isArray(choices)
+      ? choices
+        .slice(0, 3)
+        .map(choice => ({
+          value: choice?.value,
+          label: String(choice?.label || '').trim(),
+        }))
+        .filter(choice => choice.label)
+      : [];
+    const cancelChoice = normalizedChoices[0] || { value: false, label: 'Cancel' };
+    const secondaryChoice = normalizedChoices.length >= 3 ? normalizedChoices[1] : null;
+    const confirmChoice = normalizedChoices.length >= 3
+      ? normalizedChoices[2]
+      : (normalizedChoices[1] || cancelChoice);
+
     if (!promptLayer || !promptCard || !promptEyebrow || !promptTitle || !promptMessage || !promptCancel || !promptConfirm) {
-      resolve(window.confirm(message || title));
+      resolve(window.confirm(message || title) ? confirmChoice.value : cancelChoice.value);
       return;
     }
 
@@ -632,8 +650,20 @@
       promptLayer.hidden = true;
       setClientOverlayActive('prompt', false);
       promptCard.classList.remove('printify-prompt__card--warning');
+      if (promptMedia) {
+        promptMedia.hidden = true;
+      }
+      if (promptMediaImage) {
+        promptMediaImage.removeAttribute('src');
+        promptMediaImage.alt = '';
+      }
+      if (promptSecondary) {
+        promptSecondary.hidden = true;
+        promptSecondary.textContent = '';
+      }
       document.removeEventListener('keydown', handleKeyDown);
       promptCancel.removeEventListener('click', cancel);
+      promptSecondary?.removeEventListener('click', secondary);
       promptConfirm.removeEventListener('click', confirm);
       promptLayer.removeEventListener('click', handleBackdropClick);
 
@@ -644,8 +674,9 @@
       resolve(accepted);
     };
 
-    const cancel = () => finish(false);
-    const confirm = () => finish(true);
+    const cancel = () => finish(cancelChoice.value);
+    const secondary = () => finish(secondaryChoice?.value ?? cancelChoice.value);
+    const confirm = () => finish(confirmChoice.value);
     const handleBackdropClick = event => {
       if (event.target === promptLayer) {
         cancel();
@@ -667,18 +698,36 @@
     promptCard.classList.toggle('printify-prompt__card--warning', tone === 'warning');
     promptEyebrow.textContent = eyebrow;
     promptTitle.textContent = title;
+    if (promptMedia && promptMediaImage) {
+      const mediaSrc = String(media?.src || '').trim();
+      const mediaAlt = String(media?.alt || '').trim();
+      if (mediaSrc) {
+        promptMediaImage.src = mediaSrc;
+        promptMediaImage.alt = mediaAlt;
+        promptMedia.hidden = false;
+      } else {
+        promptMediaImage.removeAttribute('src');
+        promptMediaImage.alt = '';
+        promptMedia.hidden = true;
+      }
+    }
     promptMessage.textContent = message;
     if (promptSubtext) {
       promptSubtext.textContent = subtext;
       promptSubtext.hidden = !subtext;
     }
-    promptCancel.textContent = cancelLabel;
-    promptConfirm.textContent = confirmLabel;
+    promptCancel.textContent = cancelChoice.label;
+    if (promptSecondary) {
+      promptSecondary.hidden = !secondaryChoice;
+      promptSecondary.textContent = secondaryChoice?.label || '';
+    }
+    promptConfirm.textContent = confirmChoice.label;
     promptLayer.hidden = false;
     setClientOverlayActive('prompt', true);
 
     document.addEventListener('keydown', handleKeyDown);
     promptCancel.addEventListener('click', cancel);
+    promptSecondary?.addEventListener('click', secondary);
     promptConfirm.addEventListener('click', confirm);
     promptLayer.addEventListener('click', handleBackdropClick);
 
@@ -687,7 +736,28 @@
     }, 0);
   });
 
+  const showPromptCard = ({
+    tone = 'warning',
+    eyebrow = 'Warning',
+    title = 'Heads up',
+    message = '',
+    subtext = '',
+    confirmLabel = 'OK',
+    cancelLabel = 'Cancel',
+  }) => showPromptChoiceCard({
+    tone,
+    eyebrow,
+    title,
+    message,
+    subtext,
+    choices: [
+      { value: false, label: cancelLabel },
+      { value: true, label: confirmLabel },
+    ],
+  });
+
   window.printifyShowPromptCard = showPromptCard;
+  window.printifyShowPromptChoiceCard = showPromptChoiceCard;
 
   let quickConfigOpen = false;
   let quickConfigCloseTimer = null;
@@ -1884,6 +1954,7 @@
 
     return {
       ...uploadResult,
+      canceled: Boolean(confirmedResult.canceled),
       printedCount: Number(uploadResult.printedCount || 0) + Number(confirmedResult.printedCount || 0),
       skippedCount: Number(uploadResult.skippedCount || 0) + Number(confirmedResult.skippedCount || 0),
       skippedDuplicates: [
@@ -1892,6 +1963,57 @@
       ],
       needsConfirmation: false,
       duplicates: [],
+    };
+  };
+
+  const resolvePendingPluginAction = async (printer, uploadResult) => {
+    const pendingPluginAction = uploadResult?.pendingPluginAction;
+
+    if (!pendingPluginAction?.sessionId) {
+      return uploadResult;
+    }
+
+    const action = await showPromptChoiceCard({
+      tone: 'warning',
+      eyebrow: pendingPluginAction.eyebrow || 'Packing Slip Check',
+      title: pendingPluginAction.title || 'Xometry - Packing Slip Waste Detected',
+      message: pendingPluginAction.message || 'Waste pages were detected in this packing slip. Prune them before printing?',
+      subtext: pendingPluginAction.subtext || '',
+      media: pendingPluginAction.logoUrl
+        ? {
+          src: pendingPluginAction.logoUrl,
+          alt: 'Xometry',
+        }
+        : null,
+      choices: [
+        { value: 'cancel', label: pendingPluginAction.cancelLabel || 'Cancel' },
+        { value: 'original', label: pendingPluginAction.secondaryLabel || 'Print Original' },
+        { value: 'prune', label: pendingPluginAction.confirmLabel || 'Prune' },
+      ],
+    });
+    const response = await fetch(`/ingest/${encodeURIComponent(pendingPluginAction.sessionId)}/plugin-action`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ action }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Packing-slip decision failed for ${printer.displayName}`);
+    }
+
+    const confirmedResult = await response.json();
+
+    return {
+      ...uploadResult,
+      printedCount: Number(uploadResult.printedCount || 0) + Number(confirmedResult.printedCount || 0),
+      skippedCount: Number(uploadResult.skippedCount || 0) + Number(confirmedResult.skippedCount || 0),
+      skippedDuplicates: [
+        ...(Array.isArray(uploadResult.skippedDuplicates) ? uploadResult.skippedDuplicates : []),
+        ...(Array.isArray(confirmedResult.skippedDuplicates) ? confirmedResult.skippedDuplicates : []),
+      ],
+      pendingPluginAction: null,
     };
   };
 
@@ -1949,7 +2071,8 @@
           formData,
           onProgress: progress => indicator.setProgress(Math.max(0.02, progress * 0.28)),
         });
-        const resolvedResult = await resolvePendingDuplicates(printer, uploadResult);
+        const pluginResolvedResult = await resolvePendingPluginAction(printer, uploadResult);
+        const resolvedResult = await resolvePendingDuplicates(printer, pluginResolvedResult);
         debugIdLog(
           'upload success',
           `printer=${printer.id}`,
@@ -1957,7 +2080,7 @@
           `printed=${Number(resolvedResult?.printedCount || 0)}`,
           `needsConfirmation=${Boolean(resolvedResult?.needsConfirmation)}`
         );
-        indicator.settle('success');
+        indicator.settle(resolvedResult?.canceled ? 'error' : 'success');
         return resolvedResult;
       } catch (error) {
         debugIdLog('upload failed', `printer=${printer.id}`, `clientJobId=${clientJobId}`, error.message);

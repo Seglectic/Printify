@@ -18,6 +18,9 @@ plugins:
   assistant: # Mascots: Bonzi, Clippy, F1, Genie, Genius, Links, Merlin, Peedy, Rocky, Rover
     enabled: true
     mascot: Clippy
+  xometry-packing-slip: # Prompts to prune zero-quantity Xometry packing-slip pages before printing.
+    enabled: false
+    printerIds: []
 
 # ╭────────────────────────────────────────────────────────────────────────────────────────╮
 # │  Printer Options                                                                       │

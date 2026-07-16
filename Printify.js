@@ -122,6 +122,8 @@ const jobSystem = createJobSystem({
   logStamp,
   errorLogStamp,
 });
+let printerManager = null;
+let pluginManager = null;
 
 // Centralize print prep and dispatch so routes stay thin.
 const printingService = createPrintingService({
@@ -140,6 +142,8 @@ const ingestService = createIngestService({
   uploadsDir,
   printingService,
   deduplicator,
+  inspectUpload: context => pluginManager?.inspectUpload?.(context),
+  resolvePendingUploadAction: context => pluginManager?.resolvePendingUploadAction?.(context),
   logStamp,
   errorLogStamp,
 });
@@ -148,8 +152,7 @@ const notifyRecentLogUpdate = () => {
   notifySocketClients({ type: 'print-jobs-updated' });
 };
 
-let printerManager = null;
-const pluginManager = createPluginManager({
+pluginManager = createPluginManager({
   rootDir,
   runtimeConfig,
   serverSave,

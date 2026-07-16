@@ -895,6 +895,20 @@ img {
   gap: 8px;
 }
 
+.printify-prompt__media {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 18px;
+}
+
+.printify-prompt__media-image {
+  display: block;
+  width: min(232px, 100%);
+  height: auto;
+  border-radius: 18px;
+  box-shadow: 0 14px 30px rgba(20, 20, 16, 0.16);
+}
+
 .printify-prompt__eyebrow {
   margin: 0;
   font-size: 12px;
@@ -929,6 +943,7 @@ img {
 
 .printify-prompt__actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 10px;
   margin-top: 20px;

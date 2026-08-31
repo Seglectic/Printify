@@ -2074,6 +2074,77 @@ img {
   backdrop-filter: none;
 }
 
+/* Grip handle for the footer drawer. The drawer otherwise opens only on
+   double-click or Shift+Tab, neither of which exists on a phone. Kept quiet on
+   desktop so the footer reads the same as before, and promoted to a full touch
+   target where the pointer is a finger. */
+.printify-footer__handle {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 26px;
+  margin-left: 2px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  opacity: 0.45;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: opacity 160ms ease, background 160ms ease;
+}
+
+.printify-footer__handle:hover,
+.printify-footer__handle:focus-visible {
+  opacity: 1;
+  background: color-mix(in srgb, currentColor 14%, transparent);
+}
+
+.printify-footer__handle-grip {
+  display: block;
+  width: 18px;
+  height: 3px;
+  border-radius: 999px;
+  background: currentColor;
+  transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.printify-footer.is-open .printify-footer__handle-grip {
+  transform: rotate(180deg);
+}
+
+body.printify-coarse-pointer .printify-footer__handle {
+  width: 44px;
+  height: 34px;
+  opacity: 0.85;
+}
+
+/* ┌──────────────────────────────────────────────────────────┐
+   │  Touch behaviour                                         │
+   │  Without these the browser's own pan/zoom gestures fight │
+   │  the drawers and cards, and taps carry the legacy 300ms  │
+   │  click delay.                                            │
+   └──────────────────────────────────────────────────────────┘ */
+.printer-card,
+.printer-card__button,
+.printify-theme-toggle,
+.printify-quick-config__action {
+  touch-action: manipulation;
+}
+
+.printify-log-drawer__scrim,
+.printify-footer-drawer__scrim {
+  touch-action: none;
+}
+
+.printify-log-drawer__panel,
+.printify-footer-drawer__panel {
+  touch-action: pan-y;
+}
+
 .printify-footer__tabs-rail {
   position: absolute;
   bottom: 100%;
@@ -2505,5 +2576,42 @@ img {
   .printify-builder__templates-grid {
     grid-template-columns: repeat(auto-fill, minmax(144px, 168px));
     max-height: min(36vh, 320px);
+  }
+}
+
+/* Phones. The 720px block above already reflows the grid and the builder; what
+   is left are the fixed pixel widths that predate any of it and push the page
+   into horizontal scroll on a narrow screen. */
+@media (max-width: 480px) {
+  .printify-app {
+    padding: 74px 12px 84px;
+  }
+
+  .printify-printers {
+    grid-template-columns: 1fr;
+  }
+
+  .printify-quick-config {
+    top: 14px;
+    right: 14px;
+  }
+
+  /* 274px plus the right offset overflows a 320px viewport. */
+  .printify-quick-config.is-open {
+    width: min(274px, calc(100vw - 28px));
+  }
+
+  .printer-card__icon {
+    width: min(148px, 52vw);
+  }
+}
+
+/* Tooltips carry their own min-width, which the breakpoints above never
+   touched, so they were the last thing forcing sideways scroll. */
+@media (max-width: 560px) {
+  .printer-card__tooltip,
+  .printify-builder__tooltip {
+    min-width: 0;
+    max-width: min(260px, calc(100vw - 40px));
   }
 }

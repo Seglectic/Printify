@@ -76,6 +76,7 @@
     <aside class="printify-log-drawer__panel" data-role="panel">
       <div class="printify-log-drawer__header">
         <p class="printify-log-drawer__hint">Press Tab to toggle.</p>
+        <p class="printify-log-drawer__hint printify-log-drawer__hint--touch">Tap Logs to toggle.</p>
         <div class="printify-log-drawer__header-top">
           <h2 class="printify-log-drawer__title">Printify Logs</h2>
           <button class="printify-log-drawer__close" type="button" data-role="close">Close</button>
@@ -1217,6 +1218,8 @@
       event.preventDefault();
       toggleWindowMenu();
     });
+
+    window.printifyTouch?.onLongPress?.(windowButton, toggleWindowMenu);
 
     windowMenu?.addEventListener('click', event => {
       const windowOption = event.target.closest('[data-role="window-option"]');

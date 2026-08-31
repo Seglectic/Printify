@@ -769,6 +769,21 @@
   line-height: 1.4;
 }
 
+/* "Press Tab to toggle" is useless advice on a phone. Swap in the tap wording
+   when the pointer is a finger; the drawer's own toggle button already works
+   for both, so only the copy changes. */
+.printify-log-drawer__hint--touch {
+  display: none;
+}
+
+body.printify-coarse-pointer .printify-log-drawer__hint--touch {
+  display: block;
+}
+
+body.printify-coarse-pointer .printify-log-drawer__hint:not(.printify-log-drawer__hint--touch) {
+  display: none;
+}
+
 .printify-log-drawer__window-button {
   flex-shrink: 0;
   width: 118px;

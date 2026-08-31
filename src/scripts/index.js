@@ -1167,13 +1167,21 @@
       cycleThemeFamilyChoice();
     });
 
-    quickConfigThemeFamilyButton?.addEventListener('contextmenu', event => {
-      event.preventDefault();
+    const openThemeFamilyMenu = () => {
       if (!quickConfigOpen) {
         setQuickConfigOpen(true);
       }
       toggleThemeFamilyMenu();
+    };
+
+    quickConfigThemeFamilyButton?.addEventListener('contextmenu', event => {
+      event.preventDefault();
+      openThemeFamilyMenu();
     });
+
+    // Touch has no right-click, so hold the button to reach the full list. Tap
+    // still cycles, which keeps the desktop behaviour intact.
+    window.printifyTouch?.onLongPress?.(quickConfigThemeFamilyButton, openThemeFamilyMenu);
 
     quickConfigThemeFamilyMenu?.addEventListener('click', event => {
       const optionButton = event.target.closest('[data-theme-family-value]');
@@ -1188,13 +1196,19 @@
       cycleAssistantChoice();
     });
 
-    quickConfigAssistantButton?.addEventListener('contextmenu', event => {
-      event.preventDefault();
+    const openAssistantMenu = () => {
       if (!quickConfigOpen) {
         setQuickConfigOpen(true);
       }
       toggleAssistantMenu();
+    };
+
+    quickConfigAssistantButton?.addEventListener('contextmenu', event => {
+      event.preventDefault();
+      openAssistantMenu();
     });
+
+    window.printifyTouch?.onLongPress?.(quickConfigAssistantButton, openAssistantMenu);
 
     quickConfigAssistantMenu?.addEventListener('click', event => {
       const optionButton = event.target.closest('[data-assistant-value]');

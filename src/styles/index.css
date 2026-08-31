@@ -114,6 +114,18 @@ body.printify-client-overlay-open .printify-confirm {
   pointer-events: none;
 }
 
+/* Blurring the chrome reads well on a wide screen, where the quick config sits
+   off to the side of whatever opened. On a phone an overlay spans the full
+   width, so a blurred-but-still-painted bubble at z-index 55 lands on top of it
+   -- in practice right over the log preview's Close button. Receding should
+   mean getting out of the way at this size. It is already pointer-events: none
+   above, so nothing interactive is lost. */
+@media (max-width: 640px) {
+  body.printify-client-overlay-open .printify-quick-config {
+    opacity: 0;
+  }
+}
+
 button,
 input,
 textarea {

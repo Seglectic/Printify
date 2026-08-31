@@ -1286,10 +1286,17 @@ body.printify-coarse-pointer .printify-log-drawer__hint:not(.printify-log-drawer
 }
 
 @media (max-width: 640px) {
+  /* The panel is z-index 25 and, at this width, an opaque 92vw x 100vh sheet.
+     The preview pane and batch bar are z-index 23 and were only ever clear of
+     it because the desktop layout parks them to the right of the panel. Once
+     the rules below move them on top of it they render behind an opaque
+     element, which reads as "the preview opened off screen". Lift both above
+     the panel (and above the toggle at 30) now that they overlap it. */
   .printify-log-drawer__batch {
     left: 12px;
     right: 12px;
     bottom: 14px;
+    z-index: 40;
     width: calc(100vw - 24px);
   }
 
@@ -1303,7 +1310,33 @@ body.printify-coarse-pointer .printify-log-drawer__hint:not(.printify-log-drawer
   .printify-log-drawer__preview-pane {
     top: 12px;
     left: 12px;
+    z-index: 40;
     width: calc(100vw - 24px);
+    /* Phones have no room beside the panel, so the preview becomes a sheet over
+       it and has to be able to scroll rather than run off the bottom. */
+    max-height: calc(100vh - 24px);
+    /* dvh accounts for the collapsing URL bar; browsers without it keep the vh
+       value above. */
+    max-height: calc(100dvh - 24px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* The desktop entrance slides in horizontally from beside the panel, which
+     makes no sense for a sheet sitting on top of it. */
+  .printify-log-drawer__preview-pane,
+  .printify-log-drawer__preview-card {
+    transform: translate3d(0, -12px, 0);
+  }
+
+  .printify-log-drawer__preview-pane.is-visible,
+  .printify-log-drawer__preview-pane.is-visible .printify-log-drawer__preview-card {
+    transform: translate3d(0, 0, 0);
+  }
+
+  .printify-log-drawer__preview-image {
+    max-height: min(38vh, 320px);
   }
 
   .printify-log-drawer__toolbar {

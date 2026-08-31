@@ -85,6 +85,7 @@ const serverSave = createServerSave({
   legacyServerDataPath: path.join(rootDir, 'serverData.json'),
   logStats,
   onPrintJobSaved: () => {},
+  errorLogStamp,
 }); // Persist lightweight server stats across restarts.
 const deduplicator = createDeduplicator({
   logsDir,
@@ -307,6 +308,22 @@ const startServer = async () => {
 
   let requestedPort = runtimeConfig.getOption('port') || port;
 
+  // Plugin poll timers and the config file watcher keep the event loop alive,
+  // so setting process.exitCode on a failed start is not enough: the process
+  // lingers forever without ever serving. Tear the handles down and leave with
+  // a real exit code, which is also what lets a service manager notice.
+  const abortStartup = message => {
+    errorLogStamp(message);
+
+    try {
+      pluginManager?.stopAll?.();
+    } catch (error) {
+      errorLogStamp('Plugin shutdown during failed startup failed:', error.message);
+    }
+
+    process.exit(1);
+  };
+
   while (true) {
     try {
       await listenOnPort(requestedPort);
@@ -315,8 +332,7 @@ const startServer = async () => {
       return;
     } catch (error) {
       if (error.code !== 'EADDRINUSE') {
-        errorLogStamp(`Server failed to start on port ${requestedPort}:`, error.message);
-        process.exitCode = 1;
+        abortStartup(`Server failed to start on port ${requestedPort}: ${error.message}`);
         return;
       }
 
@@ -328,8 +344,7 @@ const startServer = async () => {
       });
 
       if (!nextPort) {
-        errorLogStamp('Server did not start. Update config/config.yaml or free the blocked port and try again.');
-        process.exitCode = 1;
+        abortStartup('Server did not start. Update config/config.yaml or free the blocked port and try again.');
         return;
       }
 

@@ -770,31 +770,6 @@
   let assistantMenuOpen = false;
   let themeFamilyMenuOpen = false;
   let quickConfigHeightFrame = null;
-  const measureQuickConfigOpenHeight = () => {
-    if (!quickConfig || !quickConfigBody) {
-      return;
-    }
-
-    const previousTransition = quickConfig.style.transition;
-    const previousWidth = quickConfig.style.width;
-    const previousHeight = quickConfig.style.height;
-    const previousBodyHidden = quickConfigBody.hidden;
-
-    quickConfig.style.transition = 'none';
-    quickConfig.style.width = '274px';
-    quickConfig.style.height = '48px';
-    quickConfigBody.hidden = false;
-    syncQuickConfigHeight();
-    void quickConfig.offsetWidth;
-    quickConfig.style.transition = previousTransition;
-    quickConfig.style.width = previousWidth;
-    quickConfig.style.height = previousHeight;
-
-    if (previousBodyHidden && !quickConfigOpen) {
-      quickConfigBody.hidden = true;
-    }
-  };
-
   const scheduleQuickConfigHeightSync = () => {
     window.cancelAnimationFrame(quickConfigHeightFrame);
     quickConfigHeightFrame = window.requestAnimationFrame(() => {
@@ -810,11 +785,18 @@
     }
 
     const wasHidden = quickConfigBody.hidden;
+    const previousBodyWidth = quickConfigBody.style.width;
+    const openWidth = window.innerWidth <= 480
+      ? Math.min(274, Math.max(0, window.innerWidth - 28))
+      : 274;
 
     if (wasHidden) {
       quickConfigBody.hidden = false;
     }
 
+    // Measure at the final panel width so the in-flight narrow state cannot
+    // inflate the height target by wrapping every row.
+    quickConfigBody.style.width = `${openWidth}px`;
     const computedStyle = window.getComputedStyle(quickConfigBody);
     const paddingTop = Number.parseFloat(computedStyle.paddingTop) || 0;
     const paddingBottom = Number.parseFloat(computedStyle.paddingBottom) || 0;
@@ -828,6 +810,7 @@
     }, paddingTop);
     const measuredHeight = Math.ceil(contentBottom + paddingBottom);
     quickConfig.style.setProperty('--printify-quick-config-open-height', `${measuredHeight}px`);
+    quickConfigBody.style.width = previousBodyWidth;
 
     if (wasHidden && !quickConfigOpen) {
       quickConfigBody.hidden = true;
@@ -1080,7 +1063,7 @@
 
     if (quickConfigOpen) {
       quickConfigBody.hidden = false;
-      measureQuickConfigOpenHeight();
+      syncQuickConfigHeight();
       quickConfig.classList.add('is-open');
       scheduleQuickConfigHeightSync();
     } else {

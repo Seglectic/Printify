@@ -4,9 +4,7 @@
 // │  token logic, and small  │
 // │  browser utilities       │
 // ╰──────────────────────────╯
-(function () {
-  const namespace = window.PrintifyLabelBuilder = window.PrintifyLabelBuilder || {};
-  const constants = namespace.constants;
+import { constants } from './constants.js';
 
   // Keep these helpers framework-free so future builder modules can share
   // them without pulling in canvas/runtime concerns.
@@ -179,7 +177,7 @@
     guideOutline: 'rgba(12, 16, 19, 0.52)',
   });
 
-  namespace.utils = {
+export const utils = {
     appendSerialToken,
     applySerialTokens,
     bindHoldAction,
@@ -200,5 +198,4 @@
     replaceSerialTokenDigits,
     sanitizeTemplateName,
     setClientOverlayActive,
-  };
-}());
+};

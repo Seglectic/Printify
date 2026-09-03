@@ -4,16 +4,7 @@
 // │  and schema/version      │
 // │  constants               │
 // ╰──────────────────────────╯
-(function () {
-  const namespace = window.PrintifyLabelBuilder = window.PrintifyLabelBuilder || {
-    modules: {},
-  };
-
-  namespace.register = namespace.register || function registerLabelBuilderModule(moduleName, factory) {
-    namespace.modules[moduleName] = factory;
-  };
-
-  namespace.constants = {
+export const constants = {
     DEFAULT_CANVAS_SIZE: {
       width: 425,
       height: 200,
@@ -25,17 +16,18 @@
     DEFAULT_TAPE_LENGTH_MM: 60,
     MIN_TAPE_LENGTH_MM: 8,
     TAPE_EXPORT_PADDING_MM: 4,
+    TAPE_RESIZE_GUTTER_PX: 14,
     BUILDER_MODAL_CLOSE_MS: 220,
     BUILDER_HANDLE_BASE_SIZE: 12,
     BUILDER_HANDLE_TOUCH_SIZE: 22,
     BUILDER_ROTATION_SNAP_ANGLE: 45,
     BUILDER_ROTATION_SNAP_THRESHOLD: 8,
-    TEMPLATE_SCHEMA_VERSION: '1.0',
+    TEMPLATE_SCHEMA_VERSION: '1.1',
     LOCAL_TEMPLATE_STORAGE_KEY: 'printify-label-builder-templates',
-    BUILDER_HISTORY_LIMIT: 10,
+    BUILDER_HISTORY_LIMIT: 30,
+    BUILDER_HISTORY_IDLE_MS: 320,
     SNAP_THRESHOLD_PX: 8,
     SNAP_RELEASE_DISTANCE_PX: 15,
     SNAP_GUIDE_INSET_PX: 4,
     SNAP_GUIDE_COLOR: 'rgba(31, 111, 67, 0.78)',
-  };
-}());
+};

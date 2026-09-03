@@ -4,10 +4,7 @@
 // │  active canvas objects   │
 // │  and builder form inputs │
 // ╰──────────────────────────╯
-(function () {
-  const namespace = window.PrintifyLabelBuilder = window.PrintifyLabelBuilder || {};
-
-  namespace.register('controls', ctx => {
+export default function createControls(ctx) {
     const { refs, settings, state } = ctx;
 
     const rememberSerialSettings = (serialValue, serialDigits) => {
@@ -68,11 +65,19 @@
     };
 
     const syncFontSizeInput = textObject => {
-      if (!refs.fontSizeInput) return;
+      if (!refs.fontSizeInput && !refs.fontSizeSlider) return;
 
       state.isSyncingFontSizeInput = true;
-      refs.fontSizeInput.value = textObject?.fontSize ? String(Math.round(textObject.fontSize)) : '';
-      refs.fontSizeInput.disabled = !textObject;
+      const fontSize = textObject?.fontSize ? Math.round(textObject.fontSize) : null;
+      if (refs.fontSizeInput) {
+        refs.fontSizeInput.value = fontSize ? String(fontSize) : '';
+        refs.fontSizeInput.disabled = !textObject;
+      }
+      if (refs.fontSizeSlider) {
+        refs.fontSizeSlider.max = String(Math.max(300, fontSize || 0));
+        refs.fontSizeSlider.value = fontSize ? String(fontSize) : refs.fontSizeSlider.min;
+        refs.fontSizeSlider.disabled = !textObject;
+      }
       state.isSyncingFontSizeInput = false;
     };
 
@@ -88,7 +93,7 @@
     const syncTextSerialInputs = textObject => {
       if (!refs.textSerialEnabledInput || !refs.textSerialValueInput || !refs.textSerialValueField) return;
 
-      const preparedTextbox = textObject instanceof window.fabric.Textbox ? ctx.ensureTextboxSerialState(textObject) : null;
+      const preparedTextbox = textObject instanceof ctx.fabric.Textbox ? ctx.ensureTextboxSerialState(textObject) : null;
 
       state.isSyncingTextSerialInput = true;
       refs.textSerialEnabledInput.checked = Boolean(preparedTextbox?.serialEnabled);
@@ -135,10 +140,24 @@
       });
     };
 
+    const syncVerticalAlignmentButtons = textObject => {
+      const buttons = [
+        [refs.alignTopButton, 'top'],
+        [refs.alignMiddleButton, 'middle'],
+        [refs.alignBottomButton, 'bottom'],
+      ];
+
+      buttons.forEach(([button, value]) => {
+        if (!button) return;
+        button.disabled = !textObject;
+        button.classList.toggle('is-active', textObject?.verticalAlign === value);
+      });
+    };
+
     const syncTextboxLayoutButtons = textObject => {
       [refs.boxCenterButton, refs.boxFillButton].forEach(button => {
         if (!button) return;
-        button.disabled = !(textObject instanceof window.fabric.Textbox);
+        button.disabled = !(textObject instanceof ctx.fabric.Textbox);
         button.classList.remove('is-active');
       });
     };
@@ -170,14 +189,16 @@
     };
 
     const syncTextControls = activeObject => {
-      const textObject = activeObject instanceof window.fabric.Textbox ? activeObject : null;
+      const textObject = activeObject instanceof ctx.fabric.Textbox ? activeObject : null;
       const imageObject = ctx.isImageObject(activeObject) ? activeObject : null;
       const codeObject = ctx.isCodeObject(activeObject) ? activeObject : null;
 
       if (textObject) state.lastSelectedTextObject = textObject;
       if (codeObject) state.lastSelectedCodeObject = codeObject;
 
-      if (refs.textCard) refs.textCard.hidden = !textObject;
+      if (refs.textCard) {
+        refs.textCard.hidden = !textObject;
+      }
       if (refs.imageCard) refs.imageCard.hidden = !imageObject;
       if (refs.qrCard) refs.qrCard.hidden = !codeObject;
       syncFontInput(textObject);
@@ -185,6 +206,7 @@
       syncAutoFitInput(textObject);
       syncTextSerialInputs(textObject);
       syncAlignmentButtons(textObject);
+      syncVerticalAlignmentButtons(textObject);
       syncTextboxLayoutButtons(textObject);
       syncMediaLayoutButtons(activeObject);
       syncCodeInputs(codeObject);
@@ -203,17 +225,30 @@
         });
       });
 
-      refs.fontSizeInput?.addEventListener('input', () => {
+      const applyFontSize = (rawValue, options = {}) => {
         if (state.isSyncingFontSizeInput) return;
 
-        const parsedValue = Number.parseInt(refs.fontSizeInput.value || '', 10);
+        const parsedValue = Number.parseInt(rawValue || '', 10);
         if (!Number.isFinite(parsedValue)) return;
 
+        const fontSize = Math.max(8, parsedValue);
         if (refs.autoFitInput) refs.autoFitInput.checked = false;
         ctx.updateSelectedTextbox({
-          fontSize: Math.max(8, parsedValue),
+          fontSize,
           autoFitText: false,
-        });
+        }, options);
+      };
+
+      refs.fontSizeInput?.addEventListener('input', () => {
+        applyFontSize(refs.fontSizeInput.value);
+      });
+
+      refs.fontSizeSlider?.addEventListener('input', () => {
+        applyFontSize(refs.fontSizeSlider.value, { recordHistory: false });
+      });
+
+      refs.fontSizeSlider?.addEventListener('change', () => {
+        applyFontSize(refs.fontSizeSlider.value);
       });
 
       refs.autoFitInput?.addEventListener('change', () => {
@@ -225,6 +260,7 @@
         textObject.set('autoFitText', refs.autoFitInput.checked);
         if (textObject.autoFitText) ctx.fitTextboxFontToFrame(textObject);
         textObject.initDimensions();
+        ctx.syncTextboxOverflowState(textObject);
         textObject.setCoords();
         syncTextControls(textObject);
         ctx.ensureCanvas().requestRenderAll();
@@ -372,5 +408,4 @@
       syncPreviewButton,
       syncTextControls,
     };
-  });
-}());
+}

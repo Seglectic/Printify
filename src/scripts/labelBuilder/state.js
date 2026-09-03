@@ -4,13 +4,11 @@
 // │  state kept separate     │
 // │  from DOM/canvas logic   │
 // ╰──────────────────────────╯
-(function () {
-  const namespace = window.PrintifyLabelBuilder = window.PrintifyLabelBuilder || {};
-  const constants = namespace.constants;
+import { constants } from './constants.js';
 
   // This is intentionally plain mutable state rather than a reactive layer.
   // The rest of the builder is event-driven and Fabric-centric already.
-  const createBuilderState = () => ({
+export const createBuilderState = () => ({
     currentPrinter: null,
     canvas: null,
     defaultTextbox: null,
@@ -37,6 +35,7 @@
     currentTapeLengthMm: constants.DEFAULT_TAPE_LENGTH_MM,
     tapeMinimumLengthMm: constants.DEFAULT_TAPE_LENGTH_MM,
     tapeAutoLengthEnabled: true,
+    tapeResizeDrag: null,
     invertPrintEnabled: false,
     currentViewportScale: 1,
     closeAnimationTimer: null,
@@ -50,6 +49,7 @@
     remoteFolders: [],
     historyPast: [],
     historyFuture: [],
+    historyCheckpointTimer: null,
     isRestoringHistory: false,
     snapOverlayCanvas: null,
     snapOverlayContext: null,
@@ -62,8 +62,3 @@
       horizontal: null,
     },
   });
-
-  namespace.state = {
-    createBuilderState,
-  };
-}());

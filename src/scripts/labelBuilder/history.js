@@ -4,16 +4,13 @@
 // │  snapshots using the     │
 // │  builder document model  │
 // ╰──────────────────────────╯
-(function () {
-  const namespace = window.PrintifyLabelBuilder = window.PrintifyLabelBuilder || {};
-
-  namespace.register('history', ctx => {
+export default function createHistory(ctx) {
     const { constants, state } = ctx;
 
     const getSelectedObjectIndex = () => {
       const activeObject = ctx.ensureCanvas().getActiveObject();
 
-      if (!activeObject || activeObject instanceof window.fabric.ActiveSelection) {
+      if (!activeObject || activeObject instanceof ctx.fabric.ActiveSelection) {
         return -1;
       }
 
@@ -65,6 +62,8 @@
       }
 
       state.isRestoringHistory = true;
+      window.clearTimeout(state.historyCheckpointTimer);
+      state.historyCheckpointTimer = null;
 
       try {
         ctx.clearEnterPrintPrompt();
@@ -87,6 +86,11 @@
     };
 
     const recordHistoryCheckpoint = async (options = {}) => {
+      if (options.cancelPending !== false) {
+        window.clearTimeout(state.historyCheckpointTimer);
+        state.historyCheckpointTimer = null;
+      }
+
       if (!state.currentPrinter || state.isRestoringHistory || state.isSerialPreviewActive || state.isMonochromePreviewActive) {
         return false;
       }
@@ -111,6 +115,14 @@
       return true;
     };
 
+    const queueHistoryCheckpoint = () => {
+      window.clearTimeout(state.historyCheckpointTimer);
+      state.historyCheckpointTimer = window.setTimeout(() => {
+        state.historyCheckpointTimer = null;
+        void recordHistoryCheckpoint({ cancelPending: false });
+      }, constants.BUILDER_HISTORY_IDLE_MS);
+    };
+
     const resetHistory = async () => {
       state.historyPast = [];
       clearHistoryFuture();
@@ -126,10 +138,13 @@
       const currentEntry = state.historyPast[state.historyPast.length - 1];
       const previousEntry = state.historyPast[state.historyPast.length - 2];
 
+      const restored = await restoreHistoryEntry(previousEntry);
+      if (!restored) return false;
+
       state.historyPast = state.historyPast.slice(0, -1);
       state.historyFuture = [...state.historyFuture, currentEntry];
       syncHistoryUi();
-      return restoreHistoryEntry(previousEntry);
+      return true;
     };
 
     const redoHistory = async () => {
@@ -138,19 +153,22 @@
       }
 
       const nextEntry = state.historyFuture[state.historyFuture.length - 1];
+      const restored = await restoreHistoryEntry(nextEntry);
+      if (!restored) return false;
+
       state.historyFuture = state.historyFuture.slice(0, -1);
       state.historyPast = [...state.historyPast, nextEntry].slice(-constants.BUILDER_HISTORY_LIMIT);
       syncHistoryUi();
-      return restoreHistoryEntry(nextEntry);
+      return true;
     };
 
     return {
       canRedoHistory,
       canUndoHistory,
+      queueHistoryCheckpoint,
       recordHistoryCheckpoint,
       redoHistory,
       resetHistory,
       undoHistory,
     };
-  });
-}());
+}

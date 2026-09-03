@@ -4,15 +4,61 @@
 // │  behavior, autofit, and  │
 // │  serial-aware text state │
 // ╰──────────────────────────╯
-(function () {
-  const namespace = window.PrintifyLabelBuilder = window.PrintifyLabelBuilder || {};
+import { createTextboxFrameControls } from '../fabric/textboxControls.js';
+import {
+  getVerticalTextOffset,
+  isTextFrameOverflowing,
+  normalizeVerticalAlign,
+} from '../model/textFrame.mjs';
 
-  namespace.register('textboxObjects', ctx => {
+export default function createTextboxObjects(ctx) {
     const { state } = ctx;
     const getTextboxThemeColors = () => ctx.utils.getBuilderThemeColors();
 
+    const syncTextboxOverflowState = textbox => {
+      const contentHeight = typeof textbox.measureTextHeight === 'function'
+        ? textbox.measureTextHeight()
+        : textbox.height;
+      textbox.textFrameOverflowing = !textbox.autoFitText && isTextFrameOverflowing({
+        contentHeight,
+        frameHeight: textbox.frameHeight,
+        padding: textbox.padding,
+      });
+      return textbox.textFrameOverflowing;
+    };
+
+    const syncTapeTextboxWidth = textbox => {
+      if (!(textbox instanceof ctx.fabric.Textbox) || !textbox.tapeAutoGrowWidth || !ctx.isTapePrinter(state.currentPrinter)) {
+        return false;
+      }
+
+      const measurement = new ctx.fabric.Text(String(textbox.text || ''), {
+        fontFamily: textbox.fontFamily,
+        fontSize: textbox.fontSize,
+        fontWeight: textbox.fontWeight,
+        fontStyle: textbox.fontStyle,
+        charSpacing: textbox.charSpacing,
+        lineHeight: textbox.lineHeight,
+      });
+      const nextFrameWidth = ctx.getAutoGrowingTextFrameWidth({
+        naturalTextWidth: measurement.width,
+        padding: textbox.padding,
+        minimumFrameWidth: textbox.tapeMinimumFrameWidth || textbox.frameWidth,
+      });
+
+      if (Math.round(textbox.frameWidth || textbox.width || 0) === nextFrameWidth) {
+        return false;
+      }
+
+      textbox.frameWidth = nextFrameWidth;
+      textbox.width = nextFrameWidth;
+      textbox.initDimensions();
+      textbox.setCoords();
+      return true;
+    };
+
     const ensureTextboxSerialState = textbox => {
-      if (!(textbox instanceof window.fabric.Textbox)) return textbox;
+      if (!(textbox instanceof ctx.fabric.Textbox)) return textbox;
 
       textbox.serialEnabled = Boolean(textbox.serialEnabled);
       textbox.serialCurrentValue = ctx.utils.normalizeSerialValue(textbox.serialCurrentValue);
@@ -24,7 +70,7 @@
     };
 
     const fitTextboxFontToFrame = textObject => {
-      if (!(textObject instanceof window.fabric.Textbox)) return;
+      if (!(textObject instanceof ctx.fabric.Textbox)) return;
       if (!textObject.autoFitText) return;
       if (!textObject.text?.trim()) return;
 
@@ -76,10 +122,11 @@
         left: lockedLeft,
         top: lockedTop,
       });
+      syncTextboxOverflowState(textObject);
     };
 
     const refreshTextboxSerialPreview = (textObject, options = {}) => {
-      if (!(textObject instanceof window.fabric.Textbox)) return;
+      if (!(textObject instanceof ctx.fabric.Textbox)) return;
 
       ensureTextboxSerialState(textObject);
       if (textObject.isEditing) return;
@@ -103,7 +150,7 @@
     };
 
     const syncTextboxWrappingBehavior = textbox => {
-      if (!(textbox instanceof window.fabric.Textbox)) return textbox;
+      if (!(textbox instanceof ctx.fabric.Textbox)) return textbox;
 
       const availableWidth = Math.max(12, (textbox.frameWidth || textbox.width || 0) - (textbox.padding * 2));
       const lines = String(textbox.text || '').split(/\r?\n/);
@@ -131,6 +178,7 @@
 
     const attachTextboxFrameBehavior = textbox => {
       const baseCalcTextHeight = textbox.calcTextHeight.bind(textbox);
+      const baseGetTopOffset = textbox._getTopOffset.bind(textbox);
 
       // Textboxes carry extra builder-only frame metadata on top of Fabric's
       // native textbox behavior, since print layouts care about the frame box
@@ -142,10 +190,28 @@
         : Math.max(8, Math.round(textbox.fontSize || 8));
       textbox.frameWidth = Math.max(textbox.frameWidth || 0, textbox.width || 0);
       textbox.frameHeight = Math.max(textbox.frameHeight || 0, textbox.height || 0);
+      textbox.verticalAlign = normalizeVerticalAlign(textbox.verticalAlign);
+      textbox.tapeAutoGrowWidth = Boolean(textbox.tapeAutoGrowWidth);
+      textbox.tapeMinimumFrameWidth = Math.max(48, Math.round(textbox.tapeMinimumFrameWidth || textbox.frameWidth));
       textbox.measureTextHeight = () => baseCalcTextHeight();
       textbox.calcTextHeight = function calcTextHeight() {
         return Math.max(baseCalcTextHeight(), this.frameHeight || 0);
       };
+      textbox._getTopOffset = function getVerticallyAlignedTopOffset() {
+        return baseGetTopOffset() + getVerticalTextOffset({
+          alignment: this.verticalAlign,
+          contentHeight: this.measureTextHeight(),
+          frameHeight: this.frameHeight,
+        });
+      };
+      textbox.controls = createTextboxFrameControls({
+        fabric: ctx.fabric,
+        onFrameChange: nextTextbox => {
+          nextTextbox.initDimensions();
+          if (nextTextbox.autoFitText) fitTextboxFontToFrame(nextTextbox);
+          syncTextboxOverflowState(nextTextbox);
+        },
+      });
       textbox.splitByGrapheme = false;
       ensureTextboxSerialState(textbox);
       syncTextboxWrappingBehavior(textbox);
@@ -159,13 +225,14 @@
       });
       textbox.width = textbox.frameWidth;
       textbox.initDimensions();
+      syncTextboxOverflowState(textbox);
       textbox.setCoords();
 
       return textbox;
     };
 
     const applyTextboxPlaceholder = (textbox, placeholderText = ctx.constants.DEFAULT_TEXTBOX_PLACEHOLDER) => {
-      if (!(textbox instanceof window.fabric.Textbox)) return textbox;
+      if (!(textbox instanceof ctx.fabric.Textbox)) return textbox;
 
       textbox.maxAutoFitFontSize = Math.max(8, Math.round(textbox.fontSize || 8));
       textbox.serialTemplateText = placeholderText;
@@ -179,7 +246,7 @@
     const buildTextbox = (canvasWidth, canvasHeight, overrides = {}) => {
       const themeColors = getTextboxThemeColors();
 
-      return attachTextboxFrameBehavior(ctx.applyBuilderObjectDefaults(new window.fabric.Textbox(Object.prototype.hasOwnProperty.call(overrides, 'text') ? overrides.text : '', {
+      return attachTextboxFrameBehavior(ctx.applyBuilderObjectDefaults(new ctx.fabric.Textbox(Object.prototype.hasOwnProperty.call(overrides, 'text') ? overrides.text : '', {
       left: Math.round(canvasWidth * 0.08),
       top: Math.round(canvasHeight * 0.08),
       width: Math.round(canvasWidth * 0.58),
@@ -224,7 +291,7 @@
     };
 
     const beginTextboxEditing = textObject => {
-      if (!(textObject instanceof window.fabric.Textbox)) return;
+      if (!(textObject instanceof ctx.fabric.Textbox)) return;
 
       // Serial-enabled textboxes temporarily switch back to their template text
       // while editing so placeholder tokens are never lost to preview output.
@@ -249,7 +316,8 @@
 
     const addTextbox = () => {
       const builderCanvas = ctx.ensureCanvas();
-      const textboxCount = builderCanvas.getObjects().filter(object => object instanceof window.fabric.Textbox).length;
+      const tapeAutoGrowWidth = ctx.isTapePrinter(state.currentPrinter);
+      const textboxCount = builderCanvas.getObjects().filter(object => object instanceof ctx.fabric.Textbox).length;
       const frameWidth = Math.round(builderCanvas.getWidth() * 0.58);
       const frameHeight = Math.max(48, Math.round(builderCanvas.getHeight() * 0.34));
       const fontSize = getInitialTextboxFontSize({ frameWidth, frameHeight });
@@ -263,6 +331,8 @@
         fontSize,
         frameHeight,
         autoFitText: false,
+        tapeAutoGrowWidth,
+        tapeMinimumFrameWidth: frameWidth,
       });
 
       builderCanvas.add(textbox);
@@ -275,6 +345,7 @@
 
     const createSeedTextbox = () => {
       const builderCanvas = ctx.ensureCanvas();
+      const tapeAutoGrowWidth = ctx.isTapePrinter(state.currentPrinter);
       const frameWidth = Math.round(builderCanvas.getWidth() * 0.6);
       const frameHeight = Math.max(48, Math.round(builderCanvas.getHeight() * 0.6));
       const fontSize = getInitialTextboxFontSize({ frameWidth, frameHeight });
@@ -288,10 +359,12 @@
         frameHeight,
         fontSize,
         autoFitText: false,
+        tapeAutoGrowWidth,
+        tapeMinimumFrameWidth: frameWidth,
       });
     };
 
-    const updateSelectedTextbox = updates => {
+    const updateSelectedTextbox = (updates, options = {}) => {
       const textObject = ctx.getTextboxForControls();
       if (!textObject) return;
 
@@ -306,16 +379,19 @@
       syncTextboxWrappingBehavior(textObject);
       if (textObject.autoFitText) fitTextboxFontToFrame(textObject);
       textObject.initDimensions();
+      syncTextboxOverflowState(textObject);
       textObject.setCoords();
       ctx.syncTextControls(textObject);
       ctx.ensureCanvas().requestRenderAll();
       void ctx.syncAutoFitTapeCanvas();
-      void ctx.recordHistoryCheckpoint();
+      if (options.recordHistory !== false) {
+        void ctx.recordHistoryCheckpoint();
+      }
     };
 
     const applyTextboxLayoutPreset = layoutMode => {
       const textObject = ctx.getTextboxForControls();
-      if (!(textObject instanceof window.fabric.Textbox)) return;
+      if (!(textObject instanceof ctx.fabric.Textbox)) return;
 
       const builderCanvas = ctx.ensureCanvas();
       const nextFrameHeight = Math.max(32, Math.round(textObject.frameHeight || textObject.height || 0));
@@ -335,6 +411,7 @@
       syncTextboxWrappingBehavior(textObject);
       if (textObject.autoFitText) fitTextboxFontToFrame(textObject);
       textObject.initDimensions();
+      syncTextboxOverflowState(textObject);
       textObject.setCoords();
       ctx.syncTextControls(textObject);
       builderCanvas.requestRenderAll();
@@ -342,8 +419,20 @@
       void ctx.recordHistoryCheckpoint();
     };
 
+    const setTextboxVerticalAlign = alignment => {
+      const textObject = ctx.getTextboxForControls();
+      if (!(textObject instanceof ctx.fabric.Textbox)) return;
+
+      textObject.verticalAlign = normalizeVerticalAlign(alignment);
+      syncTextboxOverflowState(textObject);
+      textObject.setCoords();
+      ctx.syncTextControls(textObject);
+      ctx.ensureCanvas().requestRenderAll();
+      void ctx.recordHistoryCheckpoint();
+    };
+
     const commitTextboxState = (textObject, options = {}) => {
-      if (!(textObject instanceof window.fabric.Textbox)) return;
+      if (!(textObject instanceof ctx.fabric.Textbox)) return;
 
       ensureTextboxSerialState(textObject);
 
@@ -364,7 +453,7 @@
     };
 
     const applyTextboxSerialDigits = (textObject, digits, options = {}) => {
-      if (!(textObject instanceof window.fabric.Textbox)) return;
+      if (!(textObject instanceof ctx.fabric.Textbox)) return;
 
       ensureTextboxSerialState(textObject);
       const nextTemplateText = ctx.utils.replaceSerialTokenDigits(textObject.serialTemplateText || textObject.text || '', digits);
@@ -390,7 +479,11 @@
     const bakeTextboxScale = event => {
       const textObject = event?.target;
 
-      if (!(textObject instanceof window.fabric.Textbox)) return;
+      if (!(textObject instanceof ctx.fabric.Textbox)) return;
+      if (textObject.scaleX === 1 && textObject.scaleY === 1) {
+        syncTextboxOverflowState(textObject);
+        return;
+      }
 
       // Shift-resize intentionally means "scale font", while ordinary resize
       // means "reshape the text frame". That distinction is easy to regress.
@@ -419,6 +512,7 @@
       }
 
       textObject.initDimensions();
+      syncTextboxOverflowState(textObject);
       textObject.setCoords();
       ctx.syncTextControls(textObject);
       ctx.ensureCanvas().requestRenderAll();
@@ -438,8 +532,10 @@
       fitTextboxFontToFrame,
       focusTextbox,
       refreshTextboxSerialPreview,
+      setTextboxVerticalAlign,
       syncTextboxWrappingBehavior,
+      syncTextboxOverflowState,
+      syncTapeTextboxWidth,
       updateSelectedTextbox,
     };
-  });
-}());
+}

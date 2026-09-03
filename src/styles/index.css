@@ -1,3 +1,8 @@
+/* ╭────────────────────────────╮
+   │  Printify Interface        │
+   │  Styles the dashboard and  │
+   │  shared editing surfaces.  │
+   ╰────────────────────────────╯ */
 @font-face {
   font-family: "Roboto";
   src: url("/fonts/roboto/Roboto-BoldItalic.ttf") format("truetype");
@@ -112,6 +117,10 @@ body.printify-client-overlay-open .printify-feedback,
 body.printify-client-overlay-open .printify-confirm {
   filter: blur(8px) saturate(0.86);
   pointer-events: none;
+}
+
+body.printify-client-overlay-open {
+  overflow: hidden;
 }
 
 /* Blurring the chrome reads well on a wide screen, where the quick config sits
@@ -995,6 +1004,9 @@ img {
 
 .printify-builder__panel {
   width: min(860px, 96vw);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 28px;
   border-radius: 28px;
   background: var(--printify-builder-surface);
@@ -1070,9 +1082,81 @@ img {
 }
 
 .printify-builder__canvas-shell {
+  position: relative;
   width: 100%;
   overflow: auto;
   padding-bottom: 8px;
+  touch-action: none;
+}
+
+.printify-builder__tape-resize {
+  position: absolute;
+  top: 0;
+  right: -14px;
+  z-index: 6;
+  display: grid;
+  place-items: center;
+  width: 10px;
+  height: calc(100% + 4px);
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--printify-accent) 72%, #ffffff);
+  border-left: 0;
+  border-radius: 0 6px 6px 0;
+  background: color-mix(in srgb, var(--printify-accent) 88%, #15241c);
+  box-shadow: 4px 0 12px rgba(16, 66, 39, 0.18);
+  color: #ffffff;
+  cursor: ew-resize;
+  touch-action: none;
+  transition: background 140ms ease, box-shadow 140ms ease;
+}
+
+.printify-builder__tape-resize[hidden] {
+  display: none;
+}
+
+.printify-builder__tape-resize:hover,
+.printify-builder__tape-resize:focus-visible,
+.printify-builder__tape-resize.is-dragging {
+  background: var(--printify-accent);
+  box-shadow: 5px 0 16px rgba(16, 66, 39, 0.3);
+  outline: none;
+}
+
+.printify-builder__tape-resize:focus-visible {
+  box-shadow: 0 0 0 3px var(--printify-focus-ring), 5px 0 16px rgba(16, 66, 39, 0.3);
+}
+
+.printify-builder__tape-resize-grip {
+  width: 2px;
+  height: 38%;
+  max-height: 42px;
+  border-left: 1px solid rgba(255, 255, 255, 0.78);
+  border-right: 1px solid rgba(255, 255, 255, 0.48);
+}
+
+.printify-builder__tape-resize-value {
+  position: absolute;
+  right: calc(100% + 8px);
+  top: 50%;
+  padding: 5px 7px;
+  border-radius: 8px;
+  background: rgba(17, 27, 22, 0.92);
+  color: #ffffff;
+  font-family: "Droid Sans Mono", "Lucida Console", Courier, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(5px, -50%);
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.printify-builder__tape-resize:hover .printify-builder__tape-resize-value,
+.printify-builder__tape-resize:focus-visible .printify-builder__tape-resize-value,
+.printify-builder__tape-resize.is-dragging .printify-builder__tape-resize-value {
+  opacity: 1;
+  transform: translate(0, -50%);
 }
 
 .printify-builder__history-buttons {
@@ -1156,6 +1240,16 @@ img {
   box-shadow: inset 0 0 0 1px rgba(24, 33, 43, 0.04);
 }
 
+.printify-builder__canvas-shell .canvas-container.has-tape-resize {
+  overflow: visible;
+  border-radius: 12px 0 0 12px;
+}
+
+.printify-builder__canvas-shell .canvas-container.has-tape-resize .lower-canvas,
+.printify-builder__canvas-shell .canvas-container.has-tape-resize .upper-canvas {
+  border-radius: 10px 0 0 10px;
+}
+
 .printify-builder__baked-preview {
   position: absolute;
   display: grid;
@@ -1185,12 +1279,14 @@ img {
 }
 
 .printify-builder__text-card {
+  position: relative;
   margin-top: 0;
   padding: 14px;
   min-height: 196px;
   border: 1px solid var(--printify-line);
   border-radius: 18px;
   background: color-mix(in srgb, var(--printify-card) 86%, transparent);
+  transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 
 .printify-builder__text-card-header {
@@ -1243,6 +1339,49 @@ img {
   flex-wrap: wrap;
   align-items: flex-start;
   gap: 10px;
+}
+
+.printify-builder__font-size-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  width: min(620px, 100%);
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--printify-line) 88%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--printify-card) 72%, transparent);
+}
+
+.printify-builder__field--font-size-slider {
+  flex: 1 1 auto;
+  min-width: 180px;
+}
+
+.printify-builder__field--font-size-slider input[type="range"] {
+  width: 100%;
+  min-height: 24px;
+  padding: 0;
+  border: 0;
+  accent-color: var(--printify-accent);
+  cursor: ew-resize;
+}
+
+.printify-builder__field--font-size-value {
+  flex: 0 0 auto;
+}
+
+.printify-builder__font-size-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--printify-muted);
+  font-family: "Droid Sans Mono", "Lucida Console", Courier, monospace;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.printify-builder__font-size-value input {
+  width: 76px;
 }
 
 .printify-builder__serial-row {
@@ -1656,6 +1795,11 @@ img {
   padding: 9px 12px;
   font-size: 13px;
   letter-spacing: 0.02em;
+}
+
+.printer-card__button[aria-busy="true"] {
+  cursor: progress;
+  opacity: 0.72;
 }
 
 .printify-builder__enter-confirm {
@@ -2542,8 +2686,49 @@ body.printify-coarse-pointer .printify-footer__handle {
   }
 
   .printify-builder__panel {
-    padding: 22px;
-    border-radius: 24px;
+    width: 100%;
+    max-width: 100%;
+    max-height: 100dvh;
+    padding: 18px;
+    border-radius: 0;
+    overflow-x: hidden;
+  }
+
+  .printify-builder {
+    place-items: stretch;
+    padding: 0;
+  }
+
+  .printify-builder__canvas-wrap {
+    margin-top: 14px;
+    padding: 12px;
+    border-radius: 18px;
+  }
+
+  .printify-builder__control-stack {
+    min-height: 0;
+  }
+
+  .printify-builder__text-card-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .printify-builder__text-card-row > .printify-builder__field--grouped {
+    grid-column: 1 / -1;
+  }
+
+  .printify-builder__font-size-row {
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .printify-builder .printer-card__button,
+  .printify-builder__close,
+  .printify-builder input,
+  .printify-builder select {
+    min-height: 44px;
   }
 
   .printify-builder__title {

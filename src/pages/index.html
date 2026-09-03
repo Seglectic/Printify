@@ -1,4 +1,9 @@
 <!DOCTYPE html>
+<!-- ╭──────────────────────────────╮
+     │  Printify Main Page          │
+     │  Hosts printer controls and  │
+     │  shared client overlays.     │
+     ╰──────────────────────────────╯ -->
 <html>
   <head>
     <meta charset="utf-8">
@@ -6,7 +11,6 @@
     <title>Printify</title>
     <link rel="icon" href="/favicon.ico" type="image/x-icon">
     <script src="/scripts/vendor/jquery-3.6.0.min.js"></script>
-    <script src="/scripts/vendor/fabric-6.4.3.min.js"></script>
     <script src="/scripts/vendor/pdf-2.16.105.min.js"></script>
     <link rel="stylesheet" type="text/css" href="/plugins/assistant/clippy.css" media="all">
     <link rel="stylesheet" type="text/css" href="/styles/index.css">
@@ -76,6 +80,10 @@
         <div class="printify-builder__canvas-wrap">
           <div class="printify-builder__canvas-shell">
             <canvas class="printify-builder__canvas" id="labelCanvas" width="425" height="200"></canvas>
+            <button class="printify-builder__tape-resize" id="labelBuilderTapeResize" type="button" role="slider" aria-label="Tape length" aria-orientation="horizontal" aria-valuemin="8" aria-valuenow="60" hidden>
+              <span class="printify-builder__tape-resize-grip" aria-hidden="true"></span>
+              <span class="printify-builder__tape-resize-value" aria-hidden="true">60 mm</span>
+            </button>
           </div>
           <div class="printify-builder__history-buttons" role="group" aria-label="Builder history actions">
             <button class="printify-builder__history-button" id="labelBuilderUndo" type="button" aria-label="Undo" title="Undo (Ctrl/Cmd+Z)" disabled>
@@ -136,21 +144,29 @@
               <div class="printify-builder__text-card-column">
                 <div class="printify-builder__text-card-row">
                   <div class="printify-builder__field printify-builder__field--stacked printify-builder__field--grouped">
-                    <span>Justify</span>
-                    <div class="printify-builder__segmented" role="group" aria-label="Text alignment">
+                    <span>Horizontal</span>
+                    <div class="printify-builder__segmented" role="group" aria-label="Horizontal text alignment">
                       <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAlignLeft" type="button">Left</button>
                       <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAlignCenter" type="button">Center</button>
                       <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAlignRight" type="button">Right</button>
                     </div>
                   </div>
                   <div class="printify-builder__field printify-builder__field--stacked printify-builder__field--grouped">
-                    <span>Box</span>
+                    <span>Vertical</span>
+                    <div class="printify-builder__segmented" role="group" aria-label="Vertical text alignment">
+                      <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAlignTop" type="button">Top</button>
+                      <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAlignMiddle" type="button">Middle</button>
+                      <button class="printer-card__button printer-card__button--secondary" id="labelBuilderAlignBottom" type="button">Bottom</button>
+                    </div>
+                  </div>
+                  <div class="printify-builder__field printify-builder__field--stacked printify-builder__field--grouped">
+                    <span>Position</span>
                     <div class="printify-builder__segmented" role="group" aria-label="Textbox frame layout">
                       <button class="printer-card__button printer-card__button--secondary" id="labelBuilderBoxCenter" type="button">Center</button>
                       <button class="printer-card__button printer-card__button--secondary" id="labelBuilderBoxFill" type="button">Fill</button>
                     </div>
                   </div>
-                  <label class="printify-builder__field printify-builder__field--stacked" for="labelBuilderFont">
+                  <label class="printify-builder__field printify-builder__field--stacked printify-builder__field--grouped" for="labelBuilderFont">
                     Font
                     <select id="labelBuilderFont">
                       <option value="Arial" selected>Arial</option>
@@ -163,9 +179,18 @@
                       <option value="Courier New">Courier New</option>
                     </select>
                   </label>
-                  <label class="printify-builder__field printify-builder__field--stacked" for="labelBuilderFontSize">
+                </div>
+                <div class="printify-builder__font-size-row">
+                  <label class="printify-builder__field printify-builder__field--stacked printify-builder__field--font-size-slider" for="labelBuilderFontSizeSlider">
                     Size
-                    <input id="labelBuilderFontSize" type="number" min="8" step="1" value="40">
+                    <input id="labelBuilderFontSizeSlider" type="range" min="8" max="300" step="1" value="40">
+                  </label>
+                  <label class="printify-builder__field printify-builder__field--stacked printify-builder__field--font-size-value" for="labelBuilderFontSize">
+                    Exact
+                    <span class="printify-builder__font-size-value">
+                      <input id="labelBuilderFontSize" type="number" min="8" step="1" value="40" inputmode="numeric">
+                      <span aria-hidden="true">px</span>
+                    </span>
                   </label>
                 </div>
                 <div class="printify-builder__text-card-row">
@@ -364,23 +389,6 @@
     <script src="/scripts/footerDrawer.js"></script>
     <script src="/scripts/input.js"></script>
     <script src="/scripts/configDrawer.js"></script>
-    <script src="/scripts/labelBuilder/constants.js"></script>
-    <script src="/scripts/labelBuilder/utils.js"></script>
-    <script src="/scripts/labelBuilder/dom.js"></script>
-    <script src="/scripts/labelBuilder/state.js"></script>
-    <script src="/scripts/labelBuilder/canvasRuntime.js"></script>
-    <script src="/scripts/labelBuilder/objects/textbox.js"></script>
-    <script src="/scripts/labelBuilder/objects/code.js"></script>
-    <script src="/scripts/labelBuilder/objects/media.js"></script>
-    <script src="/scripts/labelBuilder/controls.js"></script>
-    <script src="/scripts/labelBuilder/preview.js"></script>
-    <script src="/scripts/labelBuilder/export.js"></script>
-    <script src="/scripts/labelBuilder/templates.js"></script>
-    <script src="/scripts/labelBuilder/history.js"></script>
-    <script src="/scripts/labelBuilder/session.js"></script>
-    <script src="/scripts/labelBuilder/snapping.js"></script>
-    <script src="/scripts/labelBuilder/events.js"></script>
-    <script src="/scripts/labelBuilder.js"></script>
     <script src="/scripts/confirm.js?v=2.7.1-xometry-cancel-fix"></script>
     <script src="/scripts/index.js?v=2.7.1-xometry-cancel-fix"></script>
   </body>

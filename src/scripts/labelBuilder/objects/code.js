@@ -4,10 +4,7 @@
 // │  validation, and serial  │
 // │  aware code-object state │
 // ╰──────────────────────────╯
-(function () {
-  const namespace = window.PrintifyLabelBuilder = window.PrintifyLabelBuilder || {};
-
-  namespace.register('codeObjects', ctx => {
+export default function createCodeObjects(ctx) {
     const { constants, refs, settings, state } = ctx;
 
     const resolveBuilderVersionLabel = () => {
@@ -84,7 +81,7 @@
     const buildCodeImage = async (codeText, codeFormat = 'qrcode', rawCodeText = '') => {
       const codeSourceUrl = buildCodeSourceUrl(codeText, codeFormat);
       const imageElement = await ctx.utils.loadImageElement(codeSourceUrl);
-      const FabricImageCtor = window.fabric.FabricImage || window.fabric.Image;
+      const FabricImageCtor = ctx.fabric.FabricImage || ctx.fabric.Image;
       const codeImage = new FabricImageCtor(imageElement);
 
       ctx.applyBuilderObjectDefaults(codeImage).set({
@@ -245,5 +242,4 @@
       updateCodeObject,
       updateSelectedCode,
     };
-  });
-}());
+}

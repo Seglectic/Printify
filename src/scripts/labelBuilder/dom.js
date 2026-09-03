@@ -4,12 +4,8 @@
 // │  defaults and cached DOM │
 // │  reference collection    │
 // ╰──────────────────────────╯
-(function () {
-  const namespace = window.PrintifyLabelBuilder = window.PrintifyLabelBuilder || {};
-
-  // The builder still boots in a plain-script browser environment, so these
-  // selector defaults are the stable contract between HTML and JS modules.
-  const defaultSettings = {
+// These selectors are the stable contract between the page shell and editor.
+export const defaultSettings = {
     rootSelector: '#labelBuilder',
     titleSelector: '#labelBuilderTitle',
     copySelector: '#labelBuilderCopy',
@@ -29,6 +25,7 @@
     qrCardSelector: '#labelBuilderQrCard',
     fontSelector: '#labelBuilderFont',
     fontSizeSelector: '#labelBuilderFontSize',
+    fontSizeSliderSelector: '#labelBuilderFontSizeSlider',
     autoFitSelector: '#labelBuilderAutoFit',
     textSerialEnabledSelector: '#labelBuilderTextSerialEnabled',
     textSerialValueSelector: '#labelBuilderTextSerialValue',
@@ -68,6 +65,7 @@
     tapeWidthSelector: '#labelBuilderTapeWidth',
     tapeLengthSelector: '#labelBuilderTapeLength',
     tapeAutoLengthSelector: '#labelBuilderTapeAutoLength',
+    tapeResizeSelector: '#labelBuilderTapeResize',
     invertWrapSelector: '#labelBuilderInvertWrap',
     invertPrintSelector: '#labelBuilderInvertPrint',
     imageBoxCenterSelector: '#labelBuilderImageBoxCenter',
@@ -75,6 +73,9 @@
     alignLeftSelector: '#labelBuilderAlignLeft',
     alignCenterSelector: '#labelBuilderAlignCenter',
     alignRightSelector: '#labelBuilderAlignRight',
+    alignTopSelector: '#labelBuilderAlignTop',
+    alignMiddleSelector: '#labelBuilderAlignMiddle',
+    alignBottomSelector: '#labelBuilderAlignBottom',
     boxCenterSelector: '#labelBuilderBoxCenter',
     boxFillSelector: '#labelBuilderBoxFill',
     codeBoxCenterSelector: '#labelBuilderCodeBoxCenter',
@@ -90,7 +91,7 @@
     closeOnPrint: true,
   };
 
-  const createBuilderRefs = settings => {
+export const createBuilderRefs = settings => {
     const root = document.querySelector(settings.rootSelector);
 
     // Query once up front so later modules can work with a shared refs object
@@ -115,6 +116,7 @@
       qrCard: root?.querySelector(settings.qrCardSelector),
       fontSelect: root?.querySelector(settings.fontSelector),
       fontSizeInput: root?.querySelector(settings.fontSizeSelector),
+      fontSizeSlider: root?.querySelector(settings.fontSizeSliderSelector),
       autoFitInput: root?.querySelector(settings.autoFitSelector),
       textSerialEnabledInput: root?.querySelector(settings.textSerialEnabledSelector),
       textSerialValueInput: root?.querySelector(settings.textSerialValueSelector),
@@ -154,6 +156,7 @@
       tapeWidthSelect: root?.querySelector(settings.tapeWidthSelector),
       tapeLengthInput: root?.querySelector(settings.tapeLengthSelector),
       tapeAutoLengthInput: root?.querySelector(settings.tapeAutoLengthSelector),
+      tapeResizeHandle: root?.querySelector(settings.tapeResizeSelector),
       invertWrap: root?.querySelector(settings.invertWrapSelector),
       invertPrintInput: root?.querySelector(settings.invertPrintSelector),
       imageBoxCenterButton: root?.querySelector(settings.imageBoxCenterSelector),
@@ -161,15 +164,12 @@
       alignLeftButton: root?.querySelector(settings.alignLeftSelector),
       alignCenterButton: root?.querySelector(settings.alignCenterSelector),
       alignRightButton: root?.querySelector(settings.alignRightSelector),
+      alignTopButton: root?.querySelector(settings.alignTopSelector),
+      alignMiddleButton: root?.querySelector(settings.alignMiddleSelector),
+      alignBottomButton: root?.querySelector(settings.alignBottomSelector),
       boxCenterButton: root?.querySelector(settings.boxCenterSelector),
       boxFillButton: root?.querySelector(settings.boxFillSelector),
       codeBoxCenterButton: root?.querySelector(settings.codeBoxCenterSelector),
       codeBoxFillButton: root?.querySelector(settings.codeBoxFillSelector),
     };
   };
-
-  namespace.dom = {
-    createBuilderRefs,
-    defaultSettings,
-  };
-}());

@@ -4,10 +4,7 @@
 // │  backend monochrome      │
 // │  preview lifecycle       │
 // ╰──────────────────────────╯
-(function () {
-  const namespace = window.PrintifyLabelBuilder = window.PrintifyLabelBuilder || {};
-
-  namespace.register('preview', ctx => {
+export default function createPreview(ctx) {
     const { refs, settings, state } = ctx;
 
     const revokeMonochromePreviewUrl = () => {
@@ -30,7 +27,7 @@
     };
 
     const ensureSerialState = object => {
-      if (object instanceof window.fabric.Textbox) return ctx.ensureTextboxSerialState(object);
+      if (object instanceof ctx.fabric.Textbox) return ctx.ensureTextboxSerialState(object);
       if (ctx.isCodeObject(object)) return ctx.ensureCodeSerialState(object);
       return object;
     };
@@ -41,7 +38,7 @@
     });
 
     const commitObjectState = async (object, options = {}) => {
-      if (object instanceof window.fabric.Textbox) {
+      if (object instanceof ctx.fabric.Textbox) {
         ctx.commitTextboxState(object, options);
         return;
       }
@@ -57,7 +54,7 @@
       // Preview mutates live canvas objects temporarily rather than cloning the
       // whole document, so restoreSerialPreviewState must remain its partner.
       for (const object of builderCanvas.getObjects()) {
-        if (object instanceof window.fabric.Textbox) {
+        if (object instanceof ctx.fabric.Textbox) {
           ctx.ensureTextboxSerialState(object);
           if (!object.serialEnabled) continue;
 
@@ -95,7 +92,7 @@
       const builderCanvas = ctx.ensureCanvas();
 
       for (const object of builderCanvas.getObjects()) {
-        if (object instanceof window.fabric.Textbox) {
+        if (object instanceof ctx.fabric.Textbox) {
           ctx.ensureTextboxSerialState(object);
           if (object.serialEnabled) {
             ctx.refreshTextboxSerialPreview(object, { skipRender: true });
@@ -245,5 +242,4 @@
       stopMonochromePreview,
       stopSerialPreview,
     };
-  });
-}());
+}

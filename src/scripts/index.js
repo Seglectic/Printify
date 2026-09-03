@@ -1,3 +1,8 @@
+// ╭──────────────────────────╮
+// │  Printify Client         │
+// │  Owns printer cards,     │
+// │  uploads, and app state. │
+// ╰──────────────────────────╯
 (function () {
   // ╭──────────────────────────╮
   // │  Shared constants        │
@@ -167,6 +172,7 @@
     assistantBootTimer: null,
     assistantSpeechTimer: null,
     labelBuilder: null,
+    labelBuilderPromise: null,
     logDrawer: null,
     clientPluginsById: {},
     clientPluginModules: {},
@@ -2369,10 +2375,42 @@
     appState.logDrawer.close();
   };
 
+  const setLabelBuilderTriggerPending = (trigger, isPending) => {
+    if (!trigger) return;
+
+    trigger.classList.toggle('is-builder-opening', isPending);
+    if (isPending) {
+      trigger.setAttribute('aria-busy', 'true');
+    } else {
+      trigger.removeAttribute('aria-busy');
+    }
+
+    if (trigger.matches('[data-role="label-builder"]')) {
+      trigger.disabled = isPending;
+      trigger.textContent = isPending ? 'Opening…' : 'Label Builder';
+    }
+  };
+
+  const openPrinterLabelBuilder = async (printer, trigger) => {
+    if (!printer?.labelBuilder || trigger?.getAttribute('aria-busy') === 'true') return;
+
+    setOpenPrinter(null);
+    setLabelBuilderTriggerPending(trigger, true);
+    try {
+      const labelBuilder = await ensureLabelBuilder();
+      labelBuilder.open(printer);
+    } catch (error) {
+      showFeedback(error.message || 'Could not open the label builder.');
+      console.error(error);
+    } finally {
+      setLabelBuilderTriggerPending(trigger, false);
+    }
+  };
+
   const bindPrinterEvents = () => {
     document.addEventListener('dragenter', closeLogDrawerForFileDrag);
 
-    printerGrid.addEventListener('click', event => {
+    printerGrid.addEventListener('click', async event => {
       const chooseFilesButton = event.target.closest('[data-role="choose-files"]');
       if (chooseFilesButton) {
         event.stopPropagation();
@@ -2385,19 +2423,27 @@
       if (labelBuilderButton) {
         event.stopPropagation();
         const printer = getPrinterById(labelBuilderButton.getAttribute('data-printer-id'));
-        appState.labelBuilder?.open(printer);
+        await openPrinterLabelBuilder(printer, labelBuilderButton);
         return;
       }
 
       const card = event.target.closest('[data-role="printer-card"]');
       if (!card) return;
       const printerId = card.getAttribute('data-printer-id');
+      const printer = getPrinterById(printerId);
+      if (printer?.labelBuilder) {
+        await openPrinterLabelBuilder(printer, card);
+        return;
+      }
       setOpenPrinter(appState.openPrinterId === printerId ? null : printerId);
     });
 
     printerGrid.addEventListener('contextmenu', event => {
-      if (!event.target.closest('[data-role="printer-card"]')) return;
+      const card = event.target.closest('[data-role="printer-card"]');
+      if (!card) return;
       event.preventDefault();
+      const printerId = card.getAttribute('data-printer-id');
+      setOpenPrinter(appState.openPrinterId === printerId ? null : printerId);
     });
 
     document.addEventListener('click', event => {
@@ -2407,13 +2453,24 @@
       setOpenPrinter(null);
     });
 
-    printerGrid.addEventListener('keydown', event => {
+    printerGrid.addEventListener('keydown', async event => {
       const card = event.target.closest('[data-role="printer-card"]');
-      if (!card) return;
+      if (!card || event.target !== card) return;
+
+      const printerId = card.getAttribute('data-printer-id');
+      if (event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey)) {
+        event.preventDefault();
+        setOpenPrinter(appState.openPrinterId === printerId ? null : printerId);
+        return;
+      }
 
       if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault();
-        const printerId = card.getAttribute('data-printer-id');
+        const printer = getPrinterById(printerId);
+        if (printer?.labelBuilder) {
+          await openPrinterLabelBuilder(printer, card);
+          return;
+        }
         setOpenPrinter(appState.openPrinterId === printerId ? null : printerId);
       }
     });
@@ -2566,10 +2623,7 @@
     connect();
   };
 
-  const bootLabelBuilder = () => {
-    if (typeof window.createPrintifyLabelBuilder !== 'function') return;
-
-    appState.labelBuilder = window.createPrintifyLabelBuilder({
+  const getLabelBuilderOptions = () => ({
       onPrint: (printer, files, extraFields) => handlePrinterFiles(printer.id, files, extraFields),
       onError: error => showFeedback(error.message),
       getMonochromePreviewFields: printer => getPrinterUploadOptions(printer?.id),
@@ -2592,7 +2646,60 @@
         persistPrinterOptionState();
       },
       closeOnPrint: false,
-    });
+  });
+
+  const loadClassicScript = src => new Promise((resolve, reject) => {
+    const existingScript = document.querySelector(`script[data-printify-src="${src}"]`);
+
+    if (existingScript) {
+      if (existingScript.dataset.loaded === 'true') {
+        resolve();
+        return;
+      }
+      existingScript.addEventListener('load', resolve, { once: true });
+      existingScript.addEventListener('error', () => reject(new Error(`Could not load ${src}.`)), { once: true });
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = src;
+    script.dataset.printifySrc = src;
+    script.addEventListener('load', () => {
+      script.dataset.loaded = 'true';
+      resolve();
+    }, { once: true });
+    script.addEventListener('error', () => {
+      script.remove();
+      reject(new Error(`Could not load ${src}.`));
+    }, { once: true });
+    document.head.appendChild(script);
+  });
+
+  const ensureLabelBuilder = async () => {
+    if (appState.labelBuilder) return appState.labelBuilder;
+
+    if (!appState.labelBuilderPromise) {
+      appState.labelBuilderPromise = (async () => {
+        if (!window.fabric) {
+          await loadClassicScript('/scripts/vendor/fabric-6.4.3.min.js');
+        }
+
+        const { createPrintifyLabelBuilder } = await import('/scripts/labelBuilder/index.js');
+        const labelBuilder = createPrintifyLabelBuilder(getLabelBuilderOptions());
+
+        if (!labelBuilder) {
+          throw new Error('The label builder could not initialize.');
+        }
+
+        appState.labelBuilder = labelBuilder;
+        return labelBuilder;
+      })().catch(error => {
+        appState.labelBuilderPromise = null;
+        throw error;
+      });
+    }
+
+    return appState.labelBuilderPromise;
   };
 
   const loadClientPluginModule = async pluginConfig => {
@@ -2695,7 +2802,6 @@
     bindPrinterEvents();
     bindClientPluginTriggers();
     bootLogDrawer();
-    bootLabelBuilder();
     bootStatsSocket();
 
     try {

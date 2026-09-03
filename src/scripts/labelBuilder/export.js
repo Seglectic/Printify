@@ -4,10 +4,7 @@
 // │  rendering and print     │
 // │  handoff                 │
 // ╰──────────────────────────╯
-(function () {
-  const namespace = window.PrintifyLabelBuilder = window.PrintifyLabelBuilder || {};
-
-  namespace.register('export', ctx => {
+export default function createExport(ctx) {
     const { refs, settings, state } = ctx;
 
     const withCanvasExportState = async callback => {
@@ -154,5 +151,4 @@
       print,
       withCanvasExportState,
     };
-  });
-}());
+}

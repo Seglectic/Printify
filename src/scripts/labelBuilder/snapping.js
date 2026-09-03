@@ -4,10 +4,7 @@
 // │  primitives for moving   │
 // │  and scaling objects     │
 // ╰──────────────────────────╯
-(function () {
-  const namespace = window.PrintifyLabelBuilder = window.PrintifyLabelBuilder || {};
-
-  namespace.register('snapping', ctx => {
+export default function createSnapping(ctx) {
     const { constants, state } = ctx;
 
     const clearSnapLocks = () => {
@@ -185,7 +182,7 @@
     };
 
     const previewCanvasGuides = object => {
-      if (!object || object instanceof window.fabric.ActiveSelection) {
+      if (!object || object instanceof ctx.fabric.ActiveSelection) {
         resetSnapGuides();
         return;
       }
@@ -204,7 +201,7 @@
     };
 
     const applyCanvasGuideSnap = object => {
-      if (!object || object instanceof window.fabric.ActiveSelection) {
+      if (!object || object instanceof ctx.fabric.ActiveSelection) {
         resetSnapGuides();
         return;
       }
@@ -347,5 +344,4 @@
       bindSnappingEvents,
       resetSnapGuides,
     };
-  });
-}());
+}

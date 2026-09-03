@@ -4,10 +4,7 @@
 // │  DOM listeners, and      │
 // │  keyboard affordances    │
 // ╰──────────────────────────╯
-(function () {
-  const namespace = window.PrintifyLabelBuilder = window.PrintifyLabelBuilder || {};
-
-  namespace.register('events', ctx => {
+export default function createEvents(ctx) {
     const { refs, settings, state } = ctx;
 
     const bindCanvasEvents = () => {
@@ -45,23 +42,26 @@
       });
 
       builderCanvas.on('text:changed', event => {
-        if (event.target instanceof window.fabric.Textbox) {
+        if (event.target instanceof ctx.fabric.Textbox) {
           ctx.ensureTextboxSerialState(event.target);
           event.target.serialTemplateText = String(event.target.text || '');
           event.target.isPlaceholderText = false;
           event.target.width = event.target.frameWidth || event.target.width;
           ctx.syncTextboxWrappingBehavior(event.target);
+          ctx.syncTapeTextboxWidth(event.target);
           if (event.target.autoFitText) ctx.fitTextboxFontToFrame(event.target);
           event.target.initDimensions();
+          ctx.syncTextboxOverflowState(event.target);
           event.target.setCoords();
         }
         ctx.syncTextControls(event.target || null);
         ctx.refreshBuilderMeta();
         void ctx.syncAutoFitTapeCanvas();
+        ctx.queueHistoryCheckpoint();
       });
 
       builderCanvas.on('mouse:down', event => {
-        if (!(event.target instanceof window.fabric.Textbox)) return;
+        if (!(event.target instanceof ctx.fabric.Textbox)) return;
         if (!event.target.isPlaceholderText) return;
         builderCanvas.setActiveObject(event.target);
         ctx.beginTextboxEditing(event.target);
@@ -74,13 +74,26 @@
         await ctx.recordHistoryCheckpoint();
       });
 
+      builderCanvas.on('object:resizing', event => {
+        if (!(event.target instanceof ctx.fabric.Textbox)) return;
+        if (event.transform?.corner === 'ml' || event.transform?.corner === 'mr') {
+          event.target.frameWidth = event.target.width;
+        }
+        if (event.target.autoFitText) ctx.fitTextboxFontToFrame(event.target);
+        event.target.initDimensions();
+        ctx.syncTextboxOverflowState(event.target);
+        ctx.syncTextControls(event.target);
+        ctx.refreshBuilderMeta();
+        builderCanvas.requestRenderAll();
+      });
+
       builderCanvas.on('object:rotating', event => {
         if (!event.target) return;
         ctx.applyBuilderObjectDefaults(event.target);
       });
 
       builderCanvas.on('mouse:dblclick', event => {
-        if (!(event.target instanceof window.fabric.Textbox)) return;
+        if (!(event.target instanceof ctx.fabric.Textbox)) return;
         builderCanvas.setActiveObject(event.target);
         ctx.beginTextboxEditing(event.target);
       });
@@ -119,6 +132,9 @@
       refs.alignLeftButton?.addEventListener('click', () => ctx.updateSelectedTextbox({ textAlign: 'left' }));
       refs.alignCenterButton?.addEventListener('click', () => ctx.updateSelectedTextbox({ textAlign: 'center' }));
       refs.alignRightButton?.addEventListener('click', () => ctx.updateSelectedTextbox({ textAlign: 'right' }));
+      refs.alignTopButton?.addEventListener('click', () => ctx.setTextboxVerticalAlign('top'));
+      refs.alignMiddleButton?.addEventListener('click', () => ctx.setTextboxVerticalAlign('middle'));
+      refs.alignBottomButton?.addEventListener('click', () => ctx.setTextboxVerticalAlign('bottom'));
       refs.boxCenterButton?.addEventListener('click', () => ctx.applyTextboxLayoutPreset('center'));
       refs.boxFillButton?.addEventListener('click', () => ctx.applyTextboxLayoutPreset('fill'));
       refs.imageBoxCenterButton?.addEventListener('click', () => ctx.applyVisualObjectLayoutPreset('center'));
@@ -133,6 +149,7 @@
 
         state.currentTapeWidthMm = nextTapeWidthMm;
         await ctx.applyTapeCanvasSize(state.currentPrinter);
+        await ctx.recordHistoryCheckpoint();
       });
       refs.tapeLengthInput?.addEventListener('input', async () => {
         if (!state.currentPrinter || !ctx.isTapePrinter(state.currentPrinter)) return;
@@ -144,7 +161,11 @@
         ctx.refreshBuilderMeta();
         await ctx.applyTapeCanvasSize(state.currentPrinter);
       });
-      refs.tapeAutoLengthInput?.addEventListener('change', () => {
+      refs.tapeLengthInput?.addEventListener('change', () => {
+        refs.tapeLengthInput.value = String(ctx.utils.normalizeTapeLengthMm(state.currentTapeLengthMm));
+        void ctx.recordHistoryCheckpoint();
+      });
+      refs.tapeAutoLengthInput?.addEventListener('change', async () => {
         if (!state.currentPrinter || !ctx.isTapePrinter(state.currentPrinter)) return;
 
         state.tapeAutoLengthEnabled = Boolean(refs.tapeAutoLengthInput.checked);
@@ -152,7 +173,8 @@
           ? Math.max(state.tapeMinimumLengthMm, ctx.getRequiredTapeLengthMm(state.currentPrinter))
           : state.tapeMinimumLengthMm;
         ctx.refreshBuilderMeta();
-        void ctx.syncAutoFitTapeCanvas();
+        await ctx.syncAutoFitTapeCanvas();
+        await ctx.recordHistoryCheckpoint();
       });
       refs.invertPrintInput?.addEventListener('change', () => {
         state.invertPrintEnabled = Boolean(refs.invertPrintInput.checked);
@@ -316,5 +338,4 @@
       bindCanvasEvents,
       bindDomEvents,
     };
-  });
-}());
+}

@@ -4,10 +4,7 @@
 // │  fitting helpers and     │
 // │  imported image support  │
 // ╰──────────────────────────╯
-(function () {
-  const namespace = window.PrintifyLabelBuilder = window.PrintifyLabelBuilder || {};
-
-  namespace.register('mediaObjects', ctx => {
+export default function createMediaObjects(ctx) {
     const { settings } = ctx;
 
     const fitObjectToCanvas = object => {
@@ -68,7 +65,7 @@
       try {
         const dataUrl = await ctx.utils.readFileAsDataUrl(file);
         const imageElement = await ctx.utils.loadImageElement(dataUrl);
-        const FabricImageCtor = window.fabric.FabricImage || window.fabric.Image;
+        const FabricImageCtor = ctx.fabric.FabricImage || ctx.fabric.Image;
         const image = new FabricImageCtor(imageElement);
         ctx.applyBuilderObjectDefaults(image).set({
           printifyObjectType: 'image',
@@ -90,5 +87,4 @@
       applyVisualObjectLayoutPreset,
       fitObjectToCanvas,
     };
-  });
-}());
+}

@@ -4,12 +4,8 @@
 // │  viewport scaling, and   │
 // │  shared canvas helpers   │
 // ╰──────────────────────────╯
-(function () {
-  const namespace = window.PrintifyLabelBuilder = window.PrintifyLabelBuilder || {};
-  const constants = namespace.constants;
-  const utils = namespace.utils;
-
-  namespace.register('canvasRuntime', ctx => {
+export default function createCanvasRuntime(ctx) {
+    const { constants, utils } = ctx;
     const { refs, settings, state } = ctx;
 
     const ensureSnapOverlay = () => {
@@ -141,7 +137,7 @@
 
       // Keep the canvas singleton inside builder state so multiple helper
       // modules can safely compose around the same Fabric instance.
-      state.canvas = new window.fabric.Canvas(settings.canvasId, {
+      state.canvas = new ctx.fabric.Canvas(settings.canvasId, {
         preserveObjectStacking: true,
         backgroundColor: '#ffffff',
         enableRetinaScaling: false,
@@ -212,7 +208,12 @@
         Number.parseFloat(shellStyles.paddingLeft || '0')
         + Number.parseFloat(shellStyles.paddingRight || '0')
       );
-      const availableWidth = Math.max(240, refs.canvasShell.clientWidth - horizontalPadding);
+      // Tape mode reserves a real gutter for the cut-edge handle so pointer
+      // input never competes with Fabric's editable canvas surface.
+      const tapeResizeGutter = isTapePrinter(state.currentPrinter)
+        ? constants.TAPE_RESIZE_GUTTER_PX
+        : 0;
+      const availableWidth = Math.max(240, refs.canvasShell.clientWidth - horizontalPadding - (tapeResizeGutter * 2));
       const viewportHeight = window.innerHeight || document.documentElement.clientHeight || logicalHeight;
       const availableHeight = Math.max(180, Math.floor(viewportHeight * 0.46));
       const displayScale = Math.min(1, availableWidth / logicalWidth, availableHeight / logicalHeight);
@@ -224,10 +225,12 @@
         element.style.width = `${displayWidth}px`;
         element.style.height = `${displayHeight}px`;
       });
+      container.style.margin = '';
 
       syncSnapOverlayViewport();
       updateCanvasControlAppearance();
       syncMonochromePreviewViewport();
+      ctx.syncTapeResizeHandle?.(state.currentPrinter);
       builderCanvas.calcOffset();
       builderCanvas.requestRenderAll();
     };
@@ -330,13 +333,15 @@
       }
 
       if (refs.tapeLengthInput) {
-        refs.tapeLengthInput.value = String(utils.normalizeTapeLengthMm(state.tapeMinimumLengthMm));
+        refs.tapeLengthInput.value = String(utils.normalizeTapeLengthMm(state.currentTapeLengthMm));
         refs.tapeLengthInput.disabled = false;
       }
 
       if (refs.tapeAutoLengthInput) {
         refs.tapeAutoLengthInput.checked = state.tapeAutoLengthEnabled;
       }
+
+      ctx.syncTapeResizeHandle?.(printer);
 
       if (refs.invertPrintInput) {
         refs.invertPrintInput.checked = state.invertPrintEnabled;
@@ -406,7 +411,7 @@
         : utils.getPrinterCanvasSize(printer)
     );
 
-    const applyTapeCanvasSize = async printer => {
+    const applyTapeCanvasSize = async (printer, options = {}) => {
       if (!printer || !isTapePrinter(printer)) {
         return;
       }
@@ -418,7 +423,7 @@
 
       builderCanvas.setDimensions({ width, height });
       builderCanvas.getObjects().forEach(object => {
-        if (object instanceof window.fabric.Textbox) {
+        if (object instanceof ctx.fabric.Textbox) {
           object.frameWidth = Math.max(48, Math.min(object.frameWidth || object.width || 0, width));
           object.frameHeight = Math.max(32, Math.min(object.frameHeight || object.height || 0, height));
           object.width = object.frameWidth;
@@ -441,9 +446,14 @@
       });
 
       refreshBuilderMeta();
+      if (refs.tapeLengthInput && document.activeElement !== refs.tapeLengthInput) {
+        refs.tapeLengthInput.value = String(utils.normalizeTapeLengthMm(state.currentTapeLengthMm));
+      }
       applyCanvasViewportScale();
       builderCanvas.requestRenderAll();
-      await persistTapePreference(printer);
+      if (options.persistPreference !== false) {
+        await persistTapePreference(printer);
+      }
     };
 
     const syncAutoFitTapeCanvas = async () => {
@@ -469,7 +479,7 @@
 
     const focusObject = object => {
       const builderCanvas = ensureCanvas();
-      if (object instanceof window.fabric.Textbox) state.lastSelectedTextObject = object;
+      if (object instanceof ctx.fabric.Textbox) state.lastSelectedTextObject = object;
       if (isCodeObject(object)) state.lastSelectedCodeObject = object;
       builderCanvas.setActiveObject(object);
       ctx.syncTextControls(object || null);
@@ -478,7 +488,7 @@
 
     const getEditableTextObject = () => {
       const activeObject = ensureCanvas().getActiveObject();
-      return activeObject instanceof window.fabric.Textbox ? activeObject : null;
+      return activeObject instanceof ctx.fabric.Textbox ? activeObject : null;
     };
 
     const getEditableCodeObject = () => {
@@ -500,10 +510,10 @@
 
     const keepWorkingOnActiveObject = expectedType => {
       const activeObject = ensureCanvas().getActiveObject();
-      if (!activeObject || activeObject instanceof window.fabric.ActiveSelection) return false;
+      if (!activeObject || activeObject instanceof ctx.fabric.ActiveSelection) return false;
 
       const typeMatches = (
-        (expectedType === 'text' && activeObject instanceof window.fabric.Textbox) ||
+        (expectedType === 'text' && activeObject instanceof ctx.fabric.Textbox) ||
         (expectedType === 'image' && isImageObject(activeObject)) ||
         (expectedType === 'code' && isCodeObject(activeObject))
       );
@@ -530,7 +540,7 @@
       const activeObject = builderCanvas.getActiveObject();
 
       if (!activeObject) return false;
-      if (activeObject instanceof window.fabric.ActiveSelection) {
+      if (activeObject instanceof ctx.fabric.ActiveSelection) {
         activeObject.getObjects().forEach(object => builderCanvas.remove(object));
       } else {
         if (activeObject === state.lastSelectedTextObject) state.lastSelectedTextObject = null;
@@ -569,7 +579,7 @@
         object.setCoords();
       };
 
-      if (activeObject instanceof window.fabric.ActiveSelection) {
+      if (activeObject instanceof ctx.fabric.ActiveSelection) {
         activeObject.getObjects().forEach(applyDelta);
         activeObject.setCoords();
       } else {
@@ -616,5 +626,4 @@
       updateCanvasControlAppearance,
       withCanvasTransitionMask,
     };
-  });
-}());
+}

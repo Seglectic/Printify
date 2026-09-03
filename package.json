@@ -21,6 +21,7 @@
 		"qs": "6.15.1"
 	},
 	"scripts": {
-		"start": "node Printify.js"
+		"start": "node Printify.js",
+		"test": "node --test"
 	}
 }

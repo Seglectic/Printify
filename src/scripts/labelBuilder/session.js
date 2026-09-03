@@ -4,10 +4,7 @@
 // │  close/reset/restore     │
 // │  flows                   │
 // ╰──────────────────────────╯
-(function () {
-  const namespace = window.PrintifyLabelBuilder = window.PrintifyLabelBuilder || {};
-
-  namespace.register('session', ctx => {
+export default function createSession(ctx) {
     const { refs, settings, state } = ctx;
 
     const applyPrinterCopy = printer => {
@@ -148,5 +145,4 @@
       resetCanvas,
       restoreBuilderSession,
     };
-  });
-}());
+}

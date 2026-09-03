@@ -4,11 +4,12 @@
 // │  schema, local templates │
 // │  and remote template UI  │
 // ╰──────────────────────────╯
-(function () {
-  const namespace = window.PrintifyLabelBuilder = window.PrintifyLabelBuilder || {};
+import { createRemoteTemplateApi } from './adapters/remoteTemplates.js';
+import { migrateTemplateDocument } from './model/templateSchema.mjs';
 
-  namespace.register('templates', ctx => {
+export default function createTemplates(ctx) {
     const { constants, refs, settings, state } = ctx;
+    const remoteTemplateApi = createRemoteTemplateApi();
 
     const getLocalTemplates = () => {
       try {
@@ -69,7 +70,7 @@
     };
 
     const serializeCanvasObject = object => {
-      if (object instanceof window.fabric.Textbox) {
+      if (object instanceof ctx.fabric.Textbox) {
         ctx.ensureTextboxSerialState(object);
         return {
           type: 'text',
@@ -79,6 +80,7 @@
           fontWeight: object.fontWeight || '700',
           fill: object.fill || '#111111',
           textAlign: object.textAlign || 'center',
+          verticalAlign: object.verticalAlign || 'middle',
           padding: object.padding || 10,
           left: object.left || 0,
           top: object.top || 0,
@@ -86,10 +88,12 @@
           frameWidth: object.frameWidth || object.width || 0,
           frameHeight: object.frameHeight || object.height || 0,
           angle: object.angle || 0,
-          scaleX: object.scaleX || 1,
-          scaleY: object.scaleY || 1,
+          scaleX: 1,
+          scaleY: 1,
           autoFitText: object.autoFitText !== false,
           maxAutoFitFontSize: object.maxAutoFitFontSize || object.fontSize || 28,
+          tapeAutoGrowWidth: Boolean(object.tapeAutoGrowWidth),
+          tapeMinimumFrameWidth: object.tapeMinimumFrameWidth || object.frameWidth || object.width || 0,
           serialEnabled: Boolean(object.serialEnabled),
           serialCurrentValue: object.serialCurrentValue || 1,
           isPlaceholderText: Boolean(object.isPlaceholderText),
@@ -195,9 +199,12 @@
         fontWeight: templateObject.fontWeight || '700',
         fill: templateObject.fill || '#111111',
         textAlign: templateObject.textAlign || 'center',
+        verticalAlign: templateObject.verticalAlign || 'middle',
         padding: templateObject.padding || 10,
         autoFitText: templateObject.autoFitText !== false,
         maxAutoFitFontSize: templateObject.maxAutoFitFontSize || templateObject.fontSize || 28,
+        tapeAutoGrowWidth: Boolean(templateObject.tapeAutoGrowWidth),
+        tapeMinimumFrameWidth: templateObject.tapeMinimumFrameWidth || templateObject.frameWidth || templateObject.width || 160,
       });
 
       textbox.set({
@@ -212,6 +219,11 @@
       textbox.serialTemplateText = String(templateObject.text || '');
       textbox.isPlaceholderText = Boolean(templateObject.isPlaceholderText);
       ctx.refreshTextboxSerialPreview(textbox, { skipRender: true });
+      // A snapshot's font size is authoritative. Re-running auto-fit here made
+      // undo subtly change typography even when geometry had not changed.
+      textbox.set('fontSize', templateObject.fontSize || 28);
+      textbox.initDimensions();
+      ctx.syncTextboxOverflowState(textbox);
       textbox.setCoords();
       return textbox;
     };
@@ -222,7 +234,7 @@
       }
 
       const imageElement = await ctx.utils.loadImageElement(templateObject.sourceUrl);
-      const FabricImageCtor = window.fabric.FabricImage || window.fabric.Image;
+      const FabricImageCtor = ctx.fabric.FabricImage || ctx.fabric.Image;
       const image = new FabricImageCtor(imageElement);
       ctx.applyBuilderObjectDefaults(image).set({
         printifyObjectType: 'image',
@@ -258,6 +270,7 @@
     };
 
     const hydrateCanvasFromDocument = async (templateDocument, runtime = ctx, options = {}) => {
+      templateDocument = migrateTemplateDocument(templateDocument);
       const builderCanvas = runtime.ensureCanvas();
       const templateBuilderState = templateDocument?.builderState || {};
 
@@ -333,91 +346,6 @@
       if (options.skipHistoryReset !== true && typeof runtime.resetHistory === 'function') {
         await runtime.resetHistory();
       }
-    };
-
-    const remoteTemplateApi = {
-      // Keep the fetch adapter shallow and isolated here so future folder tree,
-      // rename/delete, or auth changes do not spill into canvas modules.
-      async list(directoryPath = '') {
-        const response = await fetch(`/label-builder/templates/remote?path=${encodeURIComponent(directoryPath)}`);
-        if (!response.ok) {
-          const payload = await response.json().catch(() => ({}));
-          throw new Error(payload.error || 'Could not list remote templates.');
-        }
-        return response.json();
-      },
-
-      async load(templatePath) {
-        const response = await fetch(`/label-builder/templates/remote/file?path=${encodeURIComponent(templatePath)}`);
-        if (!response.ok) {
-          const payload = await response.json().catch(() => ({}));
-          throw new Error(payload.error || 'Could not load remote template.');
-        }
-        return response.json();
-      },
-
-      async save(payload) {
-        const response = await fetch('/label-builder/templates/remote', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload),
-        });
-
-        if (!response.ok) {
-          const body = await response.json().catch(() => ({}));
-          throw new Error(body.error || 'Could not save remote template.');
-        }
-
-        return response.json();
-      },
-
-      async createFolder(directoryPath, name) {
-        const response = await fetch('/label-builder/templates/remote/folders', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            directoryPath,
-            name,
-          }),
-        });
-
-        if (!response.ok) {
-          const body = await response.json().catch(() => ({}));
-          throw new Error(body.error || 'Could not create remote folder.');
-        }
-
-        return response.json();
-      },
-
-      async delete(templatePath) {
-        const response = await fetch(`/label-builder/templates/remote/file?path=${encodeURIComponent(templatePath)}`, {
-          method: 'DELETE',
-        });
-
-        if (!response.ok) {
-          const payload = await response.json().catch(() => ({}));
-          throw new Error(payload.error || 'Could not delete remote template.');
-        }
-
-        return response.json();
-      },
-
-      async deleteFolder(directoryPath) {
-        const response = await fetch(`/label-builder/templates/remote/folders?path=${encodeURIComponent(directoryPath)}`, {
-          method: 'DELETE',
-        });
-
-        if (!response.ok) {
-          const payload = await response.json().catch(() => ({}));
-          throw new Error(payload.error || 'Could not delete remote folder.');
-        }
-
-        return response.json();
-      },
     };
 
     const confirmTemplateDelete = async (item, options = {}) => {
@@ -754,5 +682,4 @@
       refreshTemplateListing,
       serializeCanvasToDocument,
     };
-  });
-}());
+}

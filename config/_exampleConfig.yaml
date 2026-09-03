@@ -68,7 +68,7 @@ plugins:
 #      displayName: "Brother P-Touch Cube"
 #      printMode: "cli"
 #      cliCommand: "ptouch-print"
-#      cliArgs: ["--image", "{file}", "--chain"]
+#      cliArgs: ["--image", "{file}"]
 #      output: "png"
 #      size: "tape"
 #      tapes: [12, 24]

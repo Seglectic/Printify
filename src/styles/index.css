@@ -163,13 +163,13 @@ img {
   backdrop-filter: blur(10px);
   box-shadow: var(--printify-shadow);
   transition:
-    width 320ms var(--printify-quick-config-morph),
-    height 320ms var(--printify-quick-config-morph),
-    border-radius 280ms var(--printify-quick-config-morph),
-    background 160ms ease 70ms,
-    border-color 180ms ease,
-    box-shadow 180ms ease,
-    transform 180ms ease;
+    width 240ms var(--printify-quick-config-morph),
+    height 240ms var(--printify-quick-config-morph),
+    border-radius 220ms var(--printify-quick-config-morph),
+    background 130ms ease 45ms,
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    transform 140ms ease;
   transform-origin: top right;
   -webkit-user-select: none;
   user-select: none;
@@ -182,13 +182,13 @@ img {
   background: color-mix(in srgb, var(--printify-builder-surface) 88%, var(--printify-page));
   box-shadow: 0 26px 58px rgba(0, 0, 0, 0.32);
   transition:
-    width 400ms var(--printify-quick-config-morph),
-    height 400ms var(--printify-quick-config-morph),
-    border-radius 340ms var(--printify-quick-config-morph),
-    background 200ms ease 24ms,
-    border-color 180ms ease,
-    box-shadow 220ms ease 40ms,
-    transform 180ms ease;
+    width 280ms var(--printify-quick-config-morph),
+    height 280ms var(--printify-quick-config-morph),
+    border-radius 250ms var(--printify-quick-config-morph),
+    background 150ms ease 16ms,
+    border-color 140ms ease,
+    box-shadow 170ms ease 24ms,
+    transform 140ms ease;
 }
 
 .printify-quick-config.is-menu-open {
@@ -232,7 +232,7 @@ img {
   mask-repeat: no-repeat;
   mask-size: contain;
   transform-origin: center;
-  transition: transform 320ms var(--printify-quick-config-morph);
+  transition: transform 230ms var(--printify-quick-config-morph);
 }
 
 .printify-quick-config.is-open .printify-theme-toggle > span {
@@ -290,8 +290,8 @@ img {
   transform: translate3d(10px, -4px, 0) scale(0.985);
   transform-origin: top right;
   transition:
-    opacity 100ms ease,
-    transform 150ms var(--printify-quick-config-morph);
+    opacity 80ms ease,
+    transform 110ms var(--printify-quick-config-morph);
 }
 
 .printify-quick-config.is-open .printify-quick-config__body {
@@ -299,8 +299,8 @@ img {
   pointer-events: auto;
   transform: translate3d(0, 0, 0) scale(1);
   transition:
-    opacity 180ms ease 150ms,
-    transform 300ms var(--printify-quick-config-morph) 105ms;
+    opacity 120ms ease 92ms,
+    transform 190ms var(--printify-quick-config-morph) 62ms;
 }
 
 @media (prefers-reduced-motion: reduce) {

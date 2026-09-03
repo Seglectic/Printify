@@ -1074,7 +1074,7 @@
         if (!quickConfigOpen) {
           quickConfigBody.hidden = true;
         }
-      }, 360);
+      }, 280);
     }
 
     themeToggle.setAttribute('aria-expanded', String(quickConfigOpen));

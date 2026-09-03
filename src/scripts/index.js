@@ -1553,10 +1553,20 @@
       appState.openPrinterId = null;
     }
 
+    printerGrid.classList.toggle('is-empty', !printers.length);
+
     if (!printers.length) {
       printerGrid.innerHTML = `
-        <article class="printer-card printer-card--empty">
-          <p class="printer-card__empty-copy">No printers are configured on the server.</p>
+        <article class="printer-empty-state" role="status">
+          <div class="printer-empty-state__icon-stage" aria-hidden="true">
+            <img class="printer-empty-state__icon printer-empty-state__icon--printer" src="/assets/icons/printer-status.svg" alt="">
+            <span class="printer-empty-state__blocked" aria-hidden="true">
+              <img class="printer-empty-state__icon printer-empty-state__icon--blocked" src="/assets/icons/circle-slash.svg" alt="">
+            </span>
+          </div>
+          <p class="printer-empty-state__eyebrow">Device status</p>
+          <h2 class="printer-empty-state__title">No printers detected</h2>
+          <p class="printer-empty-state__copy">Check the power and connection. Configured printers will appear here automatically when Printify finds them.</p>
         </article>
       `;
       return;
@@ -1576,7 +1586,7 @@
     );
     const nextPrinterIds = new Set(printers.map(printer => printer.id));
 
-    printerGrid.querySelector('.printer-card--empty')?.remove();
+    printerGrid.querySelector('.printer-empty-state')?.remove();
 
     existingCards.forEach((card, printerId) => {
       if (nextPrinterIds.has(printerId)) {

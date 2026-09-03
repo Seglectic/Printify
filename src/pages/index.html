@@ -58,9 +58,15 @@
 
     <div class="printify-app">
       <main class="printify-shell">
-        <section class="printify-printers" id="printerGrid" aria-live="polite">
-          <article class="printer-card printer-card--empty">
-            <p class="printer-card__empty-copy">Loading printer configuration from the server...</p>
+        <section class="printify-printers is-empty" id="printerGrid" aria-live="polite">
+          <article class="printer-empty-state printer-empty-state--loading" role="status">
+            <div class="printer-empty-state__icon-stage" aria-hidden="true">
+              <img class="printer-empty-state__icon printer-empty-state__icon--printer" src="/assets/icons/printer-status.svg" alt="">
+              <span class="printer-empty-state__loading-dot"></span>
+            </div>
+            <p class="printer-empty-state__eyebrow">Checking devices</p>
+            <h2 class="printer-empty-state__title">Looking for printers</h2>
+            <p class="printer-empty-state__copy">Loading printer status from the server...</p>
           </article>
         </section>
       </main>

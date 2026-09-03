@@ -603,6 +603,11 @@ img {
   pointer-events: none;
 }
 
+.printer-empty-state:not(.printer-empty-state--loading)::before {
+  animation: printer-empty-halo-breathe 3.2s ease-in-out 320ms infinite both;
+  will-change: opacity, transform;
+}
+
 .printer-empty-state--loading {
   border-color: var(--printify-line);
   background:
@@ -906,6 +911,24 @@ img {
   }
   72%, 100% {
     box-shadow: 0 0 0 16px transparent;
+  }
+}
+
+@keyframes printer-empty-halo-breathe {
+  0%, 100% {
+    opacity: 0.62;
+    transform: translateX(-50%) scale(0.975);
+  }
+
+  50% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1.025);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .printer-empty-state:not(.printer-empty-state--loading)::before {
+    animation: none;
   }
 }
 

@@ -2424,54 +2424,6 @@ img {
   backdrop-filter: none;
 }
 
-/* Grip handle for the footer drawer. The drawer otherwise opens only on
-   double-click or Shift+Tab, neither of which exists on a phone. Kept quiet on
-   desktop so the footer reads the same as before, and promoted to a full touch
-   target where the pointer is a finger. */
-.printify-footer__handle {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 26px;
-  margin-left: 2px;
-  padding: 0;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: inherit;
-  opacity: 0.45;
-  cursor: pointer;
-  touch-action: manipulation;
-  transition: opacity 160ms ease, background 160ms ease;
-}
-
-.printify-footer__handle:hover,
-.printify-footer__handle:focus-visible {
-  opacity: 1;
-  background: color-mix(in srgb, currentColor 14%, transparent);
-}
-
-.printify-footer__handle-grip {
-  display: block;
-  width: 18px;
-  height: 3px;
-  border-radius: 999px;
-  background: currentColor;
-  transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.printify-footer.is-open .printify-footer__handle-grip {
-  transform: rotate(180deg);
-}
-
-body.printify-coarse-pointer .printify-footer__handle {
-  width: 44px;
-  height: 34px;
-  opacity: 0.85;
-}
-
 /* ┌──────────────────────────────────────────────────────────┐
    │  Touch behaviour                                         │
    │  Without these the browser's own pan/zoom gestures fight │

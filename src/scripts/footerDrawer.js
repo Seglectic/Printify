@@ -74,9 +74,6 @@
       <div class="printify-footer__left" data-role="left" aria-hidden="true"></div>
       <div class="printify-footer__status" data-role="status" aria-live="polite"></div>
       <div class="printify-footer__right" data-role="right"></div>
-      <button class="printify-footer__handle" type="button" data-role="handle" aria-label="Toggle footer drawer" title="Toggle footer drawer">
-        <span class="printify-footer__handle-grip" aria-hidden="true"></span>
-      </button>
     `;
 
     const footerTabsRail = footer.querySelector('[data-role="tabs-rail"]');
@@ -84,7 +81,6 @@
     const footerLeft = footer.querySelector('[data-role="left"]');
     const footerStatus = footer.querySelector('[data-role="status"]');
     const footerRight = footer.querySelector('[data-role="right"]');
-    const footerHandle = footer.querySelector('[data-role="handle"]');
 
     let isOpen = false;
     let versionTypeTimers = [];
@@ -273,7 +269,6 @@
       panel?.classList.toggle('is-open', nextOpenState);
       footer?.classList.toggle('is-open', nextOpenState);
       panel?.setAttribute('aria-hidden', nextOpenState ? 'false' : 'true');
-      footerHandle?.setAttribute('aria-expanded', nextOpenState ? 'true' : 'false');
       setClientOverlayActive(settings.layerName, nextOpenState);
       notifyActiveSurfaceVisibility(nextOpenState);
 
@@ -417,16 +412,6 @@
 
     footer.addEventListener('dblclick', event => {
       event.preventDefault();
-      toggleDrawer();
-    });
-
-    // Double-tap is a zoom gesture on phones and Shift+Tab needs a keyboard, so
-    // without this handle the drawer is simply unreachable on touch. It stays in
-    // the DOM on desktop (subtle, per index.css) rather than being a second
-    // mobile-only code path.
-    footerHandle?.addEventListener('click', event => {
-      event.preventDefault();
-      event.stopPropagation();
       toggleDrawer();
     });
 

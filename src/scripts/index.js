@@ -1748,6 +1748,12 @@
   };
 
   const buildOversizeWarnings = async (printer, files) => {
+    // Tape printers have a fixed width but intentionally variable length, so a
+    // conventional page aspect ratio is not a useful fit constraint for them.
+    if (printer?.isTape || String(printer?.size || '').trim().toLowerCase() === 'tape') {
+      return [];
+    }
+
     const targetSize = getPrinterTargetSize(printer);
     if (!targetSize) return [];
 

@@ -144,6 +144,7 @@ const ingestService = createIngestService({
   printingService,
   deduplicator,
   inspectUpload: context => pluginManager?.inspectUpload?.(context),
+  prepareUpload: context => pluginManager?.prepareUpload?.(context),
   resolvePendingUploadAction: context => pluginManager?.resolvePendingUploadAction?.(context),
   logStamp,
   errorLogStamp,
